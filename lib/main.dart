@@ -12,13 +12,13 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'LawDesk',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
       home: Scaffold(
         appBar:  AppBar(
-          title: Text('Flutter Form Example'),
+          title: Text('Login'),
         ),
         body: Padding(
           padding: EdgeInsets.all(16.0),

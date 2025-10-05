@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:email_validator/email_validator.dart';
+import 'package:lawdesk/dashboard.dart';
 
 class MyCustomForm extends StatefulWidget{
   const MyCustomForm({super.key}); 
@@ -29,6 +31,9 @@ class MyCustomFormState extends State<MyCustomForm>{
         children: <Widget>[
           TextFormField(
             controller: _emailcontroller,
+            keyboardType: TextInputType.emailAddress,
+            autocorrect: false,
+            textInputAction: TextInputAction.next,
             decoration: InputDecoration(
             labelText: 'Enter your email',
             prefixIcon: Icon(Icons.email),
@@ -39,6 +44,9 @@ class MyCustomFormState extends State<MyCustomForm>{
             validator: (value){
               if(value == null || value.isEmpty){
                 return 'Please enter some text';
+              }
+              else if(!EmailValidator.validate(value)){
+                return 'Please enter a valid email';
               }
               return null;
             },
@@ -69,10 +77,20 @@ class MyCustomFormState extends State<MyCustomForm>{
                     const SnackBar(content: Text('Processing Data')),
                   );
                   print("Your name is $_textValue and password is $_passwordValue");
+                  //navigate to dashoard
+                  Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const Dashboard(), ));
                 }
               },
               child: const Text('Submit'),
             ),
+          ),
+          TextButton(
+            onPressed: (){
+              // Navigate to dashoard screen
+              Navigator.pushReplacement(context, 
+              MaterialPageRoute(builder: (context) => const Dashboard(),));
+            },
+            child: const Text('Forgot Password?'),
           ),
         ],
       ),
