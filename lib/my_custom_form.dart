@@ -86,9 +86,9 @@ class MyCustomFormState extends State<MyCustomForm>{
           ),
           TextButton(
             onPressed: (){
-              // Navigate to dashoard screen
-              Navigator.pushReplacement(context, 
-              MaterialPageRoute(builder: (context) => const Dashboard(),));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Password reset coming soon!')),
+              );
             },
             child: const Text('Forgot Password?'),
           ),
