@@ -22,7 +22,7 @@ class MyApp extends StatelessWidget {
         ),
         body: Padding(
           padding: EdgeInsets.all(16.0),
-          child: MyCustomForm(),
+          child: MyCustomForm(), // TODO: Implemntt a general home screen that checks if user is logged in or not
         ),
       ),
     );
