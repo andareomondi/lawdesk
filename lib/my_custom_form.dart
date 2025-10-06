@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:email_validator/email_validator.dart';
-import 'package:lawdesk/dashboard.dart';
 
-class MyCustomForm extends StatefulWidget{
-  const MyCustomForm({super.key}); 
+class MyCustomForm extends StatefulWidget {
+  final VoidCallback onLoginSuccess;
+  
+  const MyCustomForm({super.key, required this.onLoginSuccess}); 
 
   @override
   MyCustomFormState createState() {
@@ -11,19 +12,17 @@ class MyCustomForm extends StatefulWidget{
   }
 }
 
-class MyCustomFormState extends State<MyCustomForm>{
+class MyCustomFormState extends State<MyCustomForm> {
   final _formKey = GlobalKey<FormState>();
-  // get the value from the TextFormField
+
   final TextEditingController _emailcontroller = TextEditingController();
-  // getting the value from the TextFormField
   String get _textValue => _emailcontroller.text;
 
   final TextEditingController _passwordcontroller = TextEditingController();
-
   String get _passwordValue => _passwordcontroller.text;
 
   @override 
-  Widget build(BuildContext context){
+  Widget build(BuildContext context) {
     return Form(
       key: _formKey,
       child: Column(
@@ -35,17 +34,19 @@ class MyCustomFormState extends State<MyCustomForm>{
             autocorrect: false,
             textInputAction: TextInputAction.next,
             decoration: InputDecoration(
-            labelText: 'Enter your email',
-            prefixIcon: Icon(Icons.email),
-            suffixIcon: IconButton(onPressed: (){
-              _emailcontroller.clear();
-              }, icon: Icon(Icons.clear))
+              labelText: 'Enter your email',
+              prefixIcon: const Icon(Icons.email),
+              suffixIcon: IconButton(
+                onPressed: () {
+                  _emailcontroller.clear();
+                }, 
+                icon: const Icon(Icons.clear)
+              )
             ),
-            validator: (value){
-              if(value == null || value.isEmpty){
+            validator: (value) {
+              if (value == null || value.isEmpty) {
                 return 'Please enter some text';
-              }
-              else if(!EmailValidator.validate(value)){
+              } else if (!EmailValidator.validate(value)) {
                 return 'Please enter a valid email';
               }
               return null;
@@ -54,15 +55,18 @@ class MyCustomFormState extends State<MyCustomForm>{
           TextFormField(
             controller: _passwordcontroller,
             decoration: InputDecoration(
-            labelText: 'Enter your password',
-            prefixIcon: Icon(Icons.lock),
-            suffixIcon: IconButton(onPressed: (){
-              _passwordcontroller.clear();
-              }, icon: Icon(Icons.clear))
+              labelText: 'Enter your password',
+              prefixIcon: const Icon(Icons.lock),
+              suffixIcon: IconButton(
+                onPressed: () {
+                  _passwordcontroller.clear();
+                }, 
+                icon: const Icon(Icons.clear)
+              )
             ),
             obscureText: true,
-            validator: (value){
-              if(value == null || value.isEmpty){
+            validator: (value) {
+              if (value == null || value.isEmpty) {
                 return 'Please enter some text';
               }
               return null;
@@ -71,21 +75,20 @@ class MyCustomFormState extends State<MyCustomForm>{
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 16.0),
             child: ElevatedButton(
-              onPressed: (){
-                if(_formKey.currentState!.validate()){
+              onPressed: () {
+                if (_formKey.currentState!.validate()) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Processing Data')),
                   );
                   print("Your name is $_textValue and password is $_passwordValue");
-                  //navigate to dashoard
-                  Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const Dashboard(), ));
+                  widget.onLoginSuccess();
                 }
               },
               child: const Text('Submit'),
             ),
           ),
           TextButton(
-            onPressed: (){
+            onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Password reset coming soon!')),
               );
