@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lawdesk/auth_screen.dart';
 import 'package:lawdesk/dashboard.dart';
 
+
 void main() {
   runApp(const MyApp());
 }
