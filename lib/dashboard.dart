@@ -415,7 +415,7 @@ class _CourtDateCard extends StatelessWidget {
           border: Border.all(
             color: isUrgent 
               ? const Color(0xFFF59E0B)
-              : const Color(0xFFE5E7EB),
+              : Color.fromARGB(255, 91, 204, 129),
             width: isUrgent ? 2 : 1,
           ),
           boxShadow: [
@@ -454,29 +454,52 @@ class _CourtDateCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (isUrgent)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF59E0B).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: const Color(0xFFF59E0B).withOpacity(0.3),
-                      ),
-                    ),
-                    child: const Text(
-                      'URGENT',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFFF59E0B),
-                        letterSpacing: 0.5,
-                      ),
+              if (isUrgent)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF59E0B).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: const Color(0xFFF59E0B).withOpacity(0.3),
                     ),
                   ),
+                  child: const Text(
+                    'URGENT',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFFF59E0B),
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                )
+              else
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Color.fromARGB(255, 55, 218, 49).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Color.fromARGB(255, 55, 218, 49).withOpacity(0.1),
+                    ),
+                  ),
+                  child: const Text(
+                    'Upcoming',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: Color.fromARGB(255, 55, 218, 49),
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 12),
