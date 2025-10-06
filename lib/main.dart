@@ -1,11 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:lawdesk/auth_screen.dart';
 import 'package:lawdesk/dashboard.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Supabase.initialize(
+    url: 'https://your-supabase-url.supabase.co',
+    anonKey: 'anon-key',
+  );
+
   runApp(const MyApp());
 }
+
+final supabase = Supabase.instance.client;
 
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
