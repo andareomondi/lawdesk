@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lawdesk/my_custom_form.dart';
+import 'package:lawdesk/auth_screen.dart';
 import 'package:lawdesk/dashboard.dart';
 
 void main() {
@@ -26,12 +26,9 @@ class _MyAppState extends State<MyApp> {
       home: isAuthenticated 
         ? const Dashboard()
         : Scaffold(
-            appBar: AppBar(
-              title: const Text('Login'),
-            ),
             body: Padding(
               padding: const EdgeInsets.all(16.0),
-              child: MyCustomForm(
+              child: AuthScreen(
                 onLoginSuccess: () {
                   setState(() {
                     isAuthenticated = true;
