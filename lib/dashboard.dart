@@ -12,10 +12,11 @@ class _DashboardState extends State<Dashboard> {
   final _supabase = Supabase.instance.client;
   
   // User data variables
-  String _userName = 'Advocate';
+  String _userName = '';
   String _userEmail = '';
   Map<String, dynamic>? _userProfile;
   bool _isLoading = true;
+  bool _isUpdated = true;
 
   @override
   void initState() {
@@ -45,9 +46,17 @@ class _DashboardState extends State<Dashboard> {
           _userProfile = response;
           _userName = response['username'];
           _userEmail = response['email'];
+          _isUpdated = response['is_updated'] ?? false; 
           _isLoading = false;
         });
         print('User profile loaded: $_userProfile');
+        
+        // Show toast notification if profile is not updated
+        if (!_isUpdated) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _showProfileUpdateToast(context);
+          });
+        }
       }
     } catch (e) {
       print('Error loading user data: $e');
@@ -57,6 +66,115 @@ class _DashboardState extends State<Dashboard> {
     }
   }
 
+  void _showProfileUpdateToast(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          contentPadding: const EdgeInsets.all(24),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF59E0B).withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.info_outline,
+                  color: Color(0xFFF59E0B),
+                  size: 48,
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Profile Update Required',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1F2937),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Please update your profile information to continue using the app.',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF6B7280),
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          side: const BorderSide(
+                            color: Color(0xFFE5E7EB),
+                          ),
+                        ),
+                      ),
+                      child: const Text(
+                        'Later',
+                        style: TextStyle(
+                          color: Color(0xFF6B7280),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        // TODO: Navigate to profile update screen
+                        // Navigator.push(
+                        //   context,
+                        //   MaterialPageRoute(builder: (context) => const ProfileUpdateScreen()),
+                        // );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1E3A8A),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Text(
+                        'Update Now',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -143,7 +261,7 @@ class _DashboardState extends State<Dashboard> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Welcome back, $_userName',
+                  'Welcome back,',
                   style: const TextStyle(
                     color: Colors.white70,
                     fontSize: 14,
@@ -151,7 +269,7 @@ class _DashboardState extends State<Dashboard> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  _userName,
+                  _userName.toUpperCase(),
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 24,
