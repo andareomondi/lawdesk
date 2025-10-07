@@ -116,22 +116,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
       ),
     );
-
+    
     if (confirm == true) {
       try {
-        await _supabase.auth.signOut();
+        // Show loading indicator
         if (mounted) {
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => const Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+
+        await _supabase.auth.signOut();
+        
+        // Close loading indicator
+        if (mounted) {
+          Navigator.of(context).pop();
+          Navigator.of(context).pop();
+          
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Logged out successfully'),
               backgroundColor: Color(0xFF10B981),
+              duration: Duration(seconds: 2),
             ),
           );
-          // Navigation will be handled by the StreamBuilder in main.dart
         }
-        Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+        // The StreamBuilder in main.dart will automatically handle navigation
       } catch (e) {
+        // Close loading indicator if it's showing
         if (mounted) {
+          Navigator.of(context).pop();
+          
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Error logging out: $e'),
@@ -144,17 +163,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _navigateToEditProfile() {
-    // TODO: Navigate to ProfileUpdateScreen
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => const ProfileUpdateScreen(),
       ),
     ).then((_) => _loadUserProfile()); // Reload after update
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Edit profile coming soon')),
-    );
   }
 
   @override

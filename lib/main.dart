@@ -3,7 +3,6 @@ import 'package:lawdesk/auth/login.dart';
 import 'package:lawdesk/dashboard.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:lawdesk/pages/profile/profile.dart';
-import 'package:lawdesk/dashboard.dart';
 // import 'package:lawdesk/pages/cases/case_list.dart';
 
 void main() async {
@@ -26,51 +25,37 @@ class MyApp extends StatelessWidget {
       routes: {
         '/login': (context) => const LoginPage(),
         '/dashboard': (context) => const Dashboard(),
+        // '/cases': (context) => const CaseListScreen(), TODO: Implement the caselist screen and then uncomment this line
         '/profile': (context) => const ProfileScreen(),
       },
       title: 'LawDesk',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primarySwatch: Colors.blue,
         fontFamily: 'SF Pro Display',
       ),
-      home: const AuthDirector(),
+      home: StreamBuilder<AuthState>(
+        stream: Supabase.instance.client.auth.onAuthStateChange,
+        builder: (context, snapshot) {
+          print('snapshot: $snapshot');
+          // Show loading indicator while checking auth state
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Scaffold(
+              body: Center(
+                child: CircularProgressIndicator(),
+              ),
+            );
+          }
+          
+          // Check if user is logged in
+          if (snapshot.hasData && snapshot.data!.session != null) {
+            return const Dashboard();
+          }
+          
+          // Show login page if not logged in
+          return const LoginPage();
+        },
+      ),
     );
-  }
-}
-
-
-class AuthDirector extends StatefulWidget {
-  const AuthDirector({super.key});
-
-  @override
-  State<AuthDirector> createState() => _AuthDirectorState();
-}
-
-class _AuthRedirectorState extends State<AuthRedirector> {
-  @override
-  void initState() {
-    super.initState();
-    Supabase.instance.client.auth.onAuthStateChange.listen((data) {
-      final session = data.session;
-      if (session == null) {
-        // User is signed out, go to login page
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const LoginPage()),
-          (route) => false,
-        );
-      } else {
-        // User is signed in, go to dashboard
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const Dashboard()),
-          (route) => false,
-        );
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // Show a loading indicator while the auth state is being checked
-    return const Scaffold(body: Center(child: CircularProgressIndicator()));
   }
 }
