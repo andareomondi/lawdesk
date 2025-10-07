@@ -1,13 +1,68 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-class Dashboard extends StatelessWidget {
+class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
+
+  @override
+  State<Dashboard> createState() => _DashboardState();
+}
+
+class _DashboardState extends State<Dashboard> {
+  final _supabase = Supabase.instance.client;
+  
+  // User data variables
+  String _userName = 'Advocate';
+  String _userEmail = '';
+  Map<String, dynamic>? _userProfile;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    try {
+      // Get current user from auth
+      final user = _supabase.auth.currentUser;
+      
+      if (user != null) {
+        setState(() {
+          _userEmail = user.email ?? '';
+        });
+
+        // Fetch user profile from your profiles table
+        // Assuming you have a 'profiles' table with columns: id, full_name, username, gender, lsk_number
+        final response = await _supabase
+            .from('profiles')
+            .select()
+            .eq('id', user.id)
+            .single();
+
+        setState(() {
+          _userProfile = response;
+          _userName = response['username'];
+          _userEmail = response['email'];
+          _isLoading = false;
+        });
+        print('User profile loaded: $_userProfile');
+      }
+    } catch (e) {
+      print('Error loading user data: $e');
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1E3A8A), // LawDesk blue
+        backgroundColor: const Color(0xFF1E3A8A),
         foregroundColor: Colors.white,
         elevation: 0,
         title: const Text(
@@ -18,7 +73,6 @@ class Dashboard extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.notifications_outlined),
             onPressed: () {
-              // TODO: Show notifications
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Notifications coming soon')),
               );
@@ -27,41 +81,43 @@ class Dashboard extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.account_circle_outlined),
             onPressed: () {
-              // TODO: Go to profile
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Profile coming soon')),
-              );
+              // TODO: Navigate to profile
+              // Navigator.push(
+              //   context,
+              //   MaterialPageRoute(builder: (context) => const ProfileUpdateScreen()),
+              // );
             },
           ),
         ],
       ),
       backgroundColor: const Color(0xFFF8FAFC),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Welcome Section
-            _buildWelcomeSection(),
-            const SizedBox(height: 24),
-            
-            // Stats Cards
-            _buildStatsSection(),
-            const SizedBox(height: 24),
-            
-            // Upcoming Court Dates Section
-            _buildUpcomingDatesSection(context),
-            const SizedBox(height: 24),
-            
-            // Quick Actions
-            _buildQuickActionsSection(context),
-          ],
-        ),
-      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Welcome Section
+                  _buildWelcomeSection(),
+                  const SizedBox(height: 24),
+                  
+                  // Stats Cards
+                  _buildStatsSection(),
+                  const SizedBox(height: 24),
+                  
+                  // Upcoming Court Dates Section
+                  _buildUpcomingDatesSection(context),
+                  const SizedBox(height: 24),
+                  
+                  // Quick Actions
+                  _buildQuickActionsSection(context),
+                ],
+              ),
+            ),
     );
   }
 
-  // Welcome Section
   Widget _buildWelcomeSection() {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -86,17 +142,17 @@ class Dashboard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Welcome back,',
-                  style: TextStyle(
+                Text(
+                  'Welcome back, $_userName',
+                  style: const TextStyle(
                     color: Colors.white70,
                     fontSize: 14,
                   ),
                 ),
                 const SizedBox(height: 4),
-                const Text(
-                  'Advocate!',
-                  style: TextStyle(
+                Text(
+                  _userName,
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -104,7 +160,9 @@ class Dashboard extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'You have 5 cases due this week',
+                  _userProfile != null && _userProfile!['lsk_number'] != null
+                      ? 'LSK No: ${_userProfile!['lsk_number']}'
+                      : 'You have 5 cases due this week',
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.9),
                     fontSize: 13,
@@ -123,7 +181,6 @@ class Dashboard extends StatelessWidget {
     );
   }
 
-  // Stats Section
   Widget _buildStatsSection() {
     return Row(
       children: [
@@ -150,7 +207,6 @@ class Dashboard extends StatelessWidget {
     );
   }
 
-  // Upcoming Dates Section
   Widget _buildUpcomingDatesSection(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -181,16 +237,13 @@ class Dashboard extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         
-        // Court date cards
         _CourtDateCard(
           caseName: 'Kamau v. Republic',
           caseNumber: 'CR 123/2024',
           courtDate: 'Tomorrow, 9:00 AM',
           courtName: 'Milimani Law Courts',
           status: 'urgent',
-          onTap: () {
-            // TODO: Navigate to case detail
-          },
+          onTap: () {},
         ),
         const SizedBox(height: 12),
         
@@ -200,9 +253,7 @@ class Dashboard extends StatelessWidget {
           courtDate: 'Friday, 2:00 PM',
           courtName: 'Environment & Land Court',
           status: 'upcoming',
-          onTap: () {
-            // TODO: Navigate to case detail
-          },
+          onTap: () {},
         ),
         const SizedBox(height: 12),
         
@@ -212,15 +263,12 @@ class Dashboard extends StatelessWidget {
           courtDate: 'Next Monday, 11:00 AM',
           courtName: 'High Court - Nairobi',
           status: 'upcoming',
-          onTap: () {
-            // TODO: Navigate to case detail
-          },
+          onTap: () {},
         ),
       ],
     );
   }
 
-  // Quick Actions Section
   Widget _buildQuickActionsSection(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -415,7 +463,7 @@ class _CourtDateCard extends StatelessWidget {
           border: Border.all(
             color: isUrgent 
               ? const Color(0xFFF59E0B)
-              : Color.fromARGB(255, 91, 204, 129),
+              : const Color.fromARGB(255, 91, 204, 129),
             width: isUrgent ? 2 : 1,
           ),
           boxShadow: [
@@ -484,10 +532,10 @@ class _CourtDateCard extends StatelessWidget {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: Color.fromARGB(255, 55, 218, 49).withOpacity(0.1),
+                    color: const Color.fromARGB(255, 55, 218, 49).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: Color.fromARGB(255, 55, 218, 49).withOpacity(0.1),
+                      color: const Color.fromARGB(255, 55, 218, 49).withOpacity(0.1),
                     ),
                   ),
                   child: const Text(
