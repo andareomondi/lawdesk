@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:lawdesk/pages/profile/update_profile.dart';
+import 'package:lawdesk/pages/profile/profile.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -144,7 +145,6 @@ class _DashboardState extends State<Dashboard> {
                     child: ElevatedButton(
                       onPressed: () {
                         Navigator.of(context).pop();
-                        // TODO: Navigate to profile update screen
                         Navigator.push(
                           context,
                           MaterialPageRoute(builder: (context) => const ProfileUpdateScreen()),
@@ -200,11 +200,10 @@ class _DashboardState extends State<Dashboard> {
           IconButton(
             icon: const Icon(Icons.account_circle_outlined),
             onPressed: () {
-              // TODO: Navigate to profile
-              // Navigator.push(
-              //   context,
-              //   MaterialPageRoute(builder: (context) => const ProfileUpdateScreen()),
-              // );
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ProfileScreen()),
+              );
             },
           ),
         ],
