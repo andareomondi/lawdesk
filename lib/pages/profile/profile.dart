@@ -129,6 +129,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           );
           // Navigation will be handled by the StreamBuilder in main.dart
         }
+        Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

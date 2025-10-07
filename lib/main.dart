@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:lawdesk/auth/login.dart';
 import 'package:lawdesk/dashboard.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:lawdesk/pages/profile/profile.dart';
+// import 'package:lawdesk/pages/cases/case_list.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,6 +22,13 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+    routes: {
+
+      '/login': (context) => const LoginPage(),
+      '/dashboard': (context) => const Dashboard(),
+      // '/cases': (context) => const CaseListScreen(), TODO: Implement the caselist screen and then uncomment this line
+      '/profile': (context) => const ProfileScreen(),
+    },
       title: 'LawDesk',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
