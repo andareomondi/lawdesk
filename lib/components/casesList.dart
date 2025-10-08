@@ -31,11 +31,8 @@ class _CasesListWidgetState extends State<CasesListWidget> {
 
   Future<List<Map<String, dynamic>>> _fetchCases() async {
     final user = _supabase.auth.currentUser;
-    print('========== DEBUG INFO ==========');
-    print('Current user ID: ${user?.id}');
     
     if (user == null) {
-      print('ERROR: No user logged in');
       return [];
     }
     
@@ -45,25 +42,13 @@ class _CasesListWidgetState extends State<CasesListWidget> {
           .from('cases')
           .select();
       
-      print('Response type: ${response.runtimeType}');
-      print('Total cases in database: ${response is List ? response.length : 0}');
-      
-      if (response is List && response.isNotEmpty) {
-        print('First case data: ${response[0]}');
-        print('Available columns: ${(response[0] as Map).keys.toList()}');
-      } else {
-        print('No cases found in database or response is not a List');
-      }
-      print('================================');
+
       
       if (response is List) {
         return List<Map<String, dynamic>>.from(response);
       }
       
-      return [];
     } catch (e, stackTrace) {
-      print('ERROR fetching cases: $e');
-      print('Stack trace: $stackTrace');
       return [];
     }
   }
@@ -95,7 +80,6 @@ class _CasesListWidgetState extends State<CasesListWidget> {
         return DateFormat('MMM d, h:mm a').format(date);
       }
     } catch (e) {
-      print('Error parsing date: $dateString - Error: $e');
       return 'Invalid date';
     }
   }
@@ -123,7 +107,6 @@ class _CasesListWidgetState extends State<CasesListWidget> {
     //     builder: (context) => CaseDetailsPage(caseId: caseId),
     //   ),
     // );
-    print('Navigate to case: $caseId');
   }
 
   @override
@@ -169,9 +152,9 @@ class _CasesListWidgetState extends State<CasesListWidget> {
           _CourtDateCard(
             caseName: _cases[i]['name'] ?? 'Unnamed Case',
             caseNumber: _cases[i]['number'] ?? 'N/A',
-            courtDate: _formatCourtDate(_cases[i]['court_date']),
+            courtDate: _cases[i]['court_date'],
             courtName: _cases[i]['court_name'] ?? 'Court not specified',
-            status: _getStatus(_cases[i]['court_date']),
+            status: _cases[i]['status'] ?? 'Unknown Status',
             onTap: () => _navigateToCaseDetails(_cases[i]['id'].toString()),
           ),
           if (i < _cases.length - 1) const SizedBox(height: 12),
