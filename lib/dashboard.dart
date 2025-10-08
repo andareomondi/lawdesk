@@ -354,6 +354,7 @@ class _DashboardState extends State<Dashboard> {
           ],
         ),
         const SizedBox(height: 12),
+        // TODO: Replace with dynamic data from your database and implement a for loop and scrollable list
         
         _CourtDateCard(
           caseName: 'Kamau v. Republic',
@@ -410,7 +411,7 @@ class _DashboardState extends State<Dashboard> {
                 color: const Color(0xFF1E3A8A),
                 onPressed: () {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Create case coming soon')),
+                    const SnackBar(content: Text('Create case coming soon')), //TODO: Implement create case functionality
                   );
                 },
               ),
@@ -555,7 +556,7 @@ class _CourtDateCard extends StatelessWidget {
   final String courtDate;
   final String courtName;
   final String status;
-  final VoidCallback onTap;
+  final VoidCallback onTap; // Redirct to the case details page using it's case id
 
   const _CourtDateCard({
     required this.caseName,
