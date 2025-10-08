@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:lawdesk/pages/profile/update_profile.dart';
 import 'package:lawdesk/pages/profile/profile.dart';
+import 'package:lawdesk/components/casesList.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -37,7 +38,6 @@ class _DashboardState extends State<Dashboard> {
         });
 
         // Fetch user profile from your profiles table
-        // Assuming you have a 'profiles' table with columns: id, full_name, username, gender, lsk_number
         final response = await _supabase
             .from('profiles')
             .select()
@@ -51,7 +51,6 @@ class _DashboardState extends State<Dashboard> {
           _isUpdated = response['is_updated'] ?? false; 
           _isLoading = false;
         });
-        print('User profile loaded: $_userProfile');
         
         // Show toast notification if profile is not updated
         if (!_isUpdated) {
@@ -61,7 +60,6 @@ class _DashboardState extends State<Dashboard> {
         }
       }
     } catch (e) {
-      print('Error loading user data: $e');
       setState(() {
         _isLoading = false;
       });
@@ -354,36 +352,7 @@ class _DashboardState extends State<Dashboard> {
           ],
         ),
         const SizedBox(height: 12),
-        // TODO: Replace with dynamic data from your database and implement a for loop and scrollable list
-        
-        _CourtDateCard(
-          caseName: 'Kamau v. Republic',
-          caseNumber: 'CR 123/2024',
-          courtDate: 'Tomorrow, 9:00 AM',
-          courtName: 'Milimani Law Courts',
-          status: 'urgent',
-          onTap: () {},
-        ),
-        const SizedBox(height: 12),
-        
-        _CourtDateCard(
-          caseName: 'Wanjiku Land Dispute',
-          caseNumber: 'ELC 456/2024',
-          courtDate: 'Friday, 2:00 PM',
-          courtName: 'Environment & Land Court',
-          status: 'upcoming',
-          onTap: () {},
-        ),
-        const SizedBox(height: 12),
-        
-        _CourtDateCard(
-          caseName: 'Ochieng v. County Govt',
-          caseNumber: 'JR 789/2024',
-          courtDate: 'Next Monday, 11:00 AM',
-          courtName: 'High Court - Nairobi',
-          status: 'upcoming',
-          onTap: () {},
-        ),
+        const CasesListWidget(),
       ],
     );
   }
