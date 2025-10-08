@@ -37,7 +37,6 @@ class MyApp extends StatelessWidget {
       home: StreamBuilder<AuthState>(
         stream: Supabase.instance.client.auth.onAuthStateChange,
         builder: (context, snapshot) {
-          print('snapshot: $snapshot');
           // Show loading indicator while checking auth state
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Scaffold(

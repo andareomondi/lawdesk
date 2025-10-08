@@ -31,30 +31,50 @@ class _CasesListWidgetState extends State<CasesListWidget> {
 
   Future<List<Map<String, dynamic>>> _fetchCases() async {
     final user = _supabase.auth.currentUser;
-    if (user == null) return [];
+    print('========== DEBUG INFO ==========');
+    print('Current user ID: ${user?.id}');
+    
+    if (user == null) {
+      print('ERROR: No user logged in');
+      return [];
+    }
     
     try {
+      // Select ALL cases to debug
       final response = await _supabase
           .from('cases')
-          .select()
-          .eq('user', user.id)
-          .order('created_at', ascending: false)
-          .limit(5);
-
-      print(response);
+          .select();
       
-      return List<Map<String, dynamic>>.from(response as List);
-    } catch (e) {
-      print('Error fetching cases: $e');
+      print('Response type: ${response.runtimeType}');
+      print('Total cases in database: ${response is List ? response.length : 0}');
+      
+      if (response is List && response.isNotEmpty) {
+        print('First case data: ${response[0]}');
+        print('Available columns: ${(response[0] as Map).keys.toList()}');
+      } else {
+        print('No cases found in database or response is not a List');
+      }
+      print('================================');
+      
+      if (response is List) {
+        return List<Map<String, dynamic>>.from(response);
+      }
+      
+      return [];
+    } catch (e, stackTrace) {
+      print('ERROR fetching cases: $e');
+      print('Stack trace: $stackTrace');
       return [];
     }
   }
 
   String _formatCourtDate(String? dateString) {
-    if (dateString == null) return 'Date not set';
+    if (dateString == null || dateString.isEmpty) return 'Date not set';
     
     try {
-      final date = DateTime.parse(dateString);
+      // Parse Supabase timestamp format (2025-10-08 09:19:27.557383+00)
+      DateTime date = DateTime.parse(dateString).toLocal();
+      
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
       final tomorrow = today.add(const Duration(days: 1));
@@ -68,11 +88,15 @@ class _CasesListWidgetState extends State<CasesListWidget> {
         final daysDifference = dateOnly.difference(today).inDays;
         if (daysDifference > 0 && daysDifference <= 7) {
           return '${DateFormat('EEEE').format(date)}, ${DateFormat('h:mm a').format(date)}';
+        } else if (daysDifference < 0) {
+          // Past date
+          return 'Past - ${DateFormat('MMM d, h:mm a').format(date)}';
         }
         return DateFormat('MMM d, h:mm a').format(date);
       }
     } catch (e) {
-      return dateString;
+      print('Error parsing date: $dateString - Error: $e');
+      return 'Invalid date';
     }
   }
 
