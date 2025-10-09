@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:intl/intl.dart';
 
 class CasesListWidget extends StatefulWidget {
   const CasesListWidget({Key? key}) : super(key: key);
@@ -49,55 +48,12 @@ class _CasesListWidgetState extends State<CasesListWidget> {
       }
       
     } catch (e, stackTrace) {
+      print(stackTrace);
       return [];
     }
   }
 
-  String _formatCourtDate(String? dateString) {
-    if (dateString == null || dateString.isEmpty) return 'Date not set';
-    
-    try {
-      // Parse Supabase timestamp format (2025-10-08 09:19:27.557383+00)
-      DateTime date = DateTime.parse(dateString).toLocal();
-      
-      final now = DateTime.now();
-      final today = DateTime(now.year, now.month, now.day);
-      final tomorrow = today.add(const Duration(days: 1));
-      final dateOnly = DateTime(date.year, date.month, date.day);
-      
-      if (dateOnly == today) {
-        return 'Today, ${DateFormat('h:mm a').format(date)}';
-      } else if (dateOnly == tomorrow) {
-        return 'Tomorrow, ${DateFormat('h:mm a').format(date)}';
-      } else {
-        final daysDifference = dateOnly.difference(today).inDays;
-        if (daysDifference > 0 && daysDifference <= 7) {
-          return '${DateFormat('EEEE').format(date)}, ${DateFormat('h:mm a').format(date)}';
-        } else if (daysDifference < 0) {
-          // Past date
-          return 'Past - ${DateFormat('MMM d, h:mm a').format(date)}';
-        }
-        return DateFormat('MMM d, h:mm a').format(date);
-      }
-    } catch (e) {
-      return 'Invalid date';
-    }
-  }
-
-  String _getStatus(String? courtDate) {
-    if (courtDate == null) return 'upcoming';
-    
-    try {
-      final date = DateTime.parse(courtDate);
-      final now = DateTime.now();
-      final difference = date.difference(now).inHours;
-      
-      if (difference <= 48) return 'urgent';
-      return 'upcoming';
-    } catch (e) {
-      return 'upcoming';
-    }
-  }
+  
 
   void _navigateToCaseDetails(String caseId) {
     // TODO: Implement navigation to case details page
@@ -152,9 +108,9 @@ class _CasesListWidgetState extends State<CasesListWidget> {
           _CourtDateCard(
             caseName: _cases[i]['name'] ?? 'Unnamed Case',
             caseNumber: _cases[i]['number'] ?? 'N/A',
-            courtDate: _cases[i]['court_date'],
+            courtDate: _cases[i]['courtDate'],
             courtName: _cases[i]['court_name'] ?? 'Court not specified',
-            status: _cases[i]['status'] ?? 'Unknown Status',
+            status: _cases[i]['status'] ?? 'Unknown status',
             onTap: () => _navigateToCaseDetails(_cases[i]['id'].toString()),
           ),
           if (i < _cases.length - 1) const SizedBox(height: 12),
@@ -167,7 +123,7 @@ class _CasesListWidgetState extends State<CasesListWidget> {
 class _CourtDateCard extends StatelessWidget {
   final String caseName;
   final String caseNumber;
-  final String courtDate;
+  final dynamic courtDate;
   final String courtName;
   final String status;
   final VoidCallback onTap;
@@ -296,7 +252,7 @@ class _CourtDateCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  courtDate,
+                  '$courtDate',
                   style: TextStyle(
                     fontSize: 14,
                     color: isUrgent 
