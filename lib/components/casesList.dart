@@ -44,7 +44,33 @@ class _CasesListWidgetState extends State<CasesListWidget> {
 
       
       if (response is List) {
-        return List<Map<String, dynamic>>.from(response);
+        final cases = List<Map<String, dynamic>>.from(response);
+        
+        // Calculate status based on court date
+        final now = DateTime.now();
+        final today = DateTime(now.year, now.month, now.day);
+        
+        for (var case_ in cases) {
+          if (case_['courtDate'] != null) {
+            try {
+              final courtDate = DateTime.parse(case_['courtDate']);
+              final courtDateOnly = DateTime(courtDate.year, courtDate.month, courtDate.day);
+              final daysDifference = courtDateOnly.difference(today).inDays;
+              
+              if (daysDifference <= 2) {
+                case_['status'] = 'urgent';
+              } else if (daysDifference > 2 && daysDifference < 5) {
+                case_['status'] = 'upcoming';
+              } else {
+                case_['status'] = 'no worries';
+              }
+            } catch (e) {
+              case_['status'] = 'unknown';
+            }
+          }
+        }
+        
+        return cases;
       }
       
     } catch (e, stackTrace) {
@@ -140,6 +166,8 @@ class _CourtDateCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isUrgent = status == 'urgent';
+    final isUpcoming = status == 'upcoming';
+    final isNoWorries = status == 'no worries';
     
     return InkWell(
       onTap: onTap,
@@ -152,7 +180,9 @@ class _CourtDateCard extends StatelessWidget {
           border: Border.all(
             color: isUrgent 
               ? const Color(0xFFF59E0B)
-              : const Color.fromARGB(255, 91, 204, 129),
+              : isUpcoming
+                ? const Color.fromARGB(255, 91, 204, 129)
+                : const Color(0xFF10B981),
             width: isUrgent ? 2 : 1,
           ),
           boxShadow: [
@@ -214,7 +244,7 @@ class _CourtDateCard extends StatelessWidget {
                     ),
                   ),
                 )
-              else
+              else if (isUpcoming)
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,
@@ -233,6 +263,29 @@ class _CourtDateCard extends StatelessWidget {
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
                       color: Color.fromARGB(255, 55, 218, 49),
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                )
+              else
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: const Color(0xFF10B981).withOpacity(0.2),
+                    ),
+                  ),
+                  child: const Text(
+                    'No Worries',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF10B981),
                       letterSpacing: 0.5,
                     ),
                   ),
