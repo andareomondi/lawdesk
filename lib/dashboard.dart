@@ -4,6 +4,7 @@ import 'package:lawdesk/pages/profile/update_profile.dart';
 import 'package:lawdesk/pages/profile/profile.dart';
 import 'package:lawdesk/components/casesList.dart';
 import 'package:lawdesk/pages/cases/casepage.dart';
+import 'package:lawdesk/components/caseModal.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -380,9 +381,11 @@ class _DashboardState extends State<Dashboard> {
                 icon: Icons.add_circle_outline,
                 color: const Color(0xFF1E3A8A),
                 onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Create case coming soon')), //TODO: Implement create case functionality
-                  );
+                  AddCaseModal.show(context, onCaseAdded: () {
+                    setState(() {});
+                    },
+                    );
+                  
                 },
               ),
             ),

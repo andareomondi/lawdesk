@@ -1,8 +1,23 @@
 import 'package:flutter/material.dart';
-import 'package:lawdesk/pages/cases/case_list.dart'; // Import your cases list
+import 'package:lawdesk/pages/cases/case_list.dart';
+import 'package:lawdesk/components/caseModal.dart';
 
-class CasesPage extends StatelessWidget {
+class CasesPage extends StatefulWidget {
   const CasesPage({Key? key}) : super(key: key);
+
+  @override
+  State<CasesPage> createState() => _CasesPageState();
+}
+
+class _CasesPageState extends State<CasesPage> {
+  // Key to force rebuild of CasesList
+  Key _casesListKey = UniqueKey();
+
+  void _refreshCases() {
+    setState(() {
+      _casesListKey = UniqueKey(); // Force CasesList to rebuild
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,8 +58,7 @@ class CasesPage extends StatelessWidget {
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () async {
-            // Reload the page to refresh data
-            // This will trigger the CasesList to rebuild and fetch fresh data
+            _refreshCases();
             await Future.delayed(const Duration(milliseconds: 500));
           },
           child: SingleChildScrollView(
@@ -129,9 +143,9 @@ class CasesPage extends StatelessWidget {
                       ),
                       TextButton.icon(
                         onPressed: () {
-                          // TODO: Navigate to add case page
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Add case coming soon')),
+                          AddCaseModal.show(
+                            context,
+                            onCaseAdded: _refreshCases,
                           );
                         },
                         icon: const Icon(Icons.add_circle_outline, size: 18),
@@ -144,8 +158,8 @@ class CasesPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   
-                  // Cases List
-                  const CasesListWidget(),
+                  // Cases List with key to force rebuild
+                  CasesListWidget(key: _casesListKey),
                 ],
               ),
             ),
@@ -154,14 +168,17 @@ class CasesPage extends StatelessWidget {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
-          // TODO: Navigate to add case page
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Add new case coming soon')),
+          AddCaseModal.show(
+            context,
+            onCaseAdded: _refreshCases,
           );
         },
         backgroundColor: const Color(0xFF1E3A8A),
-        icon: const Icon(Icons.add , color: Colors.white,),
-        label: const Text('New Case', style: TextStyle(color: Colors.white),),
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: const Text(
+          'New Case',
+          style: TextStyle(color: Colors.white),
+        ),
       ),
     );
   }

@@ -41,10 +41,9 @@ class _CasesListWidgetState extends State<CasesListWidget> {
           .from('cases')
           .select()
           .eq('user', user.id)
-          .order('created_at', ascending: false)
-          .limit(5);
-      
-
+          .order('courtDate', ascending: true)
+          .limit(3);
+          
       
       if (response is List) {
         final cases = List<Map<String, dynamic>>.from(response);
@@ -78,7 +77,9 @@ class _CasesListWidgetState extends State<CasesListWidget> {
         return cases;
       }
       
+      return [];
     } catch (e, stackTrace) {
+      print('Error fetching cases: $e');
       print(stackTrace);
       return [];
     }
@@ -89,13 +90,11 @@ class _CasesListWidgetState extends State<CasesListWidget> {
     
     try {
       final date = DateTime.parse(courtDate.toString());
-      // Format: Monday, 13th July 2025
       final dayName = DateFormat('EEEE').format(date);
       final day = date.day;
       final monthName = DateFormat('MMMM').format(date);
       final year = date.year;
       
-      // Add ordinal suffix (st, nd, rd, th)
       String getOrdinalSuffix(int day) {
         if (day >= 11 && day <= 13) return 'th';
         switch (day % 10) {
@@ -111,6 +110,30 @@ class _CasesListWidgetState extends State<CasesListWidget> {
       return courtDate.toString();
     }
   }
+
+  String _formatTime(dynamic time) {
+    if (time == null || time.toString().isEmpty) return '';
+    
+    try {
+      // Parse time format like "06:35:32" or "14:30:00"
+      final timeParts = time.toString().split(':');
+      if (timeParts.length >= 2) {
+        final hour = int.parse(timeParts[0]);
+        final minute = int.parse(timeParts[1]);
+        
+        // Convert to 12-hour format with AM/PM
+        final period = hour >= 12 ? 'PM' : 'AM';
+        final hour12 = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+        final minuteStr = minute.toString().padLeft(2, '0');
+        
+        return '$hour12:$minuteStr $period';
+      }
+      return time.toString();
+    } catch (e) {
+      return '';
+    }
+  }
+
   void _navigateToCaseDetails(String caseId) {
     // TODO: Implement navigation to case details page
     // Navigator.push(
@@ -119,6 +142,7 @@ class _CasesListWidgetState extends State<CasesListWidget> {
     //     builder: (context) => CaseDetailsPage(caseId: caseId),
     //   ),
     // );
+    print('Navigate to case: $caseId');
   }
 
   @override
@@ -146,7 +170,7 @@ class _CasesListWidgetState extends State<CasesListWidget> {
               ),
               const SizedBox(height: 12),
               Text(
-                'No upcoming court dates',
+                'No cases found',
                 style: TextStyle(
                   fontSize: 16,
                   color: Colors.grey[600],
@@ -165,7 +189,9 @@ class _CasesListWidgetState extends State<CasesListWidget> {
             caseName: _cases[i]['name'] ?? 'Unnamed Case',
             caseNumber: _cases[i]['number'] ?? 'N/A',
             courtDate: _formatCourtDate(_cases[i]['courtDate']),
+            courtTime: _formatTime(_cases[i]['time']),
             courtName: _cases[i]['court_name'] ?? 'Court not specified',
+            description: _cases[i]['description'],
             status: _cases[i]['status'] ?? 'Unknown status',
             onTap: () => _navigateToCaseDetails(_cases[i]['id'].toString()),
           ),
@@ -180,7 +206,9 @@ class _CourtDateCard extends StatelessWidget {
   final String caseName;
   final String caseNumber;
   final String courtDate;
+  final String courtTime;
   final String courtName;
+  final String? description;
   final String status;
   final VoidCallback onTap;
 
@@ -188,7 +216,9 @@ class _CourtDateCard extends StatelessWidget {
     required this.caseName,
     required this.caseNumber,
     required this.courtDate,
+    required this.courtTime,
     required this.courtName,
+    this.description,
     required this.status,
     required this.onTap,
   });
@@ -199,6 +229,7 @@ class _CourtDateCard extends StatelessWidget {
     final isUpcoming = status == 'upcoming';
     final isNoWorries = status == 'no worries';
     final isExpired = status == 'expired';
+    final hasDescription = description != null && description!.trim().isNotEmpty;
     
     return InkWell(
       onTap: onTap,
@@ -229,6 +260,7 @@ class _CourtDateCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Header with case name and status badge
             Row(
               children: [
                 Expanded(
@@ -254,126 +286,157 @@ class _CourtDateCard extends StatelessWidget {
                     ],
                   ),
                 ),
-              if (isUrgent)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF59E0B).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: const Color(0xFFF59E0B).withOpacity(0.3),
+                if (isUrgent)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
                     ),
-                  ),
-                  child: const Text(
-                    'URGENT',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFFF59E0B),
-                      letterSpacing: 0.5,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF59E0B).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: const Color(0xFFF59E0B).withOpacity(0.3),
+                      ),
                     ),
-                  ),
-                )
-              else if (isUpcoming)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color.fromARGB(255, 55, 218, 49).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
+                    child: const Text(
+                      'URGENT',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFFF59E0B),
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  )
+                else if (isUpcoming)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
                       color: const Color.fromARGB(255, 55, 218, 49).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: const Color.fromARGB(255, 55, 218, 49).withOpacity(0.1),
+                      ),
+                    ),
+                    child: const Text(
+                      'Upcoming',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: Color.fromARGB(255, 55, 218, 49),
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  )
+                else if (isExpired)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF6B7280).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: const Color(0xFF6B7280).withOpacity(0.2),
+                      ),
+                    ),
+                    child: const Text(
+                      'Expired',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF6B7280),
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: const Color(0xFF10B981).withOpacity(0.2),
+                      ),
+                    ),
+                    child: const Text(
+                      'No Worries',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF10B981),
+                        letterSpacing: 0.5,
+                      ),
                     ),
                   ),
-                  child: const Text(
-                    'Upcoming',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: Color.fromARGB(255, 55, 218, 49),
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                )
-              else if (isExpired)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF6B7280).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: const Color(0xFF6B7280).withOpacity(0.2),
-                    ),
-                  ),
-                  child: const Text(
-                    'Expired',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF6B7280),
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                )
-              else
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF10B981).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: const Color(0xFF10B981).withOpacity(0.2),
-                    ),
-                  ),
-                  child: const Text(
-                    'No Worries',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF10B981),
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
               ],
             ),
             const SizedBox(height: 12),
             
+            // Date and Time Row
             Row(
               children: [
                 Icon(
-                  Icons.access_time,
+                  Icons.calendar_today,
                   size: 16,
                   color: isUrgent 
                     ? const Color(0xFFF59E0B)
                     : const Color(0xFF6B7280),
                 ),
                 const SizedBox(width: 6),
-                Text(
-                  courtDate,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: isUrgent 
-                      ? const Color(0xFFF59E0B)
-                      : const Color(0xFF1F2937),
-                    fontWeight: isUrgent ? FontWeight.w600 : FontWeight.normal,
+                Expanded(
+                  child: Text(
+                    courtDate,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: isUrgent 
+                        ? const Color(0xFFF59E0B)
+                        : const Color(0xFF1F2937),
+                      fontWeight: isUrgent ? FontWeight.w600 : FontWeight.normal,
+                    ),
                   ),
                 ),
               ],
             ),
+            
+            // Time (if available)
+            if (courtTime.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(
+                    Icons.access_time,
+                    size: 16,
+                    color: isUrgent 
+                      ? const Color(0xFFF59E0B)
+                      : const Color(0xFF6B7280),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    courtTime,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: isUrgent 
+                        ? const Color(0xFFF59E0B)
+                        : const Color(0xFF1F2937),
+                      fontWeight: isUrgent ? FontWeight.w600 : FontWeight.normal,
+                    ),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 8),
             
+            // Court Location
             Row(
               children: [
                 const Icon(
@@ -393,6 +456,44 @@ class _CourtDateCard extends StatelessWidget {
                 ),
               ],
             ),
+            
+            // Description (if available)
+            if (hasDescription) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF9FAFB),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: const Color(0xFFE5E7EB),
+                  ),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.note_outlined,
+                      size: 16,
+                      color: Color(0xFF6B7280),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        description!,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF4B5563),
+                          height: 1.4,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),
