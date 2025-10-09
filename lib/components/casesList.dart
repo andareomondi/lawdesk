@@ -37,10 +37,12 @@ class _CasesListWidgetState extends State<CasesListWidget> {
     }
     
     try {
-      // Select ALL cases to debug
       final response = await _supabase
           .from('cases')
-          .select();
+          .select()
+          .eq('user', user.id)
+          .order('created_at', ascending: false)
+          .limit(5);
       
 
       
