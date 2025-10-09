@@ -160,8 +160,8 @@ class CasesPage extends StatelessWidget {
           );
         },
         backgroundColor: const Color(0xFF1E3A8A),
-        icon: const Icon(Icons.add),
-        label: const Text('New Case'),
+        icon: const Icon(Icons.add , color: Colors.white,),
+        label: const Text('New Case', style: TextStyle(color: Colors.white),),
       ),
     );
   }
