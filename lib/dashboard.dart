@@ -411,7 +411,7 @@ class _DashboardState extends State<Dashboard> {
                 icon: Icons.folder_open_outlined,
                 color: const Color(0xFF8B5CF6),
                 onPressed: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => const CasesList()));
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => const CasesPage()));
                 },
               ),
             ),
