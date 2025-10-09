@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:intl/intl.dart';
 
 class CasesListWidget extends StatefulWidget {
   const CasesListWidget({Key? key}) : super(key: key);
@@ -57,7 +58,9 @@ class _CasesListWidgetState extends State<CasesListWidget> {
               final courtDateOnly = DateTime(courtDate.year, courtDate.month, courtDate.day);
               final daysDifference = courtDateOnly.difference(today).inDays;
               
-              if (daysDifference <= 2) {
+              if (daysDifference < 0) {
+                case_['status'] = 'expired';
+              } else if (daysDifference <= 2) {
                 case_['status'] = 'urgent';
               } else if (daysDifference > 2 && daysDifference < 5) {
                 case_['status'] = 'upcoming';
@@ -79,8 +82,33 @@ class _CasesListWidgetState extends State<CasesListWidget> {
     }
   }
 
-  
-
+  String _formatCourtDate(dynamic courtDate) {
+    if (courtDate == null) return 'Date not set';
+    
+    try {
+      final date = DateTime.parse(courtDate.toString());
+      // Format: Monday, 13th July 2025
+      final dayName = DateFormat('EEEE').format(date);
+      final day = date.day;
+      final monthName = DateFormat('MMMM').format(date);
+      final year = date.year;
+      
+      // Add ordinal suffix (st, nd, rd, th)
+      String getOrdinalSuffix(int day) {
+        if (day >= 11 && day <= 13) return 'th';
+        switch (day % 10) {
+          case 1: return 'st';
+          case 2: return 'nd';
+          case 3: return 'rd';
+          default: return 'th';
+        }
+      }
+      
+      return '$dayName, $day${getOrdinalSuffix(day)} $monthName $year';
+    } catch (e) {
+      return courtDate.toString();
+    }
+  }
   void _navigateToCaseDetails(String caseId) {
     // TODO: Implement navigation to case details page
     // Navigator.push(
@@ -134,7 +162,7 @@ class _CasesListWidgetState extends State<CasesListWidget> {
           _CourtDateCard(
             caseName: _cases[i]['name'] ?? 'Unnamed Case',
             caseNumber: _cases[i]['number'] ?? 'N/A',
-            courtDate: _cases[i]['courtDate'],
+            courtDate: _formatCourtDate(_cases[i]['courtDate']),
             courtName: _cases[i]['court_name'] ?? 'Court not specified',
             status: _cases[i]['status'] ?? 'Unknown status',
             onTap: () => _navigateToCaseDetails(_cases[i]['id'].toString()),
@@ -149,7 +177,7 @@ class _CasesListWidgetState extends State<CasesListWidget> {
 class _CourtDateCard extends StatelessWidget {
   final String caseName;
   final String caseNumber;
-  final dynamic courtDate;
+  final String courtDate;
   final String courtName;
   final String status;
   final VoidCallback onTap;
@@ -168,6 +196,7 @@ class _CourtDateCard extends StatelessWidget {
     final isUrgent = status == 'urgent';
     final isUpcoming = status == 'upcoming';
     final isNoWorries = status == 'no worries';
+    final isExpired = status == 'expired';
     
     return InkWell(
       onTap: onTap,
@@ -182,7 +211,9 @@ class _CourtDateCard extends StatelessWidget {
               ? const Color(0xFFF59E0B)
               : isUpcoming
                 ? const Color.fromARGB(255, 91, 204, 129)
-                : const Color(0xFF10B981),
+                : isExpired
+                  ? const Color(0xFF6B7280)
+                  : const Color(0xFF10B981),
             width: isUrgent ? 2 : 1,
           ),
           boxShadow: [
@@ -267,6 +298,29 @@ class _CourtDateCard extends StatelessWidget {
                     ),
                   ),
                 )
+              else if (isExpired)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF6B7280).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: const Color(0xFF6B7280).withOpacity(0.2),
+                    ),
+                  ),
+                  child: const Text(
+                    'Expired',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF6B7280),
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                )
               else
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -305,7 +359,7 @@ class _CourtDateCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  '$courtDate',
+                  courtDate,
                   style: TextStyle(
                     fontSize: 14,
                     color: isUrgent 
