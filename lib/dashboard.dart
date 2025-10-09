@@ -3,7 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:lawdesk/pages/profile/update_profile.dart';
 import 'package:lawdesk/pages/profile/profile.dart';
 import 'package:lawdesk/components/casesList.dart';
-import 'package:lawdesk/pages/cases/case_list.dart';
+import 'package:lawdesk/pages/cases/casepage.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
