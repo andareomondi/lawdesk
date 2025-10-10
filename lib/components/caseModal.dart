@@ -143,7 +143,6 @@ class _AddCaseModalState extends State<AddCaseModal> {
         'courtDate': _selectedCourtDate!.toIso8601String().split('T')[0], // Just the date part
         'time': timeString,
         'user': user.id,
-        'created_at': DateTime.now().toIso8601String(),
       });
 
       if (mounted) {
