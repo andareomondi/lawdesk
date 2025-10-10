@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
+import 'package:lawdesk/components/caseDetails.dart';
 
 class CasesListWidget extends StatefulWidget {
   const CasesListWidget({Key? key}) : super(key: key);
