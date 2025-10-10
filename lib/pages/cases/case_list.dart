@@ -133,13 +133,12 @@ class _CasesListWidgetState extends State<CasesListWidget> {
   }
 
   void _navigateToCaseDetails(String caseId) {
-    // TODO: Implement navigation to case details page
-    // Navigator.push(
-    //   context,
-    //   MaterialPageRoute(
-    //     builder: (context) => CaseDetailsPage(caseId: caseId),
-    //   ),
-    // );
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CaseDetailsPage(caseId: caseId),
+      ),
+    );
     print('Navigate to case: $caseId');
   }
 
