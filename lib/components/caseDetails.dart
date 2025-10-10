@@ -16,6 +16,7 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
   Map<String, dynamic>? _caseData;
   bool _isLoading = true;
   bool _isEditing = false;
+  bool _isDeleting = false;
 
   // Controllers for editing
   final _nameController = TextEditingController();
@@ -60,7 +61,11 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error loading case details')),
+          SnackBar(
+            content: const Text('Error loading case details'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     }
@@ -213,7 +218,11 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
   Future<void> _saveChanges() async {
     if (_nameController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Case name cannot be empty')),
+        SnackBar(
+          content: const Text('Case name cannot be empty'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
       );
       return;
     }
@@ -244,7 +253,11 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Case updated successfully')),
+          SnackBar(
+            content: const Text('Case updated successfully'),
+            backgroundColor: const Color(0xFF10B981),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     } catch (e) {
@@ -252,7 +265,12 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error updating case')),
+          SnackBar(
+            content: Text('Error updating case: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 4),
+          ),
         );
       }
     }
@@ -280,20 +298,57 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
       ),
     );
 
-    if (confirmed == true) {
-      try {
-        await _supabase.from('cases').delete().eq('id', widget.caseId);
+    if (confirmed != true) return;
+
+    setState(() => _isDeleting = true);
+
+    try {
+      await _supabase
+          .from('cases')
+          .delete()
+          .eq('id', widget.caseId);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Case deleted successfully'),
+            backgroundColor: const Color(0xFF10B981),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
         
-        if (mounted) {
-          Navigator.pop(context, true); // Return true to indicate deletion
+        // Return true to indicate deletion so the list can refresh
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      print('Error deleting case: $e');
+      setState(() => _isDeleting = false);
+      
+      if (mounted) {
+        String errorMessage = 'Failed to delete case';
+        
+        // Provide more specific error messages
+        if (e.toString().contains('permission')) {
+          errorMessage = 'You don\'t have permission to delete this case';
+        } else if (e.toString().contains('network')) {
+          errorMessage = 'Network error. Please check your connection';
+        } else if (e.toString().contains('not found')) {
+          errorMessage = 'Case not found';
         }
-      } catch (e) {
-        print('Error deleting case: $e');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Error deleting case')),
-          );
-        }
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 4),
+            action: SnackBarAction(
+              label: 'Retry',
+              textColor: Colors.white,
+              onPressed: _deleteCase,
+            ),
+          ),
+        );
       }
     }
   }
@@ -307,7 +362,7 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Color(0xFF1F2937)),
-          onPressed: () => Navigator.pop(context),
+          onPressed: _isDeleting ? null : () => Navigator.pop(context),
         ),
         title: Text(
           _isEditing ? 'Edit Case' : 'Case Details',
@@ -318,7 +373,7 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
           ),
         ),
         actions: [
-          if (!_isEditing && !_isLoading)
+          if (!_isEditing && !_isLoading && !_isDeleting)
             IconButton(
               icon: const Icon(Icons.edit, color: Color(0xFF10B981)),
               onPressed: () {
@@ -331,90 +386,151 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
           if (_isEditing)
             TextButton(
               onPressed: _isLoading ? null : _saveChanges,
-              child: const Text(
+              child: Text(
                 'Save',
                 style: TextStyle(
-                  color: Color(0xFF10B981),
+                  color: _isLoading ? Colors.grey : const Color(0xFF10B981),
                   fontWeight: FontWeight.w600,
                 ),
               ),
             ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _caseData == null
-              ? const Center(child: Text('Case not found'))
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Status Card
-                      _buildStatusCard(),
-                      const SizedBox(height: 16),
-                      
-                      // Case Information Card
-                      _buildInfoCard(),
-                      const SizedBox(height: 16),
-                      
-                      // Court Details Card
-                      _buildCourtDetailsCard(),
-                      
-                      if (_caseData!['description'] != null && 
-                          _caseData!['description'].toString().trim().isNotEmpty &&
-                          !_isEditing) ...[
-                        const SizedBox(height: 16),
-                        _buildDescriptionCard(),
-                      ],
-                      
-                      // Delete Button
-                      if (!_isEditing) ...[
-                        const SizedBox(height: 24),
-                        SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton.icon(
-                            onPressed: _deleteCase,
-                            icon: const Icon(Icons.delete_outline),
-                            label: const Text('Delete Case'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.red,
-                              side: const BorderSide(color: Colors.red),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                      
-                      if (_isEditing) ...[
-                        const SizedBox(height: 16),
-                        SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton(
-                            onPressed: () {
-                              setState(() {
-                                _isEditing = false;
-                                _initializeControllers();
-                              });
-                            },
-                            child: const Text('Cancel'),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                      
-                      const SizedBox(height: 24),
-                    ],
+      body: _isDeleting
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: const [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text(
+                    'Deleting case...',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Color(0xFF6B7280),
+                    ),
                   ),
-                ),
+                ],
+              ),
+            )
+          : _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _caseData == null
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.error_outline,
+                            size: 64,
+                            color: Color(0xFF6B7280),
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Case not found',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF1F2937),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'This case may have been deleted',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          ElevatedButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF10B981),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: const Text('Go Back'),
+                          ),
+                        ],
+                      ),
+                    )
+                  : SingleChildScrollView(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Status Card
+                          _buildStatusCard(),
+                          const SizedBox(height: 16),
+                          
+                          // Case Information Card
+                          _buildInfoCard(),
+                          const SizedBox(height: 16),
+                          
+                          // Court Details Card
+                          _buildCourtDetailsCard(),
+                          
+                          if (_caseData!['description'] != null && 
+                              _caseData!['description'].toString().trim().isNotEmpty &&
+                              !_isEditing) ...[
+                            const SizedBox(height: 16),
+                            _buildDescriptionCard(),
+                          ],
+                          
+                          // Delete Button
+                          if (!_isEditing) ...[
+                            const SizedBox(height: 24),
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                onPressed: _deleteCase,
+                                icon: const Icon(Icons.delete_outline),
+                                label: const Text('Delete Case'),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: Colors.red,
+                                  side: const BorderSide(color: Colors.red),
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                          
+                          if (_isEditing) ...[
+                            const SizedBox(height: 16),
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton(
+                                onPressed: () {
+                                  setState(() {
+                                    _isEditing = false;
+                                    _initializeControllers();
+                                  });
+                                },
+                                child: const Text('Cancel'),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                          
+                          const SizedBox(height: 24),
+                        ],
+                      ),
+                    ),
     );
   }
 
