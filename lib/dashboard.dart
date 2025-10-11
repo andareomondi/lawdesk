@@ -6,6 +6,7 @@ import 'package:lawdesk/components/casesList.dart';
 import 'package:lawdesk/pages/cases/casepage.dart';
 import 'package:lawdesk/components/caseModal.dart';
 import 'package:lawdesk/pages/documents/usersDocuments.dart';
+import 'package:lawdesk/pages/calender/calender.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -343,8 +344,11 @@ class _DashboardState extends State<Dashboard> {
             ),
             TextButton(
               onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Calendar view coming soon')),
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const CalendarPage(),
+                  ),
                 );
               },
               child: const Text(
@@ -397,8 +401,11 @@ class _DashboardState extends State<Dashboard> {
                 icon: Icons.calendar_month_outlined,
                 color: const Color(0xFF10B981),
                 onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Calendar coming soon')),
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const CalendarPage(),
+                    ),
                   );
                 },
               ),
