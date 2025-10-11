@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
+import 'package:lawdesk/pages/documents/upload.dart';
 
 class CaseDetailsPage extends StatefulWidget {
   final String caseId;
@@ -14,9 +15,11 @@ class CaseDetailsPage extends StatefulWidget {
 class _CaseDetailsPageState extends State<CaseDetailsPage> {
   final _supabase = Supabase.instance.client;
   Map<String, dynamic>? _caseData;
+  List<Map<String, dynamic>> _documents = [];
   bool _isLoading = true;
   bool _isEditing = false;
   bool _isDeleting = false;
+  bool _isLoadingDocuments = false;
 
   // Controllers for editing
   final _nameController = TextEditingController();
@@ -30,6 +33,7 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
   void initState() {
     super.initState();
     _loadCaseDetails();
+    _loadDocuments();
   }
 
   @override
@@ -68,6 +72,26 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
           ),
         );
       }
+    }
+  }
+
+  Future<void> _loadDocuments() async {
+    setState(() => _isLoadingDocuments = true);
+    try {
+      final response = await _supabase
+          .from('documents')
+          .select()
+          .eq('case_id', int.parse(widget.caseId))
+          .order('created_at', ascending: false)
+          .limit(3);
+
+      setState(() {
+        _documents = List<Map<String, dynamic>>.from(response);
+        _isLoadingDocuments = false;
+      });
+    } catch (e) {
+      print('Error loading documents: $e');
+      setState(() => _isLoadingDocuments = false);
     }
   }
 
@@ -164,6 +188,64 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
       return time.toString();
     } catch (e) {
       return 'Not set';
+    }
+  }
+
+  String _formatDate(String? dateStr) {
+    if (dateStr == null) return 'Unknown';
+    try {
+      final date = DateTime.parse(dateStr);
+      return '${date.day}/${date.month}/${date.year}';
+    } catch (e) {
+      return 'Unknown';
+    }
+  }
+
+  String _formatFileSize(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+
+  String _getFileExtension(String fileName) {
+    return fileName.split('.').last.toUpperCase();
+  }
+
+  IconData _getDocumentIcon(String? type) {
+    switch (type?.toLowerCase()) {
+      case 'evidence':
+        return Icons.verified_outlined;
+      case 'contract':
+        return Icons.description_outlined;
+      case 'report':
+        return Icons.assignment_outlined;
+      case 'affidavit':
+        return Icons.gavel;
+      case 'pleading':
+        return Icons.article_outlined;
+      case 'judgment':
+        return Icons.account_balance_outlined;
+      default:
+        return Icons.insert_drive_file_outlined;
+    }
+  }
+
+  Color _getDocumentColor(String? type) {
+    switch (type?.toLowerCase()) {
+      case 'evidence':
+        return const Color(0xFF10B981);
+      case 'contract':
+        return const Color(0xFF1E3A8A);
+      case 'report':
+        return const Color(0xFF8B5CF6);
+      case 'affidavit':
+        return const Color(0xFFF59E0B);
+      case 'pleading':
+        return const Color(0xFF3B82F6);
+      case 'judgment':
+        return const Color(0xFFEF4444);
+      default:
+        return const Color(0xFF6B7280);
     }
   }
 
@@ -317,7 +399,6 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
           ),
         );
         
-        // Return true to indicate deletion so the list can refresh
         Navigator.pop(context, true);
       }
     } catch (e) {
@@ -327,7 +408,6 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
       if (mounted) {
         String errorMessage = 'Failed to delete case';
         
-        // Provide more specific error messages
         if (e.toString().contains('permission')) {
           errorMessage = 'You don\'t have permission to delete this case';
         } else if (e.toString().contains('network')) {
@@ -350,6 +430,23 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
           ),
         );
       }
+    }
+  }
+
+  void _navigateToDocuments() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CaseDocumentsPage(
+          caseId: int.parse(widget.caseId),
+          caseName: _caseData!['name'] ?? 'Case',
+        ),
+      ),
+    );
+    
+    // Refresh documents when returning from documents page
+    if (result != null || mounted) {
+      _loadDocuments();
     }
   }
 
@@ -483,6 +580,12 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
                             const SizedBox(height: 16),
                             _buildDescriptionCard(),
                           ],
+
+                          // Documents Section
+                          if (!_isEditing) ...[
+                            const SizedBox(height: 16),
+                            _buildDocumentsSection(),
+                          ],
                           
                           // Delete Button
                           if (!_isEditing) ...[
@@ -531,6 +634,259 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
                         ],
                       ),
                     ),
+    );
+  }
+
+  Widget _buildDocumentsSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E3A8A).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.folder_outlined,
+                      color: Color(0xFF1E3A8A),
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Documents',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1F2937),
+                    ),
+                  ),
+                ],
+              ),
+              TextButton(
+                onPressed: _navigateToDocuments,
+                child: const Text(
+                  'View All',
+                  style: TextStyle(
+                    color: Color(0xFF1E3A8A),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          
+          if (_isLoadingDocuments)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(24.0),
+                child: CircularProgressIndicator(),
+              ),
+            )
+          else if (_documents.isEmpty)
+            _buildEmptyDocumentsState()
+          else
+            Column(
+              children: [
+                for (int i = 0; i < _documents.length; i++) ...[
+                  _buildDocumentPreviewCard(_documents[i]),
+                  if (i < _documents.length - 1) const SizedBox(height: 8),
+                ],
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _navigateToDocuments,
+                    icon: const Icon(Icons.upload_file, size: 18),
+                    label: const Text('Upload Document'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF1E3A8A),
+                      side: const BorderSide(color: Color(0xFF1E3A8A)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyDocumentsState() {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF9FAFB),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: const Color(0xFFE5E7EB),
+            ),
+          ),
+          child: Column(
+            children: [
+              Icon(
+                Icons.folder_open_outlined,
+                size: 48,
+                color: Colors.grey[400],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'No documents yet',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Upload case documents to get started',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[500],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: _navigateToDocuments,
+            icon: const Icon(Icons.upload_file),
+            label: const Text('Upload First Document'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF1E3A8A),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDocumentPreviewCard(Map<String, dynamic> doc) {
+    return InkWell(
+      onTap: _navigateToDocuments,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF9FAFB),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: const Color(0xFFE5E7EB),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: _getDocumentColor(doc['document_type']).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Center(
+                child: Text(
+                  _getFileExtension(doc['file_name']),
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: _getDocumentColor(doc['document_type']),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    doc['file_name'],
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1F2937),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Icon(
+                        _getDocumentIcon(doc['document_type']),
+                        size: 12,
+                        color: const Color(0xFF6B7280),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        doc['document_type'] ?? 'Document',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF6B7280),
+                        ),
+                      ),
+                      const Text(
+                        ' • ',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF6B7280),
+                        ),
+                      ),
+                      Text(
+                        _formatFileSize(doc['file_size'] ?? 0),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF6B7280),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right,
+              size: 20,
+              color: Color(0xFF6B7280),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
