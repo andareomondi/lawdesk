@@ -142,7 +142,7 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
       // Upload to Supabase Storage
       final fileBytes = await File(file.path!).readAsBytes();
       await _supabase.storage
-          .from('case-documents')
+          .from('case_documents')
           .uploadBinary(filePath, fileBytes);
 
       // Insert record into documents table
