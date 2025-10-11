@@ -5,6 +5,7 @@ import 'package:lawdesk/pages/profile/profile.dart';
 import 'package:lawdesk/components/casesList.dart';
 import 'package:lawdesk/pages/cases/casepage.dart';
 import 'package:lawdesk/components/caseModal.dart';
+import 'package:lawdesk/pages/documents/usersDocuments.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -425,9 +426,12 @@ class _DashboardState extends State<Dashboard> {
                 icon: Icons.description_outlined,
                 color: const Color(0xFFF59E0B),
                 onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Documents coming soon')),
-                  );
+                  Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const AllDocumentsPage(),
+      ),
+    );
                 },
               ),
             ),
