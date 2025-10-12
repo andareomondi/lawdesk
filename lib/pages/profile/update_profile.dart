@@ -16,7 +16,7 @@ class _ProfileUpdateScreenState extends State<ProfileUpdateScreen> {
   String? _selectedGender;
   bool _isLoading = false;
 
-  final List<String> _genderOptions = ['Male', 'Female', 'Other', 'Prefer not to say'];
+  final List<String> _genderOptions = ['Male', 'Female'];
 
   @override
   void dispose() {

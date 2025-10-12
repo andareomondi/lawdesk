@@ -430,8 +430,8 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
           const SizedBox(height: 32),
           ElevatedButton.icon(
             onPressed: _pickAndUploadFile,
-            icon: const Icon(Icons.upload_file),
-            label: const Text('Upload Document'),
+            icon: const Icon(Icons.upload_file, color: Colors.white),
+            label: const Text('Upload Document', style: TextStyle(color: Colors.white),),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF1E3A8A),
               foregroundColor: Colors.white,
