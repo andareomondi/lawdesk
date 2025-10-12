@@ -47,7 +47,7 @@ class _LoginPageState extends State<LoginPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.message),
+            content: Text('Error occured during login, Please try again'),
             backgroundColor: Colors.red,
           ),
         );

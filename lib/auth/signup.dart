@@ -53,7 +53,7 @@ class _SignupPageState extends State<SignupPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.message),
+            content: Text('Error occured during account creattion. Please try again'),
             backgroundColor: Colors.red,
           ),
         );
