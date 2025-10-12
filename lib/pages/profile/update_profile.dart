@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ProfileUpdateScreen extends StatefulWidget {
   const ProfileUpdateScreen({super.key});
@@ -45,8 +46,7 @@ class _ProfileUpdateScreenState extends State<ProfileUpdateScreen> {
           ),
         );
         
-        // TODO: Navigate back or to dashboard
-        // Navigator.pop(context);
+        Navigator.pop(context);
       });
     }
   }
