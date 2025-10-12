@@ -151,7 +151,7 @@ Future<void> _handleLogout() async {
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error logging out: ${e.toString()}'),
+            content: Text('Error logging out'),
             backgroundColor: const Color(0xFFEF4444),
             duration: Duration(seconds: 2),
           ),
