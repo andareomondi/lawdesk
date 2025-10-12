@@ -88,80 +88,78 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return months[month - 1];
   }
 
-  Future<void> _handleLogout() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFEF4444),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: const Text('Logout'),
-          ),
-        ],
+Future<void> _handleLogout() async {
+  final confirm = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Logout'),
+      content: const Text('Are you sure you want to logout?'),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
       ),
-    );
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: () => Navigator.pop(context, true),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFFEF4444),
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          child: const Text('Logout'),
+        ),
+      ],
+    ),
+  );
+  
+  if (confirm == true) {
+    if (mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
     
-    if (confirm == true) {
-      try {
-        // Show loading indicator
-        if (mounted) {
-          showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (context) => const Center(
-              child: CircularProgressIndicator(),
-            ),
-          );
-        }
-
-        await _supabase.auth.signOut();
+    try {
+      await _supabase.auth.signOut();
+      
+      if (mounted) {
+        Navigator.of(context).pop(); // Close loading dialog
+        Navigator.of(context).pop(); // Close logout page
         
-        // Close loading indicator
-        if (mounted) {
-          Navigator.of(context).pop();
-          Navigator.of(context).pop();
-          
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Logged out successfully'),
-              backgroundColor: Color(0xFF10B981),
-              duration: Duration(seconds: 2),
-            ),
-          );
-        }
-        // The StreamBuilder in main.dart will automatically handle navigation
-      } catch (e) {
-        // Close loading indicator if it's showing
-        if (mounted) {
-          Navigator.of(context).pop();
-          
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error logging out: $e'),
-              backgroundColor: const Color(0xFFEF4444),
-            ),
-          );
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Logged out successfully'),
+            backgroundColor: Color(0xFF10B981),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+      // The StreamBuilder in main.dart will automatically handle navigation
+    } catch (e) {
+      // Close loading indicator and show error
+      if (mounted) {
+        Navigator.of(context).pop(); // Close loading dialog
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error logging out: ${e.toString()}'),
+            backgroundColor: const Color(0xFFEF4444),
+            duration: Duration(seconds: 2),
+          ),
+        );
       }
     }
   }
-
+}
   void _navigateToEditProfile() {
     Navigator.push(
       context,
