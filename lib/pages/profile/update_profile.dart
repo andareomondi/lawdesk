@@ -13,6 +13,7 @@ class _ProfileUpdateScreenState extends State<ProfileUpdateScreen> {
   final _fullNameController = TextEditingController();
   final _usernameController = TextEditingController();
   final _lskNumberController = TextEditingController();
+  final _supabase  = Supabase.instance.client;
   
   String? _selectedGender;
   bool _isLoading = false;
@@ -27,10 +28,16 @@ class _ProfileUpdateScreenState extends State<ProfileUpdateScreen> {
     super.dispose();
   }
 
-  void _handleSubmit() {
+  void _handleSubmit() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
         _isLoading = true;
+        final user = _supabase.auth.currentUser;
+        await _supabase.from('cases').update(
+
+        ).eq('user', user.id);
+
+        // await _supabase.from('profile')
       });
 
       // Simulate API call
