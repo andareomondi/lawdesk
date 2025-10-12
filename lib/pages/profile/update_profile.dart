@@ -32,31 +32,67 @@ class _ProfileUpdateScreenState extends State<ProfileUpdateScreen> {
     if (_formKey.currentState!.validate()) {
       setState(() {
         _isLoading = true;
-        final user = _supabase.auth.currentUser;
-        await _supabase.from('cases').update(
-
-        ).eq('user', user.id);
-
-        // await _supabase.from('profile')
       });
+      await _updateProfile();
 
-      // Simulate API call
-      Future.delayed(const Duration(seconds: 2), () {
-        setState(() {
-          _isLoading = false;
-        });
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Profile updated successfully!'),
-            backgroundColor: Color(0xFF10B981),
-          ),
-        );
-        
-        Navigator.pop(context);
-      });
     }
   }
+
+Future<void> _updateProfile() async {
+  final user = _supabase.auth.currentUser;
+  
+  // Check if user exists before proceeding
+  if (user == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('No user logged in. Please sign in again.'),
+        backgroundColor: Colors.red,
+      ),
+    );
+    setState(() {
+      _isLoading = false;
+    });
+    return; // Exit early if no user
+  }
+  
+  try {
+    await _supabase.from('profiles').update({
+      'username': _usernameController.text.trim(),
+      'full_name': _fullNameController.text.trim(),
+      'lsk_number': _lskNumberController.text.trim(),
+      'gender': _selectedGender,
+      'is_updated': true,
+    }).eq('id', user.id); 
+    
+    setState(() {
+      _isLoading = false;
+    });
+    
+    if (mounted) { // Check if widget is still mounted
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Profile updated successfully!'),
+          backgroundColor: Color(0xFF10B981),
+        ),
+      );
+      Navigator.pop(context);
+    }
+  } catch (e) {
+    print('Error updating profile: $e');
+    setState(() {
+      _isLoading = false;
+    });
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to update profile: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+}
 
   @override
   Widget build(BuildContext context) {
