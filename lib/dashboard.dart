@@ -273,7 +273,7 @@ class _DashboardState extends State<Dashboard> {
                 Text(
                   _userName.toUpperCase(),
                   style: const TextStyle(
-                    color: Colors.red,
+                    color: Colors.white,
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                   ),
