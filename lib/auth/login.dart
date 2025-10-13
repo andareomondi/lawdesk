@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:email_validator/email_validator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:lawdesk/auth/signup.dart';
-import 'package:/lawdesk/auth/forgotPassword.dart';
+import 'package:lawdesk/auth/forgotPassword.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
