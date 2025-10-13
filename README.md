@@ -1,7 +1,7 @@
 # LawDesk - Legal Case Management System
 
 <div align="center">
-  <img src="assets/logo.png" alt="LawDesk Logo" width="200"/>
+  <img src="assets/icon/icon.png" alt="LawDesk Logo" width="200"/>
   
   ### Law Made Smarter
   
@@ -29,9 +29,9 @@ LawDesk is a modern, mobile-first case management system designed specifically f
 ## 🚀 Screenshots
 
 <div align="center">
-  <img src="screenshots/dashboard.png" width="250" />
-  <img src="screenshots/calendar.png" width="250" />
-  <img src="screenshots/documents.png" width="250" />
+  <img src="screenshots/dashboard.jpg" width="250" />
+  <img src="screenshots/calendar.jpg" width="250" />
+  <img src="screenshots/documents.jpg" width="250" />
 </div>
 
 ## 🛠️ Tech Stack
@@ -53,9 +53,3 @@ LawDesk is a modern, mobile-first case management system designed specifically f
 - Android Studio / VS Code / Neovim
 - Git
 
-### Setup
-
-1. **Clone the repository**
-```bash
-   git clone https://github.com/yourusername/lawdesk.git
-   cd lawdesk
