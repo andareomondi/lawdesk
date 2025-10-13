@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:email_validator/email_validator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:lawdesk/auth/signup.dart';
+import 'package:/lawdesk/auth/forgotPassword.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -211,9 +212,7 @@ class _LoginPageState extends State<LoginPage> {
                           alignment: Alignment.centerRight,
                           child: TextButton(
                             onPressed: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Password reset coming soon!')),
-                              );
+                              Navigator.push(context, MaterialPageRoute(builder: (context) => const ForgotPasswordPage()),);
                             },
                             style: TextButton.styleFrom(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
