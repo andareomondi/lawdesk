@@ -1,0 +1,30 @@
+import 'package:flutter/material.dart';
+import 'package:lawdesk/providers/auth_provider.dart';
+import '../screens/splash_screen.dart';
+import '../screens/auth/login_screen.dart';
+import '../screens/home_screen.dart';
+import 'package:provider/provider.dart';
+
+class AuthWrapper extends StatelessWidget {
+  const AuthWrapper({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<AuthProvider>(
+      builder: (context, authProvider, _) {
+        // Still loading? Show splash screen
+        if (authProvider.isInitializing) {
+          return const SplashScreen();
+        }
+
+        // User logged in? Show home screen
+        if (authProvider.isLoggedIn) {
+          return const HomeScreen();
+        }
+
+        // User not logged in? Show login screen
+        return const LoginScreen();
+      },
+    );
+  }
+}
