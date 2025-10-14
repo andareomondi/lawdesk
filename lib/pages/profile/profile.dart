@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:lawdesk/config/supabase_config.dart';
-import 'package:lawdesk/providers/auth_provider.dart';
+import '../../config/supabase_config.dart';
+import '../../providers/auth_provider.dart';
+import 'package:lawdesk/screens/auth/login_screen.dart';
 import 'update_profile.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -135,15 +136,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       try {
         await authProvider.signOut();
-        // AuthWrapper will automatically handle navigation
-        // No need to manually navigate
-      } catch (e) {
+        
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
+            const SnackBar(
+              content: Text('Logged out successfully'),
+              backgroundColor: Color(0xFF10B981),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+
+      } catch (e) {
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Error'),
               content: Text('Error logging out: $e'),
-              backgroundColor: const Color(0xFFEF4444),
-              duration: const Duration(seconds: 2),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              actions: [
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFEF4444),
+                  ),
+                  child: const Text('Close'),
+                ),
+              ],
             ),
           );
         }
