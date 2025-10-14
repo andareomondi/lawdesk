@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lawdesk/providers/auth_provider.dart';
-import '../screens/splash_screen.dart';
-import '../screens/auth/login_screen.dart';
+import 'package:lawdesk/screens/splash_screen.dart';
+import 'package:lawdesk/screens/auth/login_screen.dart';
 import '../screens/home_screen.dart';
 import 'package:provider/provider.dart';
 
@@ -23,7 +23,7 @@ class AuthWrapper extends StatelessWidget {
         }
 
         // User not logged in? Show login screen
-        return const LoginScreen();
+        return const LoginPage();
       },
     );
   }
