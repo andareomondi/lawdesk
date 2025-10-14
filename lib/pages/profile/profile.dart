@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:lawdesk/pages/profile/update_profile.dart';
+import 'package:provider/provider.dart';
+import 'package:lawdesk/config/supabase_config.dart';
+import 'package:lawdesk/providers/auth_provider.dart';
+import 'update_profile.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -10,8 +12,8 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final _supabase = Supabase.instance.client;
-  
+  final _supabase = SupabaseConfig.client;
+
   String _fullName = '';
   String _username = '';
   String _email = '';
@@ -30,7 +32,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _loadUserProfile() async {
     try {
       final user = _supabase.auth.currentUser;
-      
+
       if (user != null) {
         setState(() {
           _userId = user.id;
@@ -82,83 +84,73 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   String _getMonthName(int month) {
     const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December'
     ];
     return months[month - 1];
   }
 
-Future<void> _handleLogout() async {
-  final confirm = await showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Logout'),
-      content: const Text('Are you sure you want to logout?'),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: const Text('Cancel'),
+  Future<void> _handleLogout() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
         ),
-        ElevatedButton(
-          onPressed: () => Navigator.pop(context, true),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFEF4444),
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
+            child: const Text('Logout'),
           ),
-          child: const Text('Logout'),
-        ),
-      ],
-    ),
-  );
-  
-  if (confirm == true) {
-    if (mounted) {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
-    }
-    
-    try {
-      await _supabase.auth.signOut();
-      
-      if (mounted) {
-        Navigator.of(context).pop(); // Close loading dialog
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Logged out successfully'),
-            backgroundColor: Color(0xFF10B981),
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
-      // The StreamBuilder in main.dart will automatically handle navigation
-    } catch (e) {
-      // Close loading indicator and show error
-      if (mounted) {
-        Navigator.of(context).pop(); // Close loading dialog
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error logging out'),
-            backgroundColor: const Color(0xFFEF4444),
-            duration: Duration(seconds: 2),
-          ),
-        );
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      // Use AuthProvider instead of direct Supabase call
+      final authProvider = context.read<AuthProvider>();
+
+      try {
+        await authProvider.signOut();
+        // AuthWrapper will automatically handle navigation
+        // No need to manually navigate
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error logging out: $e'),
+              backgroundColor: const Color(0xFFEF4444),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
       }
     }
   }
-}
+
   void _navigateToEditProfile() {
     Navigator.push(
       context,
@@ -192,7 +184,7 @@ Future<void> _handleLogout() async {
                 children: [
                   // Header with Profile Picture
                   _buildProfileHeader(),
-                  
+
                   // Profile Details Section
                   Padding(
                     padding: const EdgeInsets.all(16),
@@ -283,9 +275,11 @@ Future<void> _handleLogout() async {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF1E3A8A),
                               foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 16),
                               elevation: 2,
-                              shadowColor: const Color(0xFF1E3A8A).withOpacity(0.3),
+                              shadowColor: const Color(0xFF1E3A8A)
+                                  .withOpacity(0.3),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -309,7 +303,8 @@ Future<void> _handleLogout() async {
                             ),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: const Color(0xFFEF4444),
-                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 16),
                               side: const BorderSide(
                                 color: Color(0xFFEF4444),
                                 width: 2,
@@ -363,9 +358,14 @@ Future<void> _handleLogout() async {
             ),
             child: Center(
               child: Text(
-                _fullName.isNotEmpty 
-                    ? _fullName.split(' ').map((e) => e[0]).take(2).join().toUpperCase()
-                    : _email.isNotEmpty 
+                _fullName.isNotEmpty
+                    ? _fullName
+                        .split(' ')
+                        .map((e) => e[0])
+                        .take(2)
+                        .join()
+                        .toUpperCase()
+                    : _email.isNotEmpty
                         ? _email[0].toUpperCase()
                         : 'A',
                 style: const TextStyle(
@@ -500,8 +500,8 @@ Future<void> _handleLogout() async {
                 value,
                 style: TextStyle(
                   fontSize: isSmall ? 14 : 16,
-                  color: isEmpty 
-                      ? const Color(0xFF9CA3AF) 
+                  color: isEmpty
+                      ? const Color(0xFF9CA3AF)
                       : const Color(0xFF1F2937),
                   fontWeight: isEmpty ? FontWeight.normal : FontWeight.w600,
                   fontStyle: isEmpty ? FontStyle.italic : FontStyle.normal,
