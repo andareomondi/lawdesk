@@ -52,20 +52,11 @@ class _SignupPageState extends State<SignupPage> {
         // Navigate back to login
         Navigator.pop(context);
       }
-    } on AuthException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error occured during account creattion. Please try again'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('An error occurred: $e'),
+            content: Text('An error occurred during account creation'),
             backgroundColor: Colors.red,
           ),
         );

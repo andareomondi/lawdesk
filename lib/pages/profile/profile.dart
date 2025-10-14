@@ -133,7 +133,6 @@ Future<void> _handleLogout() async {
       
       if (mounted) {
         Navigator.of(context).pop(); // Close loading dialog
-        Navigator.of(context).pop(); // Close logout page
         
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

@@ -46,20 +46,11 @@ class _LoginPageState extends State<LoginPage> {
           ),
         );
       }
-    } on AuthException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error occured during login, Please try again'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('An error occurred: $e'),
+            content: Text('Error occured during login, Please try again'),
             backgroundColor: Colors.red,
           ),
         );
