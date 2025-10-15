@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:lawdesk/pages/documents/upload.dart';
+import 'package:lawdesk/config/supabase_config.dart';
 
 class CaseDetailsPage extends StatefulWidget {
   final String caseId;
@@ -13,7 +13,7 @@ class CaseDetailsPage extends StatefulWidget {
 }
 
 class _CaseDetailsPageState extends State<CaseDetailsPage> {
-  final _supabase = Supabase.instance.client;
+  final _supabase = SupabaseConfig.client;
   Map<String, dynamic>? _caseData;
   List<Map<String, dynamic>> _documents = [];
   bool _isLoading = true;
