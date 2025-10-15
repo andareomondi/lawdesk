@@ -240,7 +240,9 @@ class _DashboardState extends State<Dashboard> {
 
   Widget _buildWelcomeSection() {
     return InkWell(
-    onTap: Navigator.push(context,MaterialPageRoute(builder: (context) => const ProfileScreen()),),
+    onTap: () {
+      Navigator.push(context,MaterialPageRoute(builder: (context) => const ProfileScreen()),);
+      },
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
