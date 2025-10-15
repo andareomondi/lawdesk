@@ -489,14 +489,6 @@ class _DashboardState extends State<Dashboard> {
             tooltip: 'Check for updates',
           ),
           IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Notifications coming soon')),
-              );
-            },
-          ),
-          IconButton(
             icon: const Icon(Icons.account_circle_outlined),
             onPressed: () {
               Navigator.push(
