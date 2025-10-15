@@ -325,12 +325,17 @@ class _DashboardState extends State<Dashboard> {
         ),
         const SizedBox(width: 16),
         Expanded(
-          child: _StatCard(
-            title: 'Due This Week',
-            value: '5',
-            icon: Icons.event_outlined,
-            color: const Color(0xFFF59E0B),
-            trend: '2 urgent',
+          child: InkWell(
+          onTap: () {
+            Navigator.push(context, MaterialPageRoute(builder: (context) => const CalendarPage()),);
+          },
+            child: _StatCard(
+              title: 'Due This Week',
+              value: '5',
+              icon: Icons.event_outlined,
+              color: const Color(0xFFF59E0B),
+              trend: '2 urgent',
+            ),
           ),
         ),
       ],
