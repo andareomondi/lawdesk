@@ -635,22 +635,32 @@ class _DashboardState extends State<Dashboard> {
     return Row(
       children: [
         Expanded(
-          child: _StatCard(
-            title: 'Total Cases',
-            value: '24',
-            icon: Icons.folder_outlined,
-            color: const Color(0xFF1E3A8A),
-            trend: '+3 this month',
+          child: InkWell(
+          onTap: () {
+            Navigator.push(context, MaterialPageRoute(builder: (context) => const CasesPage()), );
+          },
+            child: _StatCard(
+              title: 'Total Cases',
+              value: '24',
+              icon: Icons.folder_outlined,
+              color: const Color(0xFF1E3A8A),
+              trend: '+3 this month',
+            ),
           ),
         ),
         const SizedBox(width: 16),
         Expanded(
-          child: _StatCard(
-            title: 'Due This Week',
-            value: '5',
-            icon: Icons.event_outlined,
-            color: const Color(0xFFF59E0B),
-            trend: '2 urgent',
+          child: InkWell(
+          onTap: () {
+            Navigator.push(context, MaterialPageRoute(builder: (context) => const CalendarPage()),);
+          },
+            child: _StatCard(
+              title: 'Due This Week',
+              value: '5',
+              icon: Icons.event_outlined,
+              color: const Color(0xFFF59E0B),
+              trend: '2 urgent',
+            ),
           ),
         ),
       ],
