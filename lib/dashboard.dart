@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shorebird_code_push/shorebird_code_push.dart';
 import 'package:lawdesk/pages/profile/update_profile.dart';
 import 'package:lawdesk/pages/profile/profile.dart';
 import 'package:lawdesk/components/casesList.dart';
@@ -17,6 +18,7 @@ class Dashboard extends StatefulWidget {
 
 class _DashboardState extends State<Dashboard> {
   final _supabase = Supabase.instance.client;
+  final _updater = ShorebirdUpdater();
   
   // User data variables
   String _userName = '';
@@ -24,11 +26,276 @@ class _DashboardState extends State<Dashboard> {
   Map<String, dynamic>? _userProfile;
   bool _isLoading = true;
   bool _isUpdated = true;
+  
+  // Shorebird update variables
+  bool _isCheckingForUpdate = false;
+  bool _isDownloadingUpdate = false;
+  int? _currentPatchNumber;
 
   @override
   void initState() {
     super.initState();
     _loadUserData();
+    _checkCurrentPatch();
+    _checkForShorebirdUpdates();
+  }
+
+  Future<void> _checkCurrentPatch() async {
+    try {
+      final currentPatch = await _updater.readCurrentPatch();
+      setState(() {
+        _currentPatchNumber = currentPatch?.number;
+      });
+      print('Current patch number: $_currentPatchNumber');
+    } catch (e) {
+      print('Error reading current patch: $e');
+    }
+  }
+
+  Future<void> _checkForShorebirdUpdates() async {
+    if (_isCheckingForUpdate || _isDownloadingUpdate) return;
+
+    setState(() {
+      _isCheckingForUpdate = true;
+    });
+
+    try {
+      // Check for update status
+      final status = await _updater.checkForUpdate();
+      
+      setState(() {
+        _isCheckingForUpdate = false;
+      });
+
+      if (status == UpdateStatus.outdated) {
+        print('Update available! Starting download...');
+        _downloadAndApplyUpdate();
+      } else if (status == UpdateStatus.upToDate) {
+        print('App is up to date');
+      } else if (status == UpdateStatus.restartRequired) {
+        print('Update downloaded, restart required');
+        if (mounted) {
+          _showRestartRequiredDialog();
+        }
+      }
+      
+    } catch (e) {
+      print('Error checking for updates: $e');
+      setState(() {
+        _isCheckingForUpdate = false;
+      });
+    }
+  }
+
+  Future<void> _downloadAndApplyUpdate() async {
+    setState(() {
+      _isDownloadingUpdate = true;
+    });
+
+    try {
+      // Download and apply the update
+      await _updater.update();
+      
+      setState(() {
+        _isDownloadingUpdate = false;
+      });
+
+      // Show dialog after successful update
+      if (mounted) {
+        _showUpdateSuccessDialog();
+      }
+      
+    } on UpdateException catch (error) {
+      print('Update failed: ${error.message}');
+      setState(() {
+        _isDownloadingUpdate = false;
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Update failed: ${error.message}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Unexpected error during update: $e');
+      setState(() {
+        _isDownloadingUpdate = false;
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Update failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showUpdateSuccessDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          contentPadding: const EdgeInsets.all(24),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.check_circle_outline,
+                  color: Color(0xFF10B981),
+                  size: 48,
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Update Downloaded',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1F2937),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'The app has been updated successfully. Please restart the app to apply the changes.',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF6B7280),
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Please close and reopen the app to complete the update'),
+                        duration: Duration(seconds: 5),
+                        backgroundColor: Color(0xFF10B981),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF10B981),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text(
+                    'Got It',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showRestartRequiredDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          contentPadding: const EdgeInsets.all(24),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF59E0B).withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.restart_alt,
+                  color: Color(0xFFF59E0B),
+                  size: 48,
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Restart Required',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1F2937),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'An update is ready. Please restart the app to complete the installation.',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF6B7280),
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF59E0B),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text(
+                    'OK',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _loadUserData() async {
@@ -186,11 +453,41 @@ class _DashboardState extends State<Dashboard> {
         backgroundColor: const Color(0xFF1E3A8A),
         foregroundColor: Colors.white,
         elevation: 0,
-        title: const Text(
-          'Dashboard',
-          style: TextStyle(fontWeight: FontWeight.w600),
+        title: Row(
+          children: [
+            const Text(
+              'Dashboard',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+            if (_isCheckingForUpdate || _isDownloadingUpdate) ...[
+              const SizedBox(width: 12),
+              const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                _isDownloadingUpdate ? 'Updating...' : 'Checking...',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.normal,
+                ),
+              ),
+            ],
+          ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _isCheckingForUpdate || _isDownloadingUpdate
+                ? null
+                : _checkForShorebirdUpdates,
+            tooltip: 'Check for updates',
+          ),
           IconButton(
             icon: const Icon(Icons.notifications_outlined),
             onPressed: () {
@@ -240,8 +537,11 @@ class _DashboardState extends State<Dashboard> {
 
   Widget _buildWelcomeSection() {
     return InkWell(
-    onTap: () {
-      Navigator.push(context,MaterialPageRoute(builder: (context) => const ProfileScreen()),);
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const ProfileScreen()),
+        );
       },
       child: Container(
         padding: const EdgeInsets.all(20),
@@ -266,9 +566,9 @@ class _DashboardState extends State<Dashboard> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  const Text(
                     'Welcome back,',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white70,
                       fontSize: 14,
                     ),
@@ -283,14 +583,39 @@ class _DashboardState extends State<Dashboard> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    _userProfile != null && _userProfile!['lsk_number'] != null
-                        ? 'LSK No: ${_userProfile!['lsk_number']}'
-                        : 'You have 5 cases due this week',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.9),
-                      fontSize: 13,
-                    ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _userProfile != null && _userProfile!['lsk_number'] != null
+                              ? 'LSK No: ${_userProfile!['lsk_number']}'
+                              : 'You have 5 cases due this week',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.9),
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                      if (_currentPatchNumber != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            'v$_currentPatchNumber',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ],
               ),
@@ -310,32 +635,22 @@ class _DashboardState extends State<Dashboard> {
     return Row(
       children: [
         Expanded(
-          child: InkWell(
-          onTap: () {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => const CasesPage()),);
-          },
-            child: _StatCard(
-              title: 'Total Cases',
-              value: '24',
-              icon: Icons.folder_outlined,
-              color: const Color(0xFF1E3A8A),
-              trend: '+3 this month',
-            ),
+          child: _StatCard(
+            title: 'Total Cases',
+            value: '24',
+            icon: Icons.folder_outlined,
+            color: const Color(0xFF1E3A8A),
+            trend: '+3 this month',
           ),
         ),
         const SizedBox(width: 16),
         Expanded(
-          child: InkWell(
-          onTap: () {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => const CalendarPage()),);
-          },
-            child: _StatCard(
-              title: 'Due This Week',
-              value: '5',
-              icon: Icons.event_outlined,
-              color: const Color(0xFFF59E0B),
-              trend: '2 urgent',
-            ),
+          child: _StatCard(
+            title: 'Due This Week',
+            value: '5',
+            icon: Icons.event_outlined,
+            color: const Color(0xFFF59E0B),
+            trend: '2 urgent',
           ),
         ),
       ],
