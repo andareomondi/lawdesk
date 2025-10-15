@@ -42,7 +42,7 @@ class _CasesListWidgetState extends State<CasesListWidget> {
           .from('cases')
           .select()
           .eq('user', user.id)
-          .order('courtDate', ascending: true)
+          .order('courtDate', ascending: false)
           .limit(3);
           
       
