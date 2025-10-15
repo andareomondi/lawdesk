@@ -87,6 +87,46 @@ class _DashboardState extends State<Dashboard> {
     }
   }
 
+  Future<void> _refreshDashboard() async {
+    setState(() {
+      _isLoading = true;
+    });
+    
+    try {
+      // Reload user data and profile
+      await _loadUserData();
+      
+      // Check for Shorebird updates
+      await _checkForShorebirdUpdates();
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Dashboard refreshed successfully'),
+            backgroundColor: Color(0xFF10B981),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error refreshing: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
   Future<void> _downloadAndApplyUpdate() async {
     setState(() {
       _isDownloadingUpdate = true;
@@ -483,10 +523,10 @@ class _DashboardState extends State<Dashboard> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _isCheckingForUpdate || _isDownloadingUpdate
+            onPressed: _isCheckingForUpdate || _isDownloadingUpdate || _isLoading
                 ? null
-                : _checkForShorebirdUpdates,
-            tooltip: 'Check for updates',
+                : _refreshDashboard,
+            tooltip: 'Refresh Dashboard',
           ),
           IconButton(
             icon: const Icon(Icons.account_circle_outlined),
