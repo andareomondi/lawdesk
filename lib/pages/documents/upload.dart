@@ -388,7 +388,7 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
                 ),
               )
             : const Icon(Icons.add),
-        label: Text(_isUploading ? 'Uploading...' : 'Upload Document'),
+        label: Text(_isUploading ? 'Uploading...' : 'Upload Document', style: const TextStyle(color: Colors.white,),),
       ),
     );
   }
