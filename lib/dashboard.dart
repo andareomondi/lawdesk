@@ -146,7 +146,6 @@ class _DashboardState extends State<Dashboard> {
       }
       
     } on UpdateException catch (error) {
-      print('Update failed: ${error.message}');
       setState(() {
         _isDownloadingUpdate = false;
       });
@@ -154,14 +153,13 @@ class _DashboardState extends State<Dashboard> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Update failed: ${error.message}'),
+            content: Text('Update failed to initialize. Please Refresh'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 4),
           ),
         );
       }
     } catch (e) {
-      print('Unexpected error during update: $e');
       setState(() {
         _isDownloadingUpdate = false;
       });
@@ -169,7 +167,7 @@ class _DashboardState extends State<Dashboard> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Update failed: $e'),
+            content: Text('Update failed to initialize. Please Refresh'),
             backgroundColor: Colors.red,
           ),
         );
@@ -510,13 +508,6 @@ class _DashboardState extends State<Dashboard> {
                 ),
               ),
               const SizedBox(width: 8),
-              Text(
-                _isDownloadingUpdate ? 'Updating...' : 'Checking...',
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.normal,
-                ),
-              ),
             ],
           ],
         ),
@@ -628,25 +619,6 @@ class _DashboardState extends State<Dashboard> {
                           ),
                         ),
                       ),
-                      if (_currentPatchNumber != null)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            'v$_currentPatchNumber',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
                     ],
                   ),
                 ],
