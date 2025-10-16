@@ -375,6 +375,21 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
           : _documents.isEmpty
               ? _buildEmptyState()
               : _buildDocumentsList(),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _isUploading ? null : _pickAndUploadFile,
+        backgroundColor: const Color(0xFF1E3A8A),
+        icon: _isUploading
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              )
+            : const Icon(Icons.add),
+        label: Text(_isUploading ? 'Uploading...' : 'Upload Document'),
+      ),
     );
   }
 
@@ -415,8 +430,8 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
           const SizedBox(height: 32),
           ElevatedButton.icon(
             onPressed: _pickAndUploadFile,
-            icon: const Icon(Icons.upload_file, color: Colors.white),
-            label: const Text('Upload Document', style: TextStyle(color: Colors.white),),
+            icon: const Icon(Icons.upload_file, color: Colors.white,),
+            label: const Text('Upload Document'),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF1E3A8A),
               foregroundColor: Colors.white,
