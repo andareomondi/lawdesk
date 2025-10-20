@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:file_picker/file_picker.dart';
@@ -387,7 +388,7 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
                   strokeWidth: 2,
                 ),
               )
-            : const Icon(Icons.add),
+            : const Icon(Icons.add, color: Colors.white),
         label: Text(_isUploading ? 'Uploading...' : 'Upload Document', style: const TextStyle(color: Colors.white,),),
       ),
     );
