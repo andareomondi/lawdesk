@@ -18,7 +18,7 @@ class SplashScreen extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             Text(
-              'Loading...',
+              'LawDesk',
               style: Theme.of(context).textTheme.titleLarge,
             ),
           ],
