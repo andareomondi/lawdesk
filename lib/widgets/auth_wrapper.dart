@@ -23,7 +23,7 @@ class AuthWrapper extends StatelessWidget {
         }
 
         // User not logged in? Show login screen
-        return const LoginPage();
+        return const SplashScreen();
       },
     );
   }
