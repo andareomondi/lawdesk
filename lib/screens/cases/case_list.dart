@@ -78,8 +78,6 @@ class _CasesListWidgetState extends State<CasesListWidget> {
       
       return [];
     } catch (e, stackTrace) {
-      print('Error fetching cases: $e');
-      print(stackTrace);
       return [];
     }
   }

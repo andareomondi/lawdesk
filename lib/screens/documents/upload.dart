@@ -58,7 +58,7 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error loading documents: ${e.toString()}'),
+            content: Text('Error loading documents. Make sure you are online'),
             backgroundColor: Colors.red,
           ),
         );
@@ -82,7 +82,7 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error picking file: ${e.toString()}'),
+            content: Text('Error picking file'),
             backgroundColor: Colors.red,
           ),
         );
@@ -172,7 +172,7 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error uploading: ${e.toString()}'),
+            content: Text('Error uploading the document. Please try again'),
             backgroundColor: Colors.red,
           ),
         );
@@ -237,7 +237,7 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Error deleting: ${e.toString()}'),
+              content: Text('Error deleting the document. Please try again'),
               backgroundColor: Colors.red,
             ),
           );
@@ -270,7 +270,7 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error downloading: ${e.toString()}'),
+            content: Text('Error downloading this document. Please try again'),
             backgroundColor: Colors.red,
           ),
         );

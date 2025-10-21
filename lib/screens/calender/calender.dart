@@ -49,12 +49,11 @@ class _CalendarPageState extends State<CalendarPage> {
 
       setState(() => _isLoading = false);
     } catch (e) {
-      print('Error loading cases: $e');
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error loading cases: ${e.toString()}'),
+            content: Text('Error loading cases. Make sure you are online'),
             backgroundColor: Colors.red,
           ),
         );

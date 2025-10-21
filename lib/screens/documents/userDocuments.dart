@@ -75,12 +75,11 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> {
         _isLoading = false;
       });
     } catch (e) {
-      print('Error loading documents: $e');
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error loading documents: ${e.toString()}'),
+            content: Text('Error loading cases documents. Make sure you are online'),
             backgroundColor: Colors.red,
           ),
         );
@@ -265,7 +264,7 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Error deleting: ${e.toString()}'),
+              content: Text('Error deleting this document'),
               backgroundColor: Colors.red,
             ),
           );
