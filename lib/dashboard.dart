@@ -48,7 +48,7 @@ class _DashboardState extends State<Dashboard> {
       });
       print('Current patch number: $_currentPatchNumber');
     } catch (e) {
-      print('Error reading current patch: $e');
+      print('Error reading current patch');
     }
   }
 
@@ -73,14 +73,12 @@ class _DashboardState extends State<Dashboard> {
       } else if (status == UpdateStatus.upToDate) {
         print('App is up to date');
       } else if (status == UpdateStatus.restartRequired) {
-        print('Update downloaded, restart required');
         if (mounted) {
           _showRestartRequiredDialog();
         }
       }
       
     } catch (e) {
-      print('Error checking for updates: $e');
       setState(() {
         _isCheckingForUpdate = false;
       });
@@ -112,7 +110,7 @@ class _DashboardState extends State<Dashboard> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error refreshing: $e'),
+            content: Text('Error refreshing. Make sure you are online'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),
