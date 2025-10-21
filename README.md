@@ -26,12 +26,20 @@ LawDesk is a modern, mobile-first case management system designed specifically f
 - **🔍 Search & Filter** - Quick access to cases and documents
 - **📱 Mobile-First** - Designed for lawyers on the go
 
+### 🪂 Upcoming Features
+
+- **🤖 AI Intergration** - AI Intregration to help plan, execute and conduct cases based on case documents 
+- **💬 In-App Text Editor** - In app text editor to create new text file and short notes for individual cases while brainstorming
+
 ## 🚀 Screenshots
 
 <div align="center">
   <img src="screenshots/dashboard.jpg" width="250" />
-  <img src="screenshots/calendar.jpg" width="250" />
+  <img src="screenshots/allcases.jpg" width="250" />
   <img src="screenshots/documents.jpg" width="250" />
+  <img src="screenshots/casedocuments.jpg" width="250" />
+  <img src="screenshots/documents2.jpg" width="250" />
+  <img src="screenshots/delete.jpg" width="250" />
 </div>
 
 ## 🛠️ Tech Stack
@@ -52,4 +60,17 @@ LawDesk is a modern, mobile-first case management system designed specifically f
 - Dart SDK (2.17 or higher)
 - Android Studio / VS Code / Neovim
 - Git
+
+#### Installation setup for programming
+
+1. Clone the repo
+```bash
+git clone https://github.com/andareomondi/lawdesk.zip
+
+```
+2. Flutter run and Installing of dependecies
+```bash
+flutter run
+```
+3. Open in the android emulator or a extanal android device
 
