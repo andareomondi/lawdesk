@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:email_validator/email_validator.dart';
-import 'package:lawdesk/auth/signup.dart';
-import 'package:lawdesk/auth/forgotPassword.dart';
+import 'package:lawdesk/screens/auth/signup_screen.dart';
+import 'package:lawdesk/screens/auth/forgotPassword.dart';
 import 'package:lawdesk/providers/auth_provider.dart';
 import 'package:provider/provider.dart';
 
