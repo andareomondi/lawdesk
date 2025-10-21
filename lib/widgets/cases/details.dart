@@ -61,7 +61,6 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
         _isLoading = false;
       });
     } catch (e) {
-      print('Error loading case details: $e');
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -90,7 +89,6 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
         _isLoadingDocuments = false;
       });
     } catch (e) {
-      print('Error loading documents: $e');
       setState(() => _isLoadingDocuments = false);
     }
   }
@@ -343,12 +341,11 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
         );
       }
     } catch (e) {
-      print('Error updating case: $e');
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error updating case: ${e.toString()}'),
+            content: Text('Error updating case. Please try again later'),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 4),
@@ -402,7 +399,6 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
         Navigator.pop(context, true);
       }
     } catch (e) {
-      print('Error deleting case: $e');
       setState(() => _isDeleting = false);
       
       if (mounted) {

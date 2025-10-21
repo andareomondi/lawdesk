@@ -159,7 +159,7 @@ class _AddCaseModalState extends State<AddCaseModal> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: ${e.toString()}'),
+            content: Text('Error occured during Case creation. Please try again'),
             backgroundColor: Colors.red,
           ),
         );
