@@ -3,9 +3,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shorebird_code_push/shorebird_code_push.dart';
 import 'package:lawdesk/pages/profile/update_profile.dart';
 import 'package:lawdesk/pages/profile/profile.dart';
-import 'package:lawdesk/components/casesList.dart';
+import 'package:lawdesk/widgets/cases/list.dart';
 import 'package:lawdesk/pages/cases/casepage.dart';
-import 'package:lawdesk/components/caseModal.dart';
+import 'package:lawdesk/widgets/cases/modal.dart';
 import 'package:lawdesk/pages/documents/usersDocuments.dart';
 import 'package:lawdesk/pages/calender/calender.dart';
 
