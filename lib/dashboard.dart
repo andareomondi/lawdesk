@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shorebird_code_push/shorebird_code_push.dart';
-import 'package:lawdesk/pages/profile/update_profile.dart';
-import 'package:lawdesk/pages/profile/profile.dart';
+import 'package:lawdesk/screens/profile/update_profile.dart';
+import 'package:lawdesk/screens/profile/profile.dart';
 import 'package:lawdesk/widgets/cases/list.dart';
-import 'package:lawdesk/pages/cases/casepage.dart';
+import 'package:lawdesk/screens/cases/casepage.dart';
 import 'package:lawdesk/widgets/cases/modal.dart';
-import 'package:lawdesk/pages/documents/usersDocuments.dart';
-import 'package:lawdesk/pages/calender/calender.dart';
+import 'package:lawdesk/screens/documents/userDocuments.dart';
+import 'package:lawdesk/screens/calender/calender.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});

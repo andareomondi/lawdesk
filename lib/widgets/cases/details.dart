@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:lawdesk/pages/documents/upload.dart';
+import 'package:lawdesk/screens/documents/upload.dart';
 import 'package:lawdesk/config/supabase_config.dart';
 
 class CaseDetailsPage extends StatefulWidget {

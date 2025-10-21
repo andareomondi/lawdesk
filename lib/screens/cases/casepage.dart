@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lawdesk/pages/cases/case_list.dart';
+import 'package:lawdesk/screens/cases/case_list.dart';
 import 'package:lawdesk/widgets/cases/modal.dart';
 
 class CasesPage extends StatefulWidget {
