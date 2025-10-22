@@ -27,18 +27,20 @@ class _SignupPageState extends State<SignupPage> {
     super.dispose();
   }
 
+
+
   Future<void> _handleSignup() async {
     if (!_formKey.currentState!.validate()) return;
-
+    
     setState(() => _isLoading = true);
-
+    
     try {
       final authProvider = context.read<AuthProvider>();
       await authProvider.signUp(
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
-
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -51,11 +53,39 @@ class _SignupPageState extends State<SignupPage> {
         // Navigate back to login
         Navigator.pop(context);
       }
-    } catch (e) {
+    } on AuthException catch (e) {
+      // Handle Supabase authentication errors
       if (mounted) {
+        String errorMessage;
+        
+        // Check for specific signup errors
+        if (e.message.toLowerCase().contains('already registered') ||
+            e.message.toLowerCase().contains('already exists')) {
+          errorMessage = 'This email is already registered. Please sign in instead.';
+        } else if (e.message.toLowerCase().contains('invalid email')) {
+          errorMessage = 'Please enter a valid email address.';
+        } else if (e.message.toLowerCase().contains('password')) {
+          errorMessage = 'Password does not meet requirements. Please try a stronger password.';
+        } else if (e.statusCode == '422') {
+          errorMessage = 'Invalid signup data. Please check your information.';
+        } else {
+          errorMessage = e.message;
+        }
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('An error occurred during account creation'),
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      // Handle any other unexpected errors
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('An unexpected error occurred during account creation. Please try again.'),
             backgroundColor: Colors.red,
           ),
         );
