@@ -4,6 +4,7 @@ import 'package:lawdesk/screens/auth/signup_screen.dart';
 import 'package:lawdesk/screens/auth/forgotPassword.dart';
 import 'package:lawdesk/providers/auth_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
