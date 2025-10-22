@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:lawdesk/providers/auth_provider.dart';
 import 'package:lawdesk/screens/splash_screen.dart';
 import 'package:lawdesk/screens/auth/login_screen.dart';
-import 'package:lawdesk/dashboard.dart';
 import 'package:provider/provider.dart';
+import 'package:lawdesk/screens/splash.dart';
 
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({Key? key}) : super(key: key);
@@ -19,7 +19,7 @@ class AuthWrapper extends StatelessWidget {
 
         // User logged in? Show home screen
         if (authProvider.isLoggedIn) {
-          return const Dashboard();
+          return Splash();
         }
 
         // User not logged in? Show login screen
