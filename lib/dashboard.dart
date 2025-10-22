@@ -495,18 +495,6 @@ class _DashboardState extends State<Dashboard> {
               'Dashboard',
               style: TextStyle(fontWeight: FontWeight.w600),
             ),
-            if (_isCheckingForUpdate || _isDownloadingUpdate) ...[
-              const SizedBox(width: 12),
-              const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                ),
-              ),
-              const SizedBox(width: 8),
-            ],
           ],
         ),
         actions: [
