@@ -3,10 +3,12 @@ import 'package:lawdesk/config/supabase_config.dart';
 import 'package:provider/provider.dart';
 import 'package:lawdesk/widgets/auth_wrapper.dart';
 import 'package:lawdesk/providers/auth_provider.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SupabaseConfig.initialize();
+  await dotenv.load(fileName: ".env");
   runApp(const MyApp());
 }
 
