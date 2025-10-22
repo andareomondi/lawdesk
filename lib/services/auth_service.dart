@@ -27,11 +27,7 @@ class AuthService {
     required String email,
     required String password,
   }) async {
-    try {
       await _client.auth.signInWithPassword(email: email, password: password);
-    } catch (e) {
-      throw Exception('Sign in failed: $e');
-    }
   }
 
   // Sign out

@@ -26,18 +26,19 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
+
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
-
+    
     setState(() => _isLoading = true);
-
+    
     try {
       final authProvider = context.read<AuthProvider>();
       await authProvider.signIn(
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
-
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -46,11 +47,35 @@ class _LoginPageState extends State<LoginPage> {
           ),
         );
       }
-    } catch (e) {
+    } on AuthException catch (e) {
+      // Handle Supabase authentication errors
       if (mounted) {
+        String errorMessage;
+        
+        // Check for invalid credentials
+        if (e.statusCode == '400' || 
+            e.message.toLowerCase().contains('invalid') ||
+            e.message.toLowerCase().contains('credentials')) {
+          errorMessage = 'Invalid email or password. Please try again.';
+        } else if (e.message.toLowerCase().contains('email not confirmed')) {
+          errorMessage = 'Please verify your email before logging in.';
+        } else {
+          errorMessage = e.message;
+        }
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error occured during login, Please try again'),
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      // Handle any other unexpected errors
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('An unexpected error occurred. Please try again.'),
             backgroundColor: Colors.red,
           ),
         );
@@ -61,6 +86,8 @@ class _LoginPageState extends State<LoginPage> {
       }
     }
   }
+
+
 
   @override
   Widget build(BuildContext context) {
