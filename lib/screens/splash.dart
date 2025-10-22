@@ -65,7 +65,7 @@ class _SplashState extends State<Splash>
               mainAxisSize: MainAxisSize.min,
               children: [
                 // Replace with your logo if you want
-                Icon(Icons.flash_on, size: 80, color: Colors.white),
+                Icon(Icons.gavel, size: 80, color: Colors.white),
                 const SizedBox(height: 16),
                 Text(
                   'LawDesk',

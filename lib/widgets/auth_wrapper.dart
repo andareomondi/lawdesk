@@ -19,7 +19,7 @@ class AuthWrapper extends StatelessWidget {
 
         // User logged in? Show home screen
         if (authProvider.isLoggedIn) {
-          return Splash();
+          return const Splash();
         }
 
         // User not logged in? Show login screen
