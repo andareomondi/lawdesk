@@ -500,6 +500,7 @@ class _DashboardState extends State<Dashboard> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
+            // TODO: Implement remote refresh and update functionality without full app restart
             onPressed: _isCheckingForUpdate || _isDownloadingUpdate || _isLoading
                 ? null
                 : _refreshDashboard,
