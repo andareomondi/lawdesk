@@ -39,15 +39,6 @@ class _LoginPageState extends State<LoginPage> {
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Login successful!'),
-            backgroundColor: Color(0xFF10B981),
-          ),
-        );
-      }
     } on AuthException catch (e) {
       // Handle Supabase authentication errors
       if (mounted) {
