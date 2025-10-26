@@ -1,7 +1,7 @@
 # LawDesk - Legal Case Management System
 
 <div align="center">
-  <img src="assets/icon/icon.png" alt="LawDesk Logo" width="200"/>
+  <img src="assets/icon/compliant.png" alt="LawDesk Logo" width="200"/>
   
   ### Law Made Smarter
   
