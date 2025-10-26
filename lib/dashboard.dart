@@ -147,29 +147,10 @@ class _DashboardState extends State<Dashboard> {
       setState(() {
         _isDownloadingUpdate = false;
       });
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Update failed to initialize. Please Refresh'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
-          ),
-        );
-      }
     } catch (e) {
       setState(() {
         _isDownloadingUpdate = false;
       });
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Update failed to initialize. Please Refresh'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
     }
   }
 
