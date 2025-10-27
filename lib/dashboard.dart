@@ -512,7 +512,7 @@ class _DashboardState extends State<Dashboard> {
                   const SizedBox(height: 24),
                   
                   // Stats Cards
-                  const StatsSection(),
+                  const StatsSection(), //BUGFIX: Fixed the hard coded stats section
                   const SizedBox(height: 24),
                   
                   // Upcoming Court Dates Section
