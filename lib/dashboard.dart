@@ -8,6 +8,7 @@ import 'package:lawdesk/screens/cases/casepage.dart';
 import 'package:lawdesk/widgets/cases/modal.dart';
 import 'package:lawdesk/screens/documents/userDocuments.dart';
 import 'package:lawdesk/screens/calender/calender.dart';
+import 'package:lawdesk/widgets/dashboard/statCard.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -603,41 +604,7 @@ class _DashboardState extends State<Dashboard> {
     );
   }
 
-  Widget _buildStatsSection() {
-    return Row(
-      children: [
-        Expanded(
-          child: InkWell(
-          onTap: () {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => const CasesPage()), );
-          },
-            child: _StatCard(
-              title: 'Total Cases',
-              value: '24',
-              icon: Icons.folder_outlined,
-              color: const Color(0xFF1E3A8A),
-              trend: '+3 this month',
-            ),
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: InkWell(
-          onTap: () {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => const CalendarPage()),);
-          },
-            child: _StatCard(
-              title: 'Due This Week',
-              value: '5',
-              icon: Icons.event_outlined,
-              color: const Color(0xFFF59E0B),
-              trend: '2 urgent',
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+ const StatsSection();  
 
   Widget _buildUpcomingDatesSection(BuildContext context) {
     return Column(
@@ -761,87 +728,6 @@ class _DashboardState extends State<Dashboard> {
   }
 }
 
-// Stat Card Widget
-class _StatCard extends StatelessWidget {
-  final String title;
-  final String value;
-  final IconData icon;
-  final Color color;
-  final String trend;
-
-  const _StatCard({
-    required this.title,
-    required this.value,
-    required this.icon,
-    required this.color,
-    required this.trend,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: color.withOpacity(0.2),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              icon,
-              color: color,
-              size: 24,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 13,
-              color: Color(0xFF6B7280),
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            trend,
-            style: TextStyle(
-              fontSize: 11,
-              color: Colors.grey[500],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 // Action Button Widget
 class _ActionButton extends StatelessWidget {

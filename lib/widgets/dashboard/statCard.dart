@@ -36,6 +36,23 @@ class _StatsSectionState extends State<StatsSection> {
     _fetchStats();
   }
 
+  String _calculateStatus(DateTime courtDate) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final courtDateOnly = DateTime(courtDate.year, courtDate.month, courtDate.day);
+    final daysDifference = courtDateOnly.difference(today).inDays;
+
+    if (daysDifference < 0) {
+      return 'expired';
+    } else if (daysDifference <= 2) {
+      return 'urgent';
+    } else if (daysDifference > 2 && daysDifference < 5) {
+      return 'upcoming';
+    } else {
+      return 'no worries';
+    }
+  }
+
   Future<void> _fetchStats() async {
     try {
       setState(() {
@@ -43,51 +60,73 @@ class _StatsSectionState extends State<StatsSection> {
         _errorMessage = null;
       });
 
-      // Fetch total cases count
-      final totalCasesResponse = await _supabase
-          .from('cases') // Replace with your table name
-          .select()
-          .count();
+      final user = _supabase.auth.currentUser;
+      if (user == null) {
+        throw Exception('User not authenticated');
+      }
 
-      // Fetch cases from this month for trend calculation
-      final now = DateTime.now();
-      final firstDayOfMonth = DateTime(now.year, now.month, 1);
-      
-      final monthlyResponse = await _supabase
+      // Fetch all cases for the user
+      final response = await _supabase
           .from('cases')
           .select()
-          .gte('created_at', firstDayOfMonth.toIso8601String())
-          .count();
+          .eq('user', user.id);
 
-      // Fetch cases due this week
-      final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
-      final endOfWeek = startOfWeek.add(const Duration(days: 7));
-      
-      final dueThisWeekResponse = await _supabase
-          .from('cases')
-          .select()
-          .gte('due_date', startOfWeek.toIso8601String())
-          .lte('due_date', endOfWeek.toIso8601String())
-          .count();
+      if (response is List) {
+        final cases = List<Map<String, dynamic>>.from(response);
+        final now = DateTime.now();
+        final today = DateTime(now.year, now.month, now.day);
+        final firstDayOfMonth = DateTime(now.year, now.month, 1);
+        final startOfWeek = today.subtract(Duration(days: today.weekday - 1));
+        final endOfWeek = startOfWeek.add(const Duration(days: 7));
 
-      // Fetch urgent cases (you can adjust the condition based on your schema)
-      final urgentResponse = await _supabase
-          .from('cases')
-          .select()
-          .eq('priority', 'urgent') // Adjust field name and value as needed
-          .gte('due_date', startOfWeek.toIso8601String())
-          .lte('due_date', endOfWeek.toIso8601String())
-          .count();
+        int totalCases = cases.length;
+        int monthlyIncrease = 0;
+        int dueThisWeek = 0;
+        int urgentCases = 0;
 
-      setState(() {
-        _statsData = StatsData(
-          totalCases: totalCasesResponse.count,
-          monthlyIncrease: monthlyResponse.count,
-          dueThisWeek: dueThisWeekResponse.count,
-          urgentCases: urgentResponse.count,
-        );
-        _isLoading = false;
-      });
+        // Process each case
+        for (var case_ in cases) {
+          if (case_['courtDate'] != null) {
+            try {
+              final courtDate = DateTime.parse(case_['courtDate']);
+              final courtDateOnly = DateTime(courtDate.year, courtDate.month, courtDate.day);
+
+              // Calculate status
+              final status = _calculateStatus(courtDate);
+              
+              // Count urgent cases
+              if (status == 'urgent') {
+                urgentCases++;
+              }
+
+              // Count cases due this week
+              if (courtDateOnly.isAfter(startOfWeek.subtract(const Duration(days: 1))) &&
+                  courtDateOnly.isBefore(endOfWeek.add(const Duration(days: 1)))) {
+                dueThisWeek++;
+              }
+
+              // Count monthly increase (cases with court date this month)
+              if (courtDateOnly.isAfter(firstDayOfMonth.subtract(const Duration(days: 1))) &&
+                  courtDateOnly.isBefore(DateTime(now.year, now.month + 1, 1))) {
+                monthlyIncrease++;
+              }
+            } catch (e) {
+              // Skip cases with invalid dates
+              continue;
+            }
+          }
+        }
+
+        setState(() {
+          _statsData = StatsData(
+            totalCases: totalCases,
+            monthlyIncrease: monthlyIncrease,
+            dueThisWeek: dueThisWeek,
+            urgentCases: urgentCases,
+          );
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       setState(() {
         _errorMessage = 'Failed to load stats: ${e.toString()}';
@@ -126,6 +165,7 @@ class _StatsSectionState extends State<StatsSection> {
   Widget _buildLoadingCard() {
     return Container(
       padding: const EdgeInsets.all(16),
+      height: 150,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -157,7 +197,7 @@ class _StatsSectionState extends State<StatsSection> {
           Expanded(
             child: Text(
               _errorMessage!,
-              style: const TextStyle(color: Colors.red),
+              style: const TextStyle(color: Colors.red, fontSize: 12),
             ),
           ),
           IconButton(
@@ -294,3 +334,27 @@ class _StatCard extends StatelessWidget {
   }
 }
 
+// Placeholder pages (replace with your actual pages)
+class CasesPage extends StatelessWidget {
+  const CasesPage({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Cases')),
+      body: const Center(child: Text('Cases Page')),
+    );
+  }
+}
+
+class CalendarPage extends StatelessWidget {
+  const CalendarPage({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Calendar')),
+      body: const Center(child: Text('Calendar Page')),
+    );
+  }
+}
