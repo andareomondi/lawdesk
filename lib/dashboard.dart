@@ -334,7 +334,7 @@ class _DashboardState extends State<Dashboard> {
 
         setState(() {
           _userProfile = response;
-          _userName = response['username'];
+          _userName = response['username'] ?? 'Guest';
           _userEmail = response['email'];
           _isUpdated = response['is_updated'] ?? false; 
           _isLoading = false;
@@ -580,7 +580,7 @@ class _DashboardState extends State<Dashboard> {
                         child: Text(
                           _userProfile != null && _userProfile!['lsk_number'] != null
                               ? 'LSK No: ${_userProfile!['lsk_number']}'
-                              : 'You have 5 cases due this week',
+                              : 'Please update your profile',
                           style: TextStyle(
                             color: Colors.white.withOpacity(0.9),
                             fontSize: 13,
