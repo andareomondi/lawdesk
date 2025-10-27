@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:lawdesk/screens/cases/casepage.dart';
+import 'package:lawdesk/screens/calender/calender.dart';
 
 // Model class for stats data
 class StatsData {
@@ -334,27 +336,3 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-// Placeholder pages (replace with your actual pages)
-class CasesPage extends StatelessWidget {
-  const CasesPage({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Cases')),
-      body: const Center(child: Text('Cases Page')),
-    );
-  }
-}
-
-class CalendarPage extends StatelessWidget {
-  const CalendarPage({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Calendar')),
-      body: const Center(child: Text('Calendar Page')),
-    );
-  }
-}

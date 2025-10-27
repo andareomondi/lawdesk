@@ -512,7 +512,7 @@ class _DashboardState extends State<Dashboard> {
                   const SizedBox(height: 24),
                   
                   // Stats Cards
-                  _buildStatsSection(),
+                  const StatsSection(),
                   const SizedBox(height: 24),
                   
                   // Upcoming Court Dates Section
@@ -604,7 +604,6 @@ class _DashboardState extends State<Dashboard> {
     );
   }
 
- const StatsSection();  
 
   Widget _buildUpcomingDatesSection(BuildContext context) {
     return Column(
