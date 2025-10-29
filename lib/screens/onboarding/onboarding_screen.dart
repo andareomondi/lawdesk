@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
+import 'package:lawdesk/screens/auth/login_screen.dart';
 
 class OnBoardingScreen extends StatefulWidget {
   const OnBoardingScreen({Key? key}) : super(key: key);
@@ -10,6 +11,7 @@ class OnBoardingScreen extends StatefulWidget {
 
 class _OnBoardingScreenState extends State<OnBoardingScreen> {
   final PageController _controller = PageController();
+  bool isLastPage = false;
 
   @override
   Widget build(BuildContext context) {
@@ -18,6 +20,11 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
         children: [
           PageView(
             controller: _controller,
+            onPageChanged: (index) {
+              setState(() {
+                isLastPage = index == 2;
+              });
+            },
             children: [
               Container(
                 color: Colors.red,
@@ -51,7 +58,43 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
            // smooth indicator
            Container(
            alignment: Alignment(0, 0.8),
-           child: SmoothPageIndicator(controller: _controller, count: 3, effect: WormEffect(), )),
+           child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+             children: [
+             // skip
+             GestureDetector(
+             onTap: () {
+               _controller.jumpToPage(2);
+             },
+             child: Text('Skip', style: TextStyle(fontSize: 18),)
+             ),
+
+               SmoothPageIndicator(controller: _controller, count: 3, effect: WormEffect(), ),
+                
+                // Next
+                isLastPage ?
+                GestureDetector(
+                onTap: () {
+                  Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => LoginPage()));
+                },
+                child: Text('Finish', style: TextStyle(fontSize: 18),)
+                )
+                : GestureDetector(
+                onTap: () {
+                  _controller.nextPage(duration: Duration(milliseconds:500), curve: Curves.easeIn,);
+                },
+                child: Text('Next'),
+
+                ),
+                 
+             GestureDetector(
+             onTap: () {
+               _controller.jumpToPage(2);
+             },
+             child: Text('Skip', style: TextStyle(fontSize: 18),)
+             ),
+             ],
+           )),
         ],
       ),
     );
