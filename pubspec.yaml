@@ -23,6 +23,9 @@ dependencies:
   provider: ^6.1.5+1
   shorebird_code_push: ^2.0.5
   flutter_dotenv: ^6.0.0
+  introduction_screen: ^4.0.0
+  shared_preferences: ^2.5.3
+  smooth_page_indicator: ^1.2.1
 
 dev_dependencies:
   flutter_test:

@@ -4,16 +4,21 @@ import 'package:provider/provider.dart';
 import 'package:lawdesk/widgets/auth_wrapper.dart';
 import 'package:lawdesk/providers/auth_provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:lawdesk/screens/onboarding/onboarding_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SupabaseConfig.initialize();
   await dotenv.load(fileName: ".env");
-  runApp(const MyApp());
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  final seenOnboarding = prefs.getBool('seenOnboarding') ?? false;
+  runApp(MyApp(seenOnboarding: seenOnboarding));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+  final bool seenOnboarding;
+  const MyApp({Key? key, required this.seenOnboarding}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +30,9 @@ class MyApp extends StatelessWidget {
         title: 'LawDesk',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(primarySwatch: Colors.blue, fontFamily: 'SF Pro Display'),
-        home: const AuthWrapper(),
+        home: seenOnboarding == true
+            ? const AuthWrapper()
+            : const OnBoardingScreen(),
       ),
     );
   }
