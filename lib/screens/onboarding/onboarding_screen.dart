@@ -29,59 +29,72 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
                 isLastPage = index == 2;
               });
             },
-            children: [
-            OnboardingPage1(),
-            OnboardingPage2(),
-            OnboardingPage3(),
-              
+            children: const [
+              OnboardingPage1(),
+              OnboardingPage2(),
+              OnboardingPage3(),
             ],
           ),
-           // smooth indicator
-           Container(
-           alignment: Alignment(0, 0.8),
-           child: Row(
+          // Smooth indicator and navigation buttons
+          Container(
+            alignment: const Alignment(0, 0.8),
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-             children: [
-             // skip
-             GestureDetector(
-             onTap: () {
-               _controller.jumpToPage(2);
-             },
-             child: Text('Skip', style: TextStyle(fontSize: 18),)
-             ),
-
-               SmoothPageIndicator(controller: _controller, count: 3, effect: WormEffect(), ),
-                
-                // Next
-                isLastPage ?
+              children: [
+                // Skip button
                 GestureDetector(
-                onTap: () async{
-                  // update local storage that we have already seen this intro
-                  final prefs = await SharedPreferences.getInstance(); 
-                  await prefs.setBool('seenOnboarding', true);
-                  Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => LoginPage()));
-                },
-                child: Text('Finish', style: TextStyle(fontSize: 18),)
-                )
-                : GestureDetector(
-                onTap: () {
-                  _controller.nextPage(duration: Duration(milliseconds:500), curve: Curves.easeIn,);
-                },
-                child: Text('Next'),
-
+                  onTap: () {
+                    _controller.jumpToPage(2);
+                  },
+                  child: const Text(
+                    'Skip',
+                    style: TextStyle(fontSize: 18),
+                  ),
                 ),
-                 
-             GestureDetector(
-             onTap: () {
-               _controller.jumpToPage(2);
-             },
-             child: Text('Skip', style: TextStyle(fontSize: 18),)
-             ),
-             ],
-           )),
+
+                // Page indicator
+                SmoothPageIndicator(
+                  controller: _controller,
+                  count: 3,
+                  effect: const WormEffect(),
+                ),
+
+                // Next or Finish button
+                isLastPage
+                    ? GestureDetector(
+                        onTap: () async {
+                          // Update local storage that we have already seen this intro
+                          final prefs = await SharedPreferences.getInstance();
+                          await prefs.setBool('seenOnboarding', true);
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const LoginPage(),
+                            ),
+                          );
+                        },
+                        child: const Text(
+                          'Finish',
+                          style: TextStyle(fontSize: 18),
+                        ),
+                      )
+                    : GestureDetector(
+                        onTap: () {
+                          _controller.nextPage(
+                            duration: const Duration(milliseconds: 500),
+                            curve: Curves.easeIn,
+                          );
+                        },
+                        child: const Text(
+                          'Next',
+                          style: TextStyle(fontSize: 18),
+                        ),
+                      ),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 }
-
