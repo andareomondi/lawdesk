@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:lawdesk/screens/auth/login_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class OnBoardingScreen extends StatefulWidget {
   const OnBoardingScreen({Key? key}) : super(key: key);
@@ -74,7 +75,10 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
                 // Next
                 isLastPage ?
                 GestureDetector(
-                onTap: () {
+                onTap: () async{
+                  // update local storage that we have already seen this intro
+                  final prefs = await SharedPreferences.getInstance(); 
+                  await prefs.setBool('seenOnboarding', true);
                   Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => LoginPage()));
                 },
                 child: Text('Finish', style: TextStyle(fontSize: 18),)
