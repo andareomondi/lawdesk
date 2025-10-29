@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:lawdesk/screens/auth/login_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:lawdesk/screens/onboarding/page1.dart';
+import 'package:lawdesk/screens/onboarding/page2.dart';
+import 'package:lawdesk/screens/onboarding/page3.dart';
 
 class OnBoardingScreen extends StatefulWidget {
   const OnBoardingScreen({Key? key}) : super(key: key);
@@ -27,33 +30,10 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
               });
             },
             children: [
-              Container(
-                color: Colors.red,
-                child: const Center(
-                  child: Text(
-                    'Welcome to the App!',
-                    style: TextStyle(fontSize: 24, color: Colors.white),
-                  ),
-                ),
-              ),
-              Container(
-                color: Colors.green,
-                child: const Center(
-                  child: Text(
-                    'Discover new features.',
-                    style: TextStyle(fontSize: 24, color: Colors.white),
-                  ),
-                ),
-              ),
-              Container(
-                color: Colors.blue,
-                child: const Center(
-                  child: Text(
-                    'Get Started Now!',
-                    style: TextStyle(fontSize: 24, color: Colors.white),
-                  ),
-                ),
-              ),
+            OnboardingPage1(),
+            OnboardingPage2(),
+            OnboardingPage3(),
+              
             ],
           ),
            // smooth indicator
