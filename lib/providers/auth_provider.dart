@@ -43,7 +43,10 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await _authService.signUp(email: email, password: password);
+      await _authService.signUp(email: email, password: password, options:
+      {
+        'emailRedirectTo': 'https://lawdeskweb.vercel.app/auth/confirm'
+      });
       _user = _authService.currentUser;
       notifyListeners();
     } catch (e) {
