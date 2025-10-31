@@ -41,6 +41,7 @@ class AuthProvider extends ChangeNotifier {
   }) async {
     _isLoading = true;
     notifyListeners();
+    // TODO: Add email validation and checking if email is already in use
 
     try {
       await _authService.signUp(email: email, password: password);
