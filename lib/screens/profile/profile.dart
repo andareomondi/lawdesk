@@ -146,8 +146,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           );
         }
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginPage(),))
-        // Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginPage(),),
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginPage(),));
 
       } catch (e) {
         if (mounted) {
