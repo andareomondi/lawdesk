@@ -451,206 +451,254 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 3,
-      child: Scaffold(
-        backgroundColor: const Color(0xFFF9FAFB),
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Color(0xFF1F2937)),
-            onPressed: _isDeleting ? null : () => Navigator.pop(context),
-          ),
-          title: Text(
-            _isEditing ? 'Edit Case' : 'Case Details',
-            style: const TextStyle(
-              color: Color(0xFF1F2937),
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          actions: [
-            if (!_isEditing && !_isLoading && !_isDeleting)
-              IconButton(
-                icon: const Icon(Icons.edit, color: Color(0xFF10B981)),
-                onPressed: () {
-                  setState(() {
-                    _isEditing = true;
-                    _initializeControllers();
-                  });
-                },
-              ),
-            if (_isEditing)
-              TextButton(
-                onPressed: _isLoading ? null : _saveChanges,
-                child: Text(
-                  'Save',
-                  style: TextStyle(
-                    color: _isLoading ? Colors.grey : const Color(0xFF10B981),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-          ],
+@override
+Widget build(BuildContext context) {
+  return DefaultTabController(
+    length: 3, // Must match number of tabs AND TabBarView children
+    child: Scaffold(
+      backgroundColor: const Color(0xFFF9FAFB),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF1F2937)),
+          onPressed: _isDeleting ? null : () => Navigator.pop(context),
         ),
-        body: _isDeleting
-            ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 16),
-                    Text(
-                      'Deleting case...',
-                      style: TextStyle(fontSize: 16, color: Color(0xFF6B7280)),
-                    ),
-                  ],
+        title: Text(
+          _isEditing ? 'Edit Case' : 'Case Details',
+          style: const TextStyle(
+            color: Color(0xFF1F2937),
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        actions: [
+          if (!_isEditing && !_isLoading && !_isDeleting)
+            IconButton(
+              icon: const Icon(Icons.edit, color: Color(0xFF10B981)),
+              onPressed: () {
+                setState(() {
+                  _isEditing = true;
+                  _initializeControllers();
+                });
+              },
+            ),
+          if (_isEditing)
+            TextButton(
+              onPressed: _isLoading ? null : _saveChanges,
+              child: Text(
+                'Save',
+                style: TextStyle(
+                  color: _isLoading ? Colors.grey : const Color(0xFF10B981),
+                  fontWeight: FontWeight.w600,
                 ),
+              ),
+            ),
+        ],
+        bottom: _caseData != null && !_isDeleting && !_isLoading
+            ? TabBar(
+                labelColor: const Color(0xFF10B981),
+                unselectedLabelColor: const Color(0xFF6B7280),
+                indicatorColor: const Color(0xFF10B981),
+                tabs: const [
+                  Tab(icon: Icon(Icons.info_outline), text: 'Details'),
+                  Tab(icon: Icon(Icons.event), text: 'Events'),
+                  Tab(icon: Icon(Icons.note), text: 'Notes'),
+                ],
               )
-            : _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : _caseData == null
-            ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.error_outline,
-                      size: 64,
-                      color: Color(0xFF6B7280),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Case not found',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF1F2937),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'This case may have been deleted',
-                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                    ),
-                    const SizedBox(height: 24),
-                    ElevatedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF10B981),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 12,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      child: const Text('Go Back'),
-                    ),
-                  ],
-                ),
-              )
-            : Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TabBar(
-                      tabs: [
-                        Tab(icon: Icon(Icons.home)),
-                        Tab(icon: Icon(Icons.settings)),
-                        Tab(icon: Icon(Icons.person)),
-                      ],
-                    ),
-                    Expanded(
-                      child: TabBarView(
+            : null,
+      ),
+      body: _isDeleting
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: const [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text(
+                    'Deleting case...',
+                    style: TextStyle(fontSize: 16, color: Color(0xFF6B7280)),
+                  ),
+                ],
+              ),
+            )
+          : _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _caseData == null
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Container(child: Column(children: [
-                          _buildStatusCard(),
+                          const Icon(
+                            Icons.error_outline,
+                            size: 64,
+                            color: Color(0xFF6B7280),
+                          ),
                           const SizedBox(height: 16),
-                          _buildInfoCard(),
-                          const SizedBox(height: 16),
-                          _buildCourtDetailsCard(),
-if (_caseData!['description'] != null &&
-                        _caseData!['description']
-                            .toString()
-                            .trim()
-                            .isNotEmpty &&
-                        !_isEditing) ...[
-                      const SizedBox(height: 16),
-                      _buildDescriptionCard(),
-                    ],
-
-                    // Documents Section
-                    if (!_isEditing) ...[
-                      const SizedBox(height: 16),
-                      _buildDocumentsSection(),
-                    ],
-
-                    // Delete Button
-                    if (!_isEditing) ...[
-                      const SizedBox(height: 24),
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          onPressed: _deleteCase,
-                          icon: const Icon(Icons.delete_outline),
-                          label: const Text('Delete Case'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.red,
-                            side: const BorderSide(color: Colors.red),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+                          const Text(
+                            'Case not found',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF1F2937),
                             ),
                           ),
-                        ),
-                      ),
-                    ],
-
-                    if (_isEditing) ...[
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton(
-                          onPressed: () {
-                            setState(() {
-                              _isEditing = false;
-                              _initializeControllers();
-                            });
-                          },
-                          child: const Text('Cancel'),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'This case may have been deleted',
+                            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                           ),
-                        ),
-                      ),
-                    ],
-
-                    const SizedBox(height: 24),
-
-                          ])),
-                          Container(child: Center(child: Text('page 2'))),
-                          Container(child: Center(child: Text('page 3'))),
-                          Container(child: Center(child: Text('page 4'))),
+                          const SizedBox(height: 24),
+                          ElevatedButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF10B981),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: const Text('Go Back'),
+                          ),
                         ],
                       ),
+                    )
+                  : TabBarView(
+                      children: [
+                        // Tab 1: Details
+                        _buildDetailsTab(),
+                        
+                        // Tab 2: Events
+                        Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: const [
+                              Icon(Icons.event, size: 64, color: Color(0xFF6B7280)),
+                              SizedBox(height: 16),
+                              Text(
+                                'Events',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF1F2937),
+                                ),
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                'Event tracking coming soon',
+                                style: TextStyle(color: Color(0xFF6B7280)),
+                              ),
+                            ],
+                          ),
+                        ),
+                        
+                        // Tab 3: Notes
+                        Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: const [
+                              Icon(Icons.note, size: 64, color: Color(0xFF6B7280)),
+                              SizedBox(height: 16),
+                              Text(
+                                'Notes',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF1F2937),
+                                ),
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                'Case notes coming soon',
+                                style: TextStyle(color: Color(0xFF6B7280)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    
-                  ],
+    ),
+  );
+}
+
+// Extract the details content into a separate method
+Widget _buildDetailsTab() {
+  return SingleChildScrollView(
+    padding: const EdgeInsets.all(16),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildStatusCard(),
+        const SizedBox(height: 16),
+        _buildInfoCard(),
+        const SizedBox(height: 16),
+        _buildCourtDetailsCard(),
+        
+        if (_caseData!['description'] != null &&
+            _caseData!['description'].toString().trim().isNotEmpty &&
+            !_isEditing) ...[
+          const SizedBox(height: 16),
+          _buildDescriptionCard(),
+        ],
+
+        // Documents Section
+        if (!_isEditing) ...[
+          const SizedBox(height: 16),
+          _buildDocumentsSection(),
+        ],
+
+        // Delete Button
+        if (!_isEditing) ...[
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _deleteCase,
+              icon: const Icon(Icons.delete_outline),
+              label: const Text('Delete Case'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.red,
+                side: const BorderSide(color: Colors.red),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
                 ),
               ),
-      ),
-    );
-  }
+            ),
+          ),
+        ],
 
+        if (_isEditing) ...[
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: () {
+                setState(() {
+                  _isEditing = false;
+                  _initializeControllers();
+                });
+              },
+              child: const Text('Cancel'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ),
+        ],
+
+        const SizedBox(height: 24),
+      ],
+    ),
+  );
+}
   Widget _buildDocumentsSection() {
     return Container(
       padding: const EdgeInsets.all(16),
