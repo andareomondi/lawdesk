@@ -454,7 +454,7 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 4,
+      length: 3,
       child: Scaffold(
         backgroundColor: const Color(0xFFF9FAFB),
         appBar: AppBar(
@@ -555,8 +555,7 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
                   ],
                 ),
               )
-            : SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
+            : Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -565,33 +564,18 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
                         Tab(icon: Icon(Icons.home)),
                         Tab(icon: Icon(Icons.settings)),
                         Tab(icon: Icon(Icons.person)),
-                        Tab(icon: Icon(Icons.menu)),
                       ],
                     ),
                     Expanded(
                       child: TabBarView(
                         children: [
-                          Center(
-                            child: Column(
-                              children: [
-                                _buildStatusCard(),
-                                const SizedBox(height: 16),
-
-                                _buildInfoCard(),
-                                const SizedBox(height: 16),
-
-                                _buildCourtDetailsCard(),
-                              ],
-                            ),
-                          ),
-                          Container(child: Center(child: Text('page 2'))),
-                          Container(child: Center(child: Text('page 3'))),
-                          Container(child: Center(child: Text('page 4'))),
-                        ],
-                      ),
-                    ),
-
-                    if (_caseData!['description'] != null &&
+                          Container(child: Column(children: [
+                          _buildStatusCard(),
+                          const SizedBox(height: 16),
+                          _buildInfoCard(),
+                          const SizedBox(height: 16),
+                          _buildCourtDetailsCard(),
+if (_caseData!['description'] != null &&
                         _caseData!['description']
                             .toString()
                             .trim()
@@ -651,6 +635,15 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
                     ],
 
                     const SizedBox(height: 24),
+
+                          ])),
+                          Container(child: Center(child: Text('page 2'))),
+                          Container(child: Center(child: Text('page 3'))),
+                          Container(child: Center(child: Text('page 4'))),
+                        ],
+                      ),
+                    ),
+                    
                   ],
                 ),
               ),
