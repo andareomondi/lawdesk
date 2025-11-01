@@ -131,7 +131,7 @@ class _StatsSectionState extends State<StatsSection> {
       }
     } catch (e) {
       setState(() {
-        _errorMessage = 'Failed to load stats: ${e.toString()}';
+        _errorMessage = 'Failed to load stats';
         _isLoading = false;
       });
     }

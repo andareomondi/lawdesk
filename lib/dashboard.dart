@@ -22,7 +22,7 @@ class _DashboardState extends State<Dashboard> {
   final _updater = ShorebirdUpdater();
   
   // User data variables
-  String _userName = '';
+  String _userName = 'Guest' ;
   String _userEmail = '';
   Map<String, dynamic>? _userProfile;
   bool _isLoading = true;
@@ -335,7 +335,7 @@ class _DashboardState extends State<Dashboard> {
 
         setState(() {
           _userProfile = response;
-          _userName = response['username'] ?? 'Guest';
+          _userName = response['username'];
           _userEmail = response['email'];
           _isUpdated = response['is_updated'] ?? false; 
           _isLoading = false;
