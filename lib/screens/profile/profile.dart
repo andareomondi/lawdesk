@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../config/supabase_config.dart';
 import '../../providers/auth_provider.dart';
 import 'update_profile.dart';
+import 'package:lawdesk/screens/auth/login_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -145,6 +146,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           );
         }
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginPage(),))
+        // Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginPage(),),
 
       } catch (e) {
         if (mounted) {
@@ -152,7 +155,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             context: context,
             builder: (context) => AlertDialog(
               title: const Text('Error'),
-              content: Text('Error logging out: $e'),
+              content: Text('Error occured during logging out'),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
