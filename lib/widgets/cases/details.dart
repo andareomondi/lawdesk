@@ -457,6 +457,23 @@ Widget build(BuildContext context) {
     length: 3, // Must match number of tabs AND TabBarView children
     child: Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
+      floatingActionButton: _caseData != null && !_isDeleting && !_isLoading
+          ? FloatingActionButton(
+              onPressed: _isEditing
+                  ? _saveChanges
+                  : () {
+                      setState(() {
+                        _isEditing = true;
+                        _initializeControllers();
+                      });
+                    },
+              backgroundColor: const Color(0xFF10B981),
+              child: Icon(
+                _isEditing ? Icons.save : Icons.edit,
+                color: Colors.white,
+              ),
+            )
+          : null,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
@@ -625,6 +642,80 @@ Widget build(BuildContext context) {
   );
 }
 
+// Extract the details content into a separate method
+Widget _buildDetailsTab() {
+  return SingleChildScrollView(
+    padding: const EdgeInsets.all(16),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildStatusCard(),
+        const SizedBox(height: 16),
+        _buildInfoCard(),
+        const SizedBox(height: 16),
+        _buildCourtDetailsCard(),
+        
+        if (_caseData!['description'] != null &&
+            _caseData!['description'].toString().trim().isNotEmpty &&
+            !_isEditing) ...[
+          const SizedBox(height: 16),
+          _buildDescriptionCard(),
+        ],
+
+        // Documents Section
+        if (!_isEditing) ...[
+          const SizedBox(height: 16),
+          _buildDocumentsSection(),
+        ],
+
+        // Delete Button
+        if (!_isEditing) ...[
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _deleteCase,
+              icon: const Icon(Icons.delete_outline),
+              label: const Text('Delete Case'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.red,
+                side: const BorderSide(color: Colors.red),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ),
+        ],
+
+        if (_isEditing) ...[
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: () {
+                setState(() {
+                  _isEditing = false;
+                  _initializeControllers();
+                });
+              },
+              child: const Text('Cancel'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ),
+        ],
+
+        const SizedBox(height: 24),
+      ],
+    ),
+  );
+}
 // Extract the details content into a separate method
 Widget _buildDetailsTab() {
   return SingleChildScrollView(
