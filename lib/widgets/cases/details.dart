@@ -16,10 +16,12 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
   final _supabase = SupabaseConfig.client;
   Map<String, dynamic>? _caseData;
   List<Map<String, dynamic>> _documents = [];
+  List<Map<String, dynamic>> _notes = [];
   bool _isLoading = true;
   bool _isEditing = false;
   bool _isDeleting = false;
   bool _isLoadingDocuments = false;
+  bool _isLoadingNotes = false;
 
   // Controllers for editing
   final _nameController = TextEditingController();
@@ -29,11 +31,17 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
 
+  // Controllers for notes
+  final _noteNameController = TextEditingController();
+  final _noteDescriptionController = TextEditingController();
+  String _selectedNoteType = 'Quick Note';
+
   @override
   void initState() {
     super.initState();
     _loadCaseDetails();
     _loadDocuments();
+    _loadNotes();
   }
 
   @override
@@ -42,6 +50,8 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
     _numberController.dispose();
     _courtNameController.dispose();
     _descriptionController.dispose();
+    _noteNameController.dispose();
+    _noteDescriptionController.dispose();
     super.dispose();
   }
 
@@ -90,6 +100,33 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
       });
     } catch (e) {
       setState(() => _isLoadingDocuments = false);
+    }
+  }
+
+  Future<void> _loadNotes() async {
+    setState(() => _isLoadingNotes = true);
+    try {
+      final response = await _supabase
+          .from('notes')
+          .select()
+          .eq('case', int.parse(widget.caseId))
+          .order('created_at', ascending: false);
+
+      setState(() {
+        _notes = List<Map<String, dynamic>>.from(response);
+        _isLoadingNotes = false;
+      });
+    } catch (e) {
+      setState(() => _isLoadingNotes = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Error loading notes'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 
@@ -252,6 +289,32 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
         return const Color(0xFFEF4444);
       default:
         return const Color(0xFF6B7280);
+    }
+  }
+
+  Color _getNoteColor(String? type) {
+    switch (type?.toLowerCase()) {
+      case 'quick note':
+        return const Color(0xFF3B82F6); // Blue
+      case 'longer note':
+        return const Color(0xFF8B5CF6); // Purple
+      case 'case update':
+        return const Color(0xFF10B981); // Green
+      default:
+        return const Color(0xFF6B7280); // Gray
+    }
+  }
+
+  IconData _getNoteIcon(String? type) {
+    switch (type?.toLowerCase()) {
+      case 'quick note':
+        return Icons.sticky_note_2_outlined;
+      case 'longer note':
+        return Icons.description_outlined;
+      case 'case update':
+        return Icons.update_outlined;
+      default:
+        return Icons.note_outlined;
     }
   }
 
@@ -445,255 +508,669 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
       ),
     );
 
-    // Refresh documents when returning from documents page
     if (result != null || mounted) {
       _loadDocuments();
     }
   }
 
-@override
-Widget build(BuildContext context) {
-  return DefaultTabController(
-    length: 3, // Must match number of tabs AND TabBarView children
-    child: Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF1F2937)),
-          onPressed: _isDeleting ? null : () => Navigator.pop(context),
-        ),
-        title: Text(
-          _isEditing ? 'Edit Case' : 'Case Details',
-          style: const TextStyle(
-            color: Color(0xFF1F2937),
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
+  Future<void> _showAddNoteModal() async {
+    _noteNameController.clear();
+    _noteDescriptionController.clear();
+    _selectedNoteType = 'Quick Note';
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Container(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
           ),
-        ),
-        bottom: _caseData != null && !_isDeleting && !_isLoading
-            ? TabBar(
-                labelColor: const Color(0xFF10B981),
-                unselectedLabelColor: const Color(0xFF6B7280),
-                indicatorColor: const Color(0xFF10B981),
-                tabs: const [
-                  Tab(icon: Icon(Icons.info_outline), text: 'Details'),
-                  Tab(icon: Icon(Icons.event), text: 'Events'),
-                  Tab(icon: Icon(Icons.note), text: 'Notes'),
-                ],
-              )
-            : null,
-      ),
-      body: _isDeleting
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text(
-                    'Deleting case...',
-                    style: TextStyle(fontSize: 16, color: Color(0xFF6B7280)),
-                  ),
-                ],
-              ),
-            )
-          : _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : _caseData == null
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.error_outline,
-                            size: 64,
-                            color: Color(0xFF6B7280),
-                          ),
-                          const SizedBox(height: 16),
-                          const Text(
-                            'Case not found',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF1F2937),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'This case may have been deleted',
-                            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                          ),
-                          const SizedBox(height: 24),
-                          ElevatedButton(
-                            onPressed: () => Navigator.pop(context),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF10B981),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
-                                vertical: 12,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: const Text('Go Back'),
-                          ),
-                        ],
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Add Note',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1F2937),
                       ),
-                    )
-                  : TabBarView(
-                      children: [
-                        // Tab 1: Details
-                        _buildDetailsTab(),
-                        
-                        // Tab 2: Events
-                        Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: const [
-                              Icon(Icons.event, size: 64, color: Color(0xFF6B7280)),
-                              SizedBox(height: 16),
-                              Text(
-                                'Events',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF1F2937),
-                                ),
-                              ),
-                              SizedBox(height: 8),
-                              Text(
-                                'Event tracking coming soon',
-                                style: TextStyle(color: Color(0xFF6B7280)),
-                              ),
-                            ],
-                          ),
-                        ),
-                        
-                        // Tab 3: Notes
-                        Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: const [
-                              Icon(Icons.note, size: 64, color: Color(0xFF6B7280)),
-                              SizedBox(height: 16),
-                              Text(
-                                'Notes',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF1F2937),
-                                ),
-                              ),
-                              SizedBox(height: 8),
-                              Text(
-                                'Case notes coming soon',
-                                style: TextStyle(color: Color(0xFF6B7280)),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
                     ),
-    ),
-  );
-}
-
-// Extract the details content into a separate method
-Widget _buildDetailsTab() {
-  return Scaffold(
-    backgroundColor: const Color(0xFFF9FAFB),
-    floatingActionButton: FloatingActionButton(
-      onPressed: _isEditing
-          ? _saveChanges
-          : () {
-              setState(() {
-                _isEditing = true;
-                _initializeControllers();
-              });
-            },
-      backgroundColor: const Color(0xFF10B981),
-      child: Icon(
-        _isEditing ? Icons.save : Icons.edit,
-        color: Colors.white,
-      ),
-    ),
-    body: SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-        _buildStatusCard(),
-        const SizedBox(height: 16),
-        _buildInfoCard(),
-        const SizedBox(height: 16),
-        _buildCourtDetailsCard(),
-        
-        if (_caseData!['description'] != null &&
-            _caseData!['description'].toString().trim().isNotEmpty &&
-            !_isEditing) ...[
-          const SizedBox(height: 16),
-          _buildDescriptionCard(),
-        ],
-
-        // Documents Section
-        if (!_isEditing) ...[
-          const SizedBox(height: 16),
-          _buildDocumentsSection(),
-        ],
-
-        // Delete Button
-        if (!_isEditing) ...[
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: _deleteCase,
-              icon: const Icon(Icons.delete_outline),
-              label: const Text('Delete Case'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.red,
-                side: const BorderSide(color: Colors.red),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close),
+                      color: const Color(0xFF6B7280),
+                    ),
+                  ],
                 ),
-              ),
+                const SizedBox(height: 24),
+                
+                // Note Name
+                const Text(
+                  'Note Title',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1F2937),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _noteNameController,
+                  decoration: InputDecoration(
+                    hintText: 'Enter note title',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: Color(0xFF10B981), width: 2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                
+                // Note Type
+                const Text(
+                  'Note Type',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1F2937),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: const Color(0xFFE5E7EB)),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _selectedNoteType,
+                      isExpanded: true,
+                      items: ['Quick Note', 'Longer Note', 'Case Update']
+                          .map((type) => DropdownMenuItem(
+                                value: type,
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      _getNoteIcon(type),
+                                      size: 20,
+                                      color: _getNoteColor(type),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Text(type),
+                                  ],
+                                ),
+                              ))
+                          .toList(),
+                      onChanged: (value) {
+                        setModalState(() {
+                          _selectedNoteType = value!;
+                        });
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                
+                // Description
+                const Text(
+                  'Description (Optional)',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1F2937),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _noteDescriptionController,
+                  maxLines: 4,
+                  decoration: InputDecoration(
+                    hintText: 'Enter description',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: Color(0xFF10B981), width: 2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                
+                // Save Button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _saveNote();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF10B981),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text(
+                      'Save Note',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
+        ),
+      ),
+    );
+  }
 
-        if (_isEditing) ...[
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton(
-              onPressed: () {
+  Future<void> _saveNote() async {
+    if (_noteNameController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Note title cannot be empty'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    try {
+      await _supabase.from('notes').insert({
+        'note': _noteNameController.text.trim(),
+        'type': _selectedNoteType,
+        'description': _noteDescriptionController.text.trim().isEmpty
+            ? null
+            : _noteDescriptionController.text.trim(),
+        'case': int.parse(widget.caseId),
+      });
+
+      await _loadNotes();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Note added successfully'),
+            backgroundColor: const Color(0xFF10B981),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Error adding note. Please try again'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteNote(int noteId, String noteName) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Note'),
+        content: Text(
+          'Are you sure you want to delete "$noteName"? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await _supabase.from('notes').delete().eq('id', noteId);
+
+      await _loadNotes();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Note deleted successfully'),
+            backgroundColor: const Color(0xFF10B981),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Error deleting note. Please try again'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 3,
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF9FAFB),
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Color(0xFF1F2937)),
+            onPressed: _isDeleting ? null : () => Navigator.pop(context),
+          ),
+          title: Text(
+            _isEditing ? 'Edit Case' : 'Case Details',
+            style: const TextStyle(
+              color: Color(0xFF1F2937),
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          bottom: _caseData != null && !_isDeleting && !_isLoading
+              ? TabBar(
+                  labelColor: const Color(0xFF10B981),
+                  unselectedLabelColor: const Color(0xFF6B7280),
+                  indicatorColor: const Color(0xFF10B981),
+                  tabs: const [
+                    Tab(icon: Icon(Icons.info_outline), text: 'Details'),
+                    Tab(icon: Icon(Icons.event), text: 'Events'),
+                    Tab(icon: Icon(Icons.note), text: 'Notes'),
+                  ],
+                )
+              : null,
+        ),
+        body: _isDeleting
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: const [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text(
+                      'Deleting case...',
+                      style: TextStyle(fontSize: 16, color: Color(0xFF6B7280)),
+                    ),
+                  ],
+                ),
+              )
+            : _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _caseData == null
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.error_outline,
+                              size: 64,
+                              color: Color(0xFF6B7280),
+                            ),
+                            const SizedBox(height: 16),
+                            const Text(
+                              'Case not found',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF1F2937),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'This case may have been deleted',
+                              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                            ),
+                            const SizedBox(height: 24),
+                            ElevatedButton(
+                              onPressed: () => Navigator.pop(context),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF10B981),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              child: const Text('Go Back'),
+                            ),
+                          ],
+                        ),
+                      )
+                    : TabBarView(
+                        children: [
+                          _buildDetailsTab(),
+                          Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: const [
+                                Icon(Icons.event, size: 64, color: Color(0xFF6B7280)),
+                                SizedBox(height: 16),
+                                Text(
+                                  'Events',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF1F2937),
+                                  ),
+                                ),
+                                SizedBox(height: 8),
+                                Text(
+                                  'Event tracking coming soon',
+                                  style: TextStyle(color: Color(0xFF6B7280)),
+                                ),
+                              ],
+                            ),
+                          ),
+                          _buildNotesTab(),
+                        ],
+                      ),
+      ),
+    );
+  }
+
+  Widget _buildDetailsTab() {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF9FAFB),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _isEditing
+            ? _saveChanges
+            : () {
                 setState(() {
-                  _isEditing = false;
+                  _isEditing = true;
                   _initializeControllers();
                 });
               },
-              child: const Text('Cancel'),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+        backgroundColor: const Color(0xFF10B981),
+        child: Icon(
+          _isEditing ? Icons.save : Icons.edit,
+          color: Colors.white,
+        ),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildStatusCard(),
+            const SizedBox(height: 16),
+            _buildInfoCard(),
+            const SizedBox(height: 16),
+            _buildCourtDetailsCard(),
+            
+            if (_caseData!['description'] != null &&
+                _caseData!['description'].toString().trim().isNotEmpty &&
+                !_isEditing) ...[
+              const SizedBox(height: 16),
+              _buildDescriptionCard(),
+            ],
+
+            if (!_isEditing) ...[
+              const SizedBox(height: 16),
+              _buildDocumentsSection(),
+            ],
+
+            if (!_isEditing) ...[
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _deleteCase,
+                  icon: const Icon(Icons.delete_outline),
+                  label: const Text('Delete Case'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.red,
+                    side: const BorderSide(color: Colors.red),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+
+            if (_isEditing) ...[
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () {
+                    setState(() {
+                      _isEditing = false;
+                      _initializeControllers();
+                    });
+                  },
+                  child: const Text('Cancel'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNotesTab() {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF9FAFB),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _showAddNoteModal,
+        backgroundColor: const Color(0xFF10B981),
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
+      body: _isLoadingNotes
+          ? const Center(child: CircularProgressIndicator())
+          : _notes.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.note_outlined,
+                        size: 64,
+                        color: Colors.grey[400],
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No notes yet',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Add your first note to get started',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _notes.length,
+                  itemBuilder: (context, index) {
+                    final note = _notes[index];
+                    return _buildNoteCard(note);
+                  },
+                ),
+    );
+  }
+
+  Widget _buildNoteCard(Map<String, dynamic> note) {
+    final noteColor = _getNoteColor(note['type']);
+    final noteIcon = _getNoteIcon(note['type']);
+    final hasDescription = note['description'] != null && 
+        note['description'].toString().trim().isNotEmpty;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: noteColor.withOpacity(0.3), width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: noteColor.withOpacity(0.1),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: noteColor.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(noteIcon, color: noteColor, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        note['note'] ?? 'Untitled',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1F2937),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        note['type'] ?? 'Note',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: noteColor,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => _deleteNote(note['id'], note['note'] ?? 'this note'),
+                  icon: const Icon(Icons.delete_outline),
+                  color: Colors.red[400],
+                ),
+              ],
+            ),
+          ),
+          
+          if (hasDescription)
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                note['description'],
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF4B5563),
+                  height: 1.5,
                 ),
               ),
             ),
-          ),
+          
+          if (note['created_at'] != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.access_time,
+                    size: 14,
+                    color: Colors.grey[600],
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    _formatDate(note['created_at']),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+            ),
         ],
-
-        const SizedBox(height: 24),
-      ],
-    ),
-  ),
-  );
-}
+      ),
+    );
+  }
 
   Widget _buildDocumentsSection() {
     return Container(
