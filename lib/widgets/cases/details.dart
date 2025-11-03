@@ -1413,29 +1413,6 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
               fontWeight: FontWeight.w600,
             ),
           ),
-          actions: [
-            if (!_isEditing && !_isLoading && !_isDeleting)
-              IconButton(
-                icon: const Icon(Icons.edit, color: Color(0xFF10B981)),
-                onPressed: () {
-                  setState(() {
-                    _isEditing = true;
-                    _initializeControllers();
-                  });
-                },
-              ),
-            if (_isEditing)
-              TextButton(
-                onPressed: _isLoading ? null : _saveChanges,
-                child: Text(
-                  'Save',
-                  style: TextStyle(
-                    color: _isLoading ? Colors.grey : const Color(0xFF10B981),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-          ],
           bottom: _caseData != null && !_isDeleting && !_isLoading
               ? TabBar(
                   labelColor: const Color(0xFF10B981),
