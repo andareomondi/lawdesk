@@ -27,4 +27,9 @@
     </intent>
   </queries>
   <uses-permission android:name="android.permission.INTERNET"/>
+  <service android:name=".java.MyFirebaseMessagingService" android:exported="true">
+    <intent-filter>
+      <action android:name="com.google.firebase.MESSAGING_EVENT"/>
+    </intent-filter>
+  </service>
 </manifest>

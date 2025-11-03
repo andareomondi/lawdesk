@@ -5,9 +5,14 @@ import 'package:lawdesk/widgets/auth_wrapper.dart';
 import 'package:lawdesk/providers/auth_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lawdesk/screens/onboarding/onboarding_screen.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   await SupabaseConfig.initialize();
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   final seenOnboarding = prefs.getBool('seenOnboarding') ?? false;
