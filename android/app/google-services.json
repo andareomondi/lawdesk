@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "711470656805",
+    "project_id": "my-lawdesk",
+    "storage_bucket": "my-lawdesk.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:711470656805:android:047f03987066436a30becc",
+        "android_client_info": {
+          "package_name": "com.example.lawdesk"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB1qsTT8zmFDX2VEkgikLBcMnckYP1yUrE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

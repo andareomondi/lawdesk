@@ -26,6 +26,7 @@ dependencies:
   introduction_screen: ^4.0.0
   shared_preferences: ^2.5.3
   smooth_page_indicator: ^1.2.1
+  firebase_core: ^4.2.0
 
 dev_dependencies:
   flutter_test:
