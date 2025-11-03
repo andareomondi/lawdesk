@@ -58,7 +58,6 @@ class _MyAppState extends State<MyApp> {
             'fcm_token': newToken,
           });
         });
-        print('FCM Token: $fcmToken');
       }
     } catch (e) {
       print('Error getting FCM token: $e');
