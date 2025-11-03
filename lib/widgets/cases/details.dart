@@ -17,11 +17,13 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
   Map<String, dynamic>? _caseData;
   List<Map<String, dynamic>> _documents = [];
   List<Map<String, dynamic>> _notes = [];
+  List<Map<String, dynamic>> _events = [];
   bool _isLoading = true;
   bool _isEditing = false;
   bool _isDeleting = false;
   bool _isLoadingDocuments = false;
   bool _isLoadingNotes = false;
+  bool _isLoadingEvents = false;
 
   // Controllers for editing
   final _nameController = TextEditingController();
@@ -36,12 +38,34 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
   final _noteDescriptionController = TextEditingController();
   String _selectedNoteType = 'Quick Note';
 
+  // Controllers for events
+  final _eventAgendaController = TextEditingController();
+  DateTime? _eventSelectedDate;
+  TimeOfDay? _eventSelectedTime;
+  String _selectedAgendaType = 'Client Meeting';
+  bool _isCustomAgenda = false;
+  int? _editingEventId;
+
+  final List<String> _agendaOptions = [
+    'Client Meeting',
+    'Court Hearing',
+    'Brief Hearing',
+    'Case Review',
+    'Document Submission',
+    'Consultation',
+    'Settlement Discussion',
+    'Evidence Collection',
+    'Witness Interview',
+    'Custom',
+  ];
+
   @override
   void initState() {
     super.initState();
     _loadCaseDetails();
     _loadDocuments();
     _loadNotes();
+    _loadEvents();
   }
 
   @override
@@ -52,6 +76,7 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
     _descriptionController.dispose();
     _noteNameController.dispose();
     _noteDescriptionController.dispose();
+    _eventAgendaController.dispose();
     super.dispose();
   }
 
@@ -122,6 +147,33 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('Error loading notes'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _loadEvents() async {
+    setState(() => _isLoadingEvents = true);
+    try {
+      final response = await _supabase
+          .from('events')
+          .select()
+          .eq('case', int.parse(widget.caseId))
+          .order('date', ascending: true);
+
+      setState(() {
+        _events = List<Map<String, dynamic>>.from(response);
+        _isLoadingEvents = false;
+      });
+    } catch (e) {
+      setState(() => _isLoadingEvents = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Error loading events'),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
           ),
@@ -815,6 +867,29 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
               fontWeight: FontWeight.w600,
             ),
           ),
+          actions: [
+            if (!_isEditing && !_isLoading && !_isDeleting)
+              IconButton(
+                icon: const Icon(Icons.edit, color: Color(0xFF10B981)),
+                onPressed: () {
+                  setState(() {
+                    _isEditing = true;
+                    _initializeControllers();
+                  });
+                },
+              ),
+            if (_isEditing)
+              TextButton(
+                onPressed: _isLoading ? null : _saveChanges,
+                child: Text(
+                  'Save',
+                  style: TextStyle(
+                    color: _isLoading ? Colors.grey : const Color(0xFF10B981),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+          ],
           bottom: _caseData != null && !_isDeleting && !_isLoading
               ? TabBar(
                   labelColor: const Color(0xFF10B981),
