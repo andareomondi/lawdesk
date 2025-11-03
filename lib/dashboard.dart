@@ -40,6 +40,7 @@ class _DashboardState extends State<Dashboard> {
     _loadUserData();
     _checkCurrentPatch();
     _checkForShorebirdUpdates();
+    _getFcmToken();
   }
 
   Future<void> _checkCurrentPatch() async {
@@ -369,6 +370,13 @@ class _DashboardState extends State<Dashboard> {
             'fcm_token': fcmToken,
           });
         }
+        // Listen for token refresh
+        FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
+          await _supabase.from('profiles').upsert({
+            'id': user.id,
+            'fcm_token': newToken,
+          });
+        });
       }
     } catch (e) {
       print('Error getting FCM token: $e');
