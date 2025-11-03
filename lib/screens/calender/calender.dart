@@ -16,7 +16,9 @@ class _CalendarPageState extends State<CalendarPage> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   Map<DateTime, List<Map<String, dynamic>>> _casesMap = {};
+  Map<DateTime, List<Map<String, dynamic>>> _eventsMap = {};
   List<Map<String, dynamic>> _allCases = [];
+  List<Map<String, dynamic>> _allEvents = [];
   bool _isLoading = true;
   
   // View mode: 'month' or 'list'
@@ -26,34 +28,50 @@ class _CalendarPageState extends State<CalendarPage> {
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
-    _loadCases();
+    _loadData();
   }
 
-  Future<void> _loadCases() async {
+  Future<void> _loadData() async {
     setState(() => _isLoading = true);
     
     try {
       final user = _supabase.auth.currentUser;
       if (user == null) throw Exception('No user logged in');
 
-      final response = await _supabase
+      // Load cases
+      final casesResponse = await _supabase
           .from('cases')
           .select()
           .eq('user', user.id)
           .order('courtDate', ascending: true);
 
-      if (response is List) {
-        _allCases = List<Map<String, dynamic>>.from(response);
-        _organizeCasesByDate();
+      if (casesResponse is List) {
+        _allCases = List<Map<String, dynamic>>.from(casesResponse);
       }
 
+      // Load events for user's cases
+      final userCasesIds = _allCases.map((c) => c['id']).toList();
+      
+      if (userCasesIds.isNotEmpty) {
+        final eventsResponse = await _supabase
+            .from('events')
+            .select('*, cases!inner(user)')
+            .inFilter('case', userCasesIds)
+            .order('date', ascending: true);
+
+        if (eventsResponse is List) {
+          _allEvents = List<Map<String, dynamic>>.from(eventsResponse);
+        }
+      }
+
+      _organizeDataByDate();
       setState(() => _isLoading = false);
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error loading cases. Make sure you are online'),
+            content: Text('Error loading data: ${e.toString()}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -61,9 +79,11 @@ class _CalendarPageState extends State<CalendarPage> {
     }
   }
 
-  void _organizeCasesByDate() {
+  void _organizeDataByDate() {
     _casesMap.clear();
+    _eventsMap.clear();
     
+    // Organize cases by court date
     for (var case_ in _allCases) {
       if (case_['courtDate'] != null) {
         try {
@@ -75,7 +95,24 @@ class _CalendarPageState extends State<CalendarPage> {
           }
           _casesMap[dateKey]!.add(case_);
         } catch (e) {
-          print('Error parsing date: $e');
+          print('Error parsing case date: $e');
+        }
+      }
+    }
+
+    // Organize events by event date
+    for (var event in _allEvents) {
+      if (event['date'] != null) {
+        try {
+          final eventDate = DateTime.parse(event['date']);
+          final dateKey = DateTime(eventDate.year, eventDate.month, eventDate.day);
+          
+          if (!_eventsMap.containsKey(dateKey)) {
+            _eventsMap[dateKey] = [];
+          }
+          _eventsMap[dateKey]!.add(event);
+        } catch (e) {
+          print('Error parsing event date: $e');
         }
       }
     }
@@ -86,9 +123,14 @@ class _CalendarPageState extends State<CalendarPage> {
     return _casesMap[dateKey] ?? [];
   }
 
-  bool _hasEventsOnDay(DateTime day) {
+  List<Map<String, dynamic>> _getEventsForDay(DateTime day) {
     final dateKey = DateTime(day.year, day.month, day.day);
-    return _casesMap.containsKey(dateKey);
+    return _eventsMap[dateKey] ?? [];
+  }
+
+  bool _hasItemsOnDay(DateTime day) {
+    final dateKey = DateTime(day.year, day.month, day.day);
+    return _casesMap.containsKey(dateKey) || _eventsMap.containsKey(dateKey);
   }
 
   String _getStatus(DateTime courtDate) {
@@ -121,6 +163,56 @@ class _CalendarPageState extends State<CalendarPage> {
     }
   }
 
+  Color _getAgendaColor(String? agenda) {
+    switch (agenda?.toLowerCase()) {
+      case 'client meeting':
+        return const Color(0xFF3B82F6);
+      case 'court hearing':
+        return const Color(0xFFEF4444);
+      case 'brief hearing':
+        return const Color(0xFFF59E0B);
+      case 'case review':
+        return const Color(0xFF8B5CF6);
+      case 'document submission':
+        return const Color(0xFF10B981);
+      case 'consultation':
+        return const Color(0xFF06B6D4);
+      case 'settlement discussion':
+        return const Color(0xFF14B8A6);
+      case 'evidence collection':
+        return const Color(0xFFA855F7);
+      case 'witness interview':
+        return const Color(0xFFEC4899);
+      default:
+        return const Color(0xFF6B7280);
+    }
+  }
+
+  IconData _getAgendaIcon(String? agenda) {
+    switch (agenda?.toLowerCase()) {
+      case 'client meeting':
+        return Icons.people_outline;
+      case 'court hearing':
+        return Icons.gavel;
+      case 'brief hearing':
+        return Icons.hearing_outlined;
+      case 'case review':
+        return Icons.rate_review_outlined;
+      case 'document submission':
+        return Icons.upload_file_outlined;
+      case 'consultation':
+        return Icons.chat_bubble_outline;
+      case 'settlement discussion':
+        return Icons.handshake_outlined;
+      case 'evidence collection':
+        return Icons.folder_special_outlined;
+      case 'witness interview':
+        return Icons.record_voice_over_outlined;
+      default:
+        return Icons.event_outlined;
+    }
+  }
+
   String _formatTime(dynamic time) {
     if (time == null || time.toString().isEmpty) return '';
     
@@ -148,7 +240,7 @@ class _CalendarPageState extends State<CalendarPage> {
       MaterialPageRoute(
         builder: (context) => CaseDetailsPage(caseId: caseId),
       ),
-    ).then((_) => _loadCases());
+    ).then((_) => _loadData());
   }
 
   @override
@@ -160,7 +252,7 @@ class _CalendarPageState extends State<CalendarPage> {
         foregroundColor: Colors.white,
         elevation: 0,
         title: const Text(
-          'Cases Calendar',
+          'Calendar',
           style: TextStyle(
             fontWeight: FontWeight.w600,
             fontSize: 20,
@@ -178,13 +270,13 @@ class _CalendarPageState extends State<CalendarPage> {
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _loadCases,
+            onPressed: _loadData,
           ),
         ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _allCases.isEmpty
+          : (_allCases.isEmpty && _allEvents.isEmpty)
               ? _buildEmptyState()
               : _viewMode == 'month'
                   ? _buildCalendarView()
@@ -211,7 +303,7 @@ class _CalendarPageState extends State<CalendarPage> {
           ),
           const SizedBox(height: 24),
           const Text(
-            'No Cases Scheduled',
+            'No Schedule Yet',
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
@@ -220,7 +312,7 @@ class _CalendarPageState extends State<CalendarPage> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Add cases with court dates to see them here',
+            'Add cases and events to see them here',
             style: TextStyle(
               fontSize: 14,
               color: Color(0xFF6B7280),
@@ -239,7 +331,7 @@ class _CalendarPageState extends State<CalendarPage> {
         _buildCalendarGrid(),
         const SizedBox(height: 16),
         Expanded(
-          child: _buildSelectedDayCases(),
+          child: _buildSelectedDayItems(),
         ),
       ],
     );
@@ -292,14 +384,13 @@ class _CalendarPageState extends State<CalendarPage> {
   Widget _buildCalendarGrid() {
     final daysInMonth = DateTime(_focusedDay.year, _focusedDay.month + 1, 0).day;
     final firstDayOfMonth = DateTime(_focusedDay.year, _focusedDay.month, 1);
-    final firstWeekday = firstDayOfMonth.weekday % 7; // 0 = Sunday
+    final firstWeekday = firstDayOfMonth.weekday % 7;
 
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          // Weekday headers
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: ['S', 'M', 'T', 'W', 'T', 'F', 'S']
@@ -319,7 +410,6 @@ class _CalendarPageState extends State<CalendarPage> {
           ),
           const SizedBox(height: 8),
           
-          // Calendar days
           ...List.generate(6, (weekIndex) {
             return Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -338,7 +428,7 @@ class _CalendarPageState extends State<CalendarPage> {
                 final isToday = date.year == DateTime.now().year &&
                     date.month == DateTime.now().month &&
                     date.day == DateTime.now().day;
-                final hasEvents = _hasEventsOnDay(date);
+                final hasItems = _hasItemsOnDay(date);
                 
                 return Expanded(
                   child: GestureDetector(
@@ -381,7 +471,7 @@ class _CalendarPageState extends State<CalendarPage> {
                               ),
                             ),
                           ),
-                          if (hasEvents)
+                          if (hasItems)
                             Positioned(
                               bottom: 4,
                               left: 0,
@@ -412,11 +502,11 @@ class _CalendarPageState extends State<CalendarPage> {
     );
   }
 
-  Widget _buildSelectedDayCases() {
+  Widget _buildSelectedDayItems() {
     if (_selectedDay == null) {
       return const Center(
         child: Text(
-          'Select a day to view cases',
+          'Select a day to view schedule',
           style: TextStyle(
             color: Color(0xFF6B7280),
             fontSize: 14,
@@ -426,8 +516,9 @@ class _CalendarPageState extends State<CalendarPage> {
     }
 
     final cases = _getCasesForDay(_selectedDay!);
+    final events = _getEventsForDay(_selectedDay!);
 
-    if (cases.isEmpty) {
+    if (cases.isEmpty && events.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -439,7 +530,7 @@ class _CalendarPageState extends State<CalendarPage> {
             ),
             const SizedBox(height: 12),
             Text(
-              'No cases on ${DateFormat('MMMM d, yyyy').format(_selectedDay!)}',
+              'Nothing scheduled on ${DateFormat('MMMM d, yyyy').format(_selectedDay!)}',
               style: TextStyle(
                 fontSize: 14,
                 color: Colors.grey[600],
@@ -466,12 +557,51 @@ class _CalendarPageState extends State<CalendarPage> {
         ),
         const SizedBox(height: 12),
         Expanded(
-          child: ListView.builder(
+          child: ListView(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: cases.length,
-            itemBuilder: (context, index) {
-              return _buildCaseCard(cases[index]);
-            },
+            children: [
+              if (cases.isNotEmpty) ...[
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    children: [
+                      Icon(Icons.gavel, size: 18, color: Color(0xFF1E3A8A)),
+                      SizedBox(width: 8),
+                      Text(
+                        'Court Cases',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1E3A8A),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                ...cases.map((case_) => _buildCaseCard(case_)),
+                const SizedBox(height: 16),
+              ],
+              if (events.isNotEmpty) ...[
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    children: [
+                      Icon(Icons.event_note, size: 18, color: Color(0xFF1E3A8A)),
+                      SizedBox(width: 8),
+                      Text(
+                        'Events',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1E3A8A),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                ...events.map((event) => _buildEventCard(event)),
+              ],
+            ],
           ),
         ),
       ],
@@ -479,29 +609,45 @@ class _CalendarPageState extends State<CalendarPage> {
   }
 
   Widget _buildListView() {
-    // Group cases by month
-    final groupedCases = <String, List<Map<String, dynamic>>>{};
+    final groupedData = <String, Map<String, List<Map<String, dynamic>>>>{};
     
+    // Group cases by month
     for (var case_ in _allCases) {
       if (case_['courtDate'] != null) {
         try {
           final courtDate = DateTime.parse(case_['courtDate']);
           final monthKey = DateFormat('MMMM yyyy').format(courtDate);
           
-          groupedCases.putIfAbsent(monthKey, () => []);
-          groupedCases[monthKey]!.add(case_);
+          groupedData.putIfAbsent(monthKey, () => {'cases': [], 'events': []});
+          groupedData[monthKey]!['cases']!.add(case_);
         } catch (e) {
-          print('Error parsing date: $e');
+          print('Error parsing case date: $e');
+        }
+      }
+    }
+
+    // Group events by month
+    for (var event in _allEvents) {
+      if (event['date'] != null) {
+        try {
+          final eventDate = DateTime.parse(event['date']);
+          final monthKey = DateFormat('MMMM yyyy').format(eventDate);
+          
+          groupedData.putIfAbsent(monthKey, () => {'cases': [], 'events': []});
+          groupedData[monthKey]!['events']!.add(event);
+        } catch (e) {
+          print('Error parsing event date: $e');
         }
       }
     }
 
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: groupedCases.length,
+      itemCount: groupedData.length,
       itemBuilder: (context, index) {
-        final monthKey = groupedCases.keys.elementAt(index);
-        final cases = groupedCases[monthKey]!;
+        final monthKey = groupedData.keys.elementAt(index);
+        final cases = groupedData[monthKey]!['cases']!;
+        final events = groupedData[monthKey]!['events']!;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -517,8 +663,36 @@ class _CalendarPageState extends State<CalendarPage> {
                 ),
               ),
             ),
-            ...cases.map((case_) => _buildCaseCard(case_)),
-            const SizedBox(height: 12),
+            if (cases.isNotEmpty) ...[
+              const Padding(
+                padding: EdgeInsets.only(bottom: 8, left: 8),
+                child: Text(
+                  'Court Cases',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF6B7280),
+                  ),
+                ),
+              ),
+              ...cases.map((case_) => _buildCaseCard(case_)),
+              const SizedBox(height: 12),
+            ],
+            if (events.isNotEmpty) ...[
+              const Padding(
+                padding: EdgeInsets.only(bottom: 8, left: 8),
+                child: Text(
+                  'Events',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF6B7280),
+                  ),
+                ),
+              ),
+              ...events.map((event) => _buildEventCard(event)),
+              const SizedBox(height: 12),
+            ],
           ],
         );
       },
@@ -558,6 +732,15 @@ class _CalendarPageState extends State<CalendarPage> {
             children: [
               Row(
                 children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(Icons.gavel, color: statusColor, size: 20),
+                  ),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -647,6 +830,110 @@ class _CalendarPageState extends State<CalendarPage> {
                           fontSize: 14,
                           color: Color(0xFF6B7280),
                         ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEventCard(Map<String, dynamic> event) {
+    final agendaColor = _getAgendaColor(event['agenda']);
+    final agendaIcon = _getAgendaIcon(event['agenda']);
+    final time = _formatTime(event['time']);
+
+    // Find the case this event belongs to
+    final relatedCase = _allCases.firstWhere(
+      (c) => c['id'] == event['case'],
+      orElse: () => {},
+    );
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: agendaColor.withOpacity(0.3),
+          width: 2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: InkWell(
+        onTap: relatedCase.isNotEmpty 
+            ? () => _navigateToCaseDetails(relatedCase['id'].toString())
+            : null,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: agendaColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(agendaIcon, color: agendaColor, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          event['agenda'] ?? 'Event',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF1F2937),
+                          ),
+                        ),
+                        if (relatedCase.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            relatedCase['name'] ?? 'Case',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF6B7280),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              if (time.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.access_time,
+                      size: 16,
+                      color: agendaColor,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      time,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: agendaColor,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ],
