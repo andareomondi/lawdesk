@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lawdesk/screens/onboarding/page1.dart';
 import 'package:lawdesk/screens/onboarding/page2.dart';
 import 'package:lawdesk/screens/onboarding/page3.dart';
-import 'package:lawdesk/dashboard.dart';
+import 'package:lawdesk/widgets/auth_wrapper.dart';
 
 class OnBoardingScreen extends StatefulWidget {
   const OnBoardingScreen({Key? key}) : super(key: key);
@@ -69,7 +69,7 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
                           Navigator.pushReplacement(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const Dashboard(),
+                              builder: (context) => const AuthWrapper(),
                             ),
                           );
                         },
