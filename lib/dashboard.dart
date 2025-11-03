@@ -9,6 +9,7 @@ import 'package:lawdesk/widgets/cases/modal.dart';
 import 'package:lawdesk/screens/documents/userDocuments.dart';
 import 'package:lawdesk/screens/calender/calender.dart';
 import 'package:lawdesk/widgets/dashboard/statCard.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -352,6 +353,25 @@ class _DashboardState extends State<Dashboard> {
       setState(() {
         _isLoading = false;
       });
+    }
+  }
+
+  //Getting the fcm token from FirebaseMessaging if the user is logged in
+  Future<void> _getFcmToken() async {
+    try {
+      final user = _supabase.auth.currentUser;
+      if (user != null) {
+        await FirebaseMessaging.instance.requestPermission();
+        String? fcmToken = await FirebaseMessaging.instance.getToken();
+        if (fcmToken != null) {
+          await _supabase.from('profiles').upsert({
+            'id': user.id,
+            'fcm_token': fcmToken,
+          });
+        }
+      }
+    } catch (e) {
+      print('Error getting FCM token: $e');
     }
   }
 
