@@ -370,6 +370,56 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
     }
   }
 
+  Color _getAgendaColor(String? agenda) {
+    switch (agenda?.toLowerCase()) {
+      case 'client meeting':
+        return const Color(0xFF3B82F6); // Blue
+      case 'court hearing':
+        return const Color(0xFFEF4444); // Red
+      case 'brief hearing':
+        return const Color(0xFFF59E0B); // Amber
+      case 'case review':
+        return const Color(0xFF8B5CF6); // Purple
+      case 'document submission':
+        return const Color(0xFF10B981); // Green
+      case 'consultation':
+        return const Color(0xFF06B6D4); // Cyan
+      case 'settlement discussion':
+        return const Color(0xFF14B8A6); // Teal
+      case 'evidence collection':
+        return const Color(0xFFA855F7); // Purple
+      case 'witness interview':
+        return const Color(0xFFEC4899); // Pink
+      default:
+        return const Color(0xFF6B7280); // Gray
+    }
+  }
+
+  IconData _getAgendaIcon(String? agenda) {
+    switch (agenda?.toLowerCase()) {
+      case 'client meeting':
+        return Icons.people_outline;
+      case 'court hearing':
+        return Icons.gavel;
+      case 'brief hearing':
+        return Icons.hearing_outlined;
+      case 'case review':
+        return Icons.rate_review_outlined;
+      case 'document submission':
+        return Icons.upload_file_outlined;
+      case 'consultation':
+        return Icons.chat_bubble_outline;
+      case 'settlement discussion':
+        return Icons.handshake_outlined;
+      case 'evidence collection':
+        return Icons.folder_special_outlined;
+      case 'witness interview':
+        return Icons.record_voice_over_outlined;
+      default:
+        return Icons.event_outlined;
+    }
+  }
+
   Future<void> _selectDate() async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -846,6 +896,502 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
     }
   }
 
+  // EVENT METHODS
+  Future<void> _showAddEventModal({Map<String, dynamic>? event}) async {
+    _editingEventId = event?['id'];
+    _eventAgendaController.clear();
+    _eventSelectedDate = null;
+    _eventSelectedTime = null;
+    _isCustomAgenda = false;
+
+    if (event != null) {
+      // Editing existing event
+      if (event['date'] != null) {
+        _eventSelectedDate = DateTime.parse(event['date']);
+      }
+      if (event['time'] != null) {
+        final timeParts = event['time'].toString().split(':');
+        if (timeParts.length >= 2) {
+          _eventSelectedTime = TimeOfDay(
+            hour: int.parse(timeParts[0]),
+            minute: int.parse(timeParts[1]),
+          );
+        }
+      }
+      
+      final agenda = event['agenda'];
+      if (_agendaOptions.contains(agenda)) {
+        _selectedAgendaType = agenda;
+        _isCustomAgenda = false;
+      } else {
+        _selectedAgendaType = 'Custom';
+        _isCustomAgenda = true;
+        _eventAgendaController.text = agenda ?? '';
+      }
+    } else {
+      _selectedAgendaType = 'Client Meeting';
+    }
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Container(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      _editingEventId == null ? 'Add Event' : 'Edit Event',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1F2937),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close),
+                      color: const Color(0xFF6B7280),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                
+                // Date Picker
+                const Text(
+                  'Event Date',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1F2937),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                InkWell(
+                  onTap: () async {
+                    final DateTime? picked = await showDatePicker(
+                      context: context,
+                      initialDate: _eventSelectedDate ?? DateTime.now(),
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime(2030),
+                      builder: (context, child) {
+                        return Theme(
+                          data: Theme.of(context).copyWith(
+                            colorScheme: const ColorScheme.light(
+                              primary: Color(0xFF10B981),
+                            ),
+                          ),
+                          child: child!,
+                        );
+                      },
+                    );
+                    if (picked != null) {
+                      setModalState(() {
+                        _eventSelectedDate = picked;
+                      });
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: const Color(0xFFE5E7EB)),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.calendar_today, size: 20, color: Color(0xFF6B7280)),
+                        const SizedBox(width: 12),
+                        Text(
+                          _eventSelectedDate != null
+                              ? _formatCourtDate(_eventSelectedDate!.toIso8601String())
+                              : 'Select date',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: _eventSelectedDate != null
+                                ? const Color(0xFF1F2937)
+                                : const Color(0xFF9CA3AF),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                
+                // Time Picker
+                const Text(
+                  'Event Time',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1F2937),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                InkWell(
+                  onTap: () async {
+                    final TimeOfDay? picked = await showTimePicker(
+                      context: context,
+                      initialTime: _eventSelectedTime ?? TimeOfDay.now(),
+                      builder: (context, child) {
+                        return Theme(
+                          data: Theme.of(context).copyWith(
+                            colorScheme: const ColorScheme.light(
+                              primary: Color(0xFF10B981),
+                            ),
+                          ),
+                          child: child!,
+                        );
+                      },
+                    );
+                    if (picked != null) {
+                      setModalState(() {
+                        _eventSelectedTime = picked;
+                      });
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: const Color(0xFFE5E7EB)),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.access_time, size: 20, color: Color(0xFF6B7280)),
+                        const SizedBox(width: 12),
+                        Text(
+                          _eventSelectedTime != null
+                              ? _eventSelectedTime!.format(context)
+                              : 'Select time',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: _eventSelectedTime != null
+                                ? const Color(0xFF1F2937)
+                                : const Color(0xFF9CA3AF),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                
+                // Agenda Type
+                const Text(
+                  'Agenda',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1F2937),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: const Color(0xFFE5E7EB)),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _selectedAgendaType,
+                      isExpanded: true,
+                      items: _agendaOptions
+                          .map((type) => DropdownMenuItem(
+                                value: type,
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      _getAgendaIcon(type),
+                                      size: 20,
+                                      color: _getAgendaColor(type),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Text(type),
+                                  ],
+                                ),
+                              ))
+                          .toList(),
+                      onChanged: (value) {
+                        setModalState(() {
+                          _selectedAgendaType = value!;
+                          _isCustomAgenda = value == 'Custom';
+                          if (!_isCustomAgenda) {
+                            _eventAgendaController.clear();
+                          }
+                        });
+                      },
+                    ),
+                  ),
+                ),
+                
+                // Custom Agenda Input
+                if (_isCustomAgenda) ...[
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Custom Agenda',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1F2937),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _eventAgendaController,
+                    decoration: InputDecoration(
+                      hintText: 'Enter custom agenda',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Color(0xFF10B981), width: 2),
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 24),
+                
+                // Save Button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      if (_editingEventId == null) {
+                        _saveEvent();
+                      } else {
+                        _updateEvent();
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF10B981),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      _editingEventId == null ? 'Save Event' : 'Update Event',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _saveEvent() async {
+    if (_eventSelectedDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Please select an event date'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    if (_isCustomAgenda && _eventAgendaController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Please enter custom agenda'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    try {
+      String? timeString;
+      if (_eventSelectedTime != null) {
+        timeString =
+            '${_eventSelectedTime!.hour.toString().padLeft(2, '0')}:'
+            '${_eventSelectedTime!.minute.toString().padLeft(2, '0')}:00';
+      }
+
+      final agendaValue = _isCustomAgenda 
+          ? _eventAgendaController.text.trim() 
+          : _selectedAgendaType;
+
+      await _supabase.from('events').insert({
+        'date': _eventSelectedDate!.toIso8601String(),
+        'time': timeString,
+        'agenda': agendaValue,
+        'case': int.parse(widget.caseId),
+      });
+
+      await _loadEvents();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Event added successfully'),
+            backgroundColor: const Color(0xFF10B981),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Error adding event. Please try again'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _updateEvent() async {
+    if (_eventSelectedDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Please select an event date'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    if (_isCustomAgenda && _eventAgendaController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Please enter custom agenda'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    try {
+      String? timeString;
+      if (_eventSelectedTime != null) {
+        timeString =
+            '${_eventSelectedTime!.hour.toString().padLeft(2, '0')}:'
+            '${_eventSelectedTime!.minute.toString().padLeft(2, '0')}:00';
+      }
+
+      final agendaValue = _isCustomAgenda 
+          ? _eventAgendaController.text.trim() 
+          : _selectedAgendaType;
+
+      await _supabase.from('events').update({
+        'date': _eventSelectedDate!.toIso8601String(),
+        'time': timeString,
+        'agenda': agendaValue,
+      }).eq('id', _editingEventId!);
+
+      await _loadEvents();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Event updated successfully'),
+            backgroundColor: const Color(0xFF10B981),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Error updating event. Please try again'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteEvent(int eventId, String agenda) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Event'),
+        content: Text(
+          'Are you sure you want to delete "$agenda"? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await _supabase.from('events').delete().eq('id', eventId);
+
+      await _loadEvents();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Event deleted successfully'),
+            backgroundColor: const Color(0xFF10B981),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Error deleting event. Please try again'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
@@ -965,28 +1511,7 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
                     : TabBarView(
                         children: [
                           _buildDetailsTab(),
-                          Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: const [
-                                Icon(Icons.event, size: 64, color: Color(0xFF6B7280)),
-                                SizedBox(height: 16),
-                                Text(
-                                  'Events',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF1F2937),
-                                  ),
-                                ),
-                                SizedBox(height: 8),
-                                Text(
-                                  'Event tracking coming soon',
-                                  style: TextStyle(color: Color(0xFF6B7280)),
-                                ),
-                              ],
-                            ),
-                          ),
+                          _buildEventsTab(),
                           _buildNotesTab(),
                         ],
                       ),
@@ -1080,6 +1605,172 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
             const SizedBox(height: 24),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildEventsTab() {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF9FAFB),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showAddEventModal(),
+        backgroundColor: const Color(0xFF10B981),
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
+      body: _isLoadingEvents
+          ? const Center(child: CircularProgressIndicator())
+          : _events.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.event_outlined,
+                        size: 64,
+                        color: Colors.grey[400],
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No events yet',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Add your first event to get started',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _events.length,
+                  itemBuilder: (context, index) {
+                    final event = _events[index];
+                    return _buildEventCard(event);
+                  },
+                ),
+    );
+  }
+
+  Widget _buildEventCard(Map<String, dynamic> event) {
+    final agendaColor = _getAgendaColor(event['agenda']);
+    final agendaIcon = _getAgendaIcon(event['agenda']);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: agendaColor.withOpacity(0.3), width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: agendaColor.withOpacity(0.1),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: agendaColor.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(agendaIcon, color: agendaColor, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        event['agenda'] ?? 'Event',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1F2937),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.calendar_today,
+                            size: 12,
+                            color: agendaColor,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            _formatDate(event['date']),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: agendaColor,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          if (event['time'] != null) ...[
+                            const Text(
+                              ' • ',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF6B7280),
+                              ),
+                            ),
+                            Icon(
+                              Icons.access_time,
+                              size: 12,
+                              color: agendaColor,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              _formatTime(event['time']),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: agendaColor,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => _showAddEventModal(event: event),
+                  icon: const Icon(Icons.edit_outlined),
+                  color: agendaColor,
+                  iconSize: 20,
+                ),
+                IconButton(
+                  onPressed: () => _deleteEvent(event['id'], event['agenda'] ?? 'this event'),
+                  icon: const Icon(Icons.delete_outline),
+                  color: Colors.red[400],
+                  iconSize: 20,
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
