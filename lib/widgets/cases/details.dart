@@ -1210,137 +1210,151 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
     );
   }
 
-  Future<void> _saveEvent() async {
-    if (_eventSelectedDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Please select an event date'),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
-
-    if (_isCustomAgenda && _eventAgendaController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Please enter custom agenda'),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
-
-    try {
-      String? timeString;
-      if (_eventSelectedTime != null) {
-        timeString =
-            '${_eventSelectedTime!.hour.toString().padLeft(2, '0')}:'
-            '${_eventSelectedTime!.minute.toString().padLeft(2, '0')}:00';
-      }
-
-      final agendaValue = _isCustomAgenda 
-          ? _eventAgendaController.text.trim() 
-          : _selectedAgendaType;
-
-      await _supabase.from('events').insert({
-        'date': _eventSelectedDate!.toIso8601String(),
-        'time': timeString,
-        'agenda': agendaValue,
-        'case': int.parse(widget.caseId),
-      });
-
-      await _loadEvents();
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Event added successfully'),
-            backgroundColor: const Color(0xFF10B981),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Error adding event. Please try again'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    }
+Future<void> _saveEvent() async {
+  if (_eventSelectedDate == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Please select an event date'),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+    return;
   }
 
-  Future<void> _updateEvent() async {
-    if (_eventSelectedDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Please select an event date'),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
-
-    if (_isCustomAgenda && _eventAgendaController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Please enter custom agenda'),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
-
-    try {
-      String? timeString;
-      if (_eventSelectedTime != null) {
-        timeString =
-            '${_eventSelectedTime!.hour.toString().padLeft(2, '0')}:'
-            '${_eventSelectedTime!.minute.toString().padLeft(2, '0')}:00';
-      }
-
-      final agendaValue = _isCustomAgenda 
-          ? _eventAgendaController.text.trim() 
-          : _selectedAgendaType;
-
-      await _supabase.from('events').update({
-        'date': _eventSelectedDate!.toIso8601String(),
-        'time': timeString,
-        'agenda': agendaValue,
-      }).eq('id', _editingEventId!);
-
-      await _loadEvents();
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Event updated successfully'),
-            backgroundColor: const Color(0xFF10B981),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Error updating event. Please try again'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    }
+  if (_isCustomAgenda && _eventAgendaController.text.trim().isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Please enter custom agenda'),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+    return;
   }
 
+  try {
+    // Get current user's profile ID
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) {
+      throw Exception('User not authenticated');
+    }
+
+    String? timeString;
+    if (_eventSelectedTime != null) {
+      timeString =
+          '${_eventSelectedTime!.hour.toString().padLeft(2, '0')}:'
+          '${_eventSelectedTime!.minute.toString().padLeft(2, '0')}:00';
+    }
+
+    final agendaValue = _isCustomAgenda 
+        ? _eventAgendaController.text.trim() 
+        : _selectedAgendaType;
+
+    await _supabase.from('events').insert({
+      'date': _eventSelectedDate!.toIso8601String(),
+      'time': timeString,
+      'agenda': agendaValue,
+      'case': int.parse(widget.caseId),
+      'profile': userId, // Add profile UUID here
+    });
+
+    await _loadEvents();
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Event added successfully'),
+          backgroundColor: const Color(0xFF10B981),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  } catch (e) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error adding event: ${e.toString()}'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+}
+
+// Replace your _updateEvent method with this:
+Future<void> _updateEvent() async {
+  if (_eventSelectedDate == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Please select an event date'),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+    return;
+  }
+
+  if (_isCustomAgenda && _eventAgendaController.text.trim().isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Please enter custom agenda'),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+    return;
+  }
+
+  try {
+    // Get current user's profile ID
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) {
+      throw Exception('User not authenticated');
+    }
+
+    String? timeString;
+    if (_eventSelectedTime != null) {
+      timeString =
+          '${_eventSelectedTime!.hour.toString().padLeft(2, '0')}:'
+          '${_eventSelectedTime!.minute.toString().padLeft(2, '0')}:00';
+    }
+
+    final agendaValue = _isCustomAgenda 
+        ? _eventAgendaController.text.trim() 
+        : _selectedAgendaType;
+
+    await _supabase.from('events').update({
+      'date': _eventSelectedDate!.toIso8601String(),
+      'time': timeString,
+      'agenda': agendaValue,
+      'profile': userId, // Add profile UUID here too
+    }).eq('id', _editingEventId!);
+
+    await _loadEvents();
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Event updated successfully'),
+          backgroundColor: const Color(0xFF10B981),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  } catch (e) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error updating event: ${e.toString()}'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+}
   Future<void> _deleteEvent(int eventId, String agenda) async {
     final confirmed = await showDialog<bool>(
       context: context,
