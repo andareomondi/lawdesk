@@ -17,28 +17,55 @@ class Dashboard extends StatefulWidget {
   State<Dashboard> createState() => _DashboardState();
 }
 
-class _DashboardState extends State<Dashboard> {
+class _DashboardState extends State<Dashboard> with SingleTickerProviderStateMixin {
   final _supabase = Supabase.instance.client;
   final _updater = ShorebirdUpdater();
   
   // User data variables
-  String _userName = 'Guest' ;
+  String _userName = 'Guest';
   String _userEmail = '';
   Map<String, dynamic>? _userProfile;
   bool _isLoading = true;
-  bool _isUpdated = true;
+  bool _isUpdated = false; // Changed default to false
+  bool _hasCheckedProfile = false; // Track if we've checked profile
   
   // Shorebird update variables
   bool _isCheckingForUpdate = false;
   bool _isDownloadingUpdate = false;
   int? _currentPatchNumber;
 
+  // Animation controller for shimmer effect
+  late AnimationController _shimmerController;
+  late Animation<double> _shimmerAnimation;
+
   @override
   void initState() {
     super.initState();
+    _setupShimmerAnimation();
     _loadUserData();
     _checkCurrentPatch();
     _checkForShorebirdUpdates();
+  }
+
+  void _setupShimmerAnimation() {
+    _shimmerController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat();
+    
+    _shimmerAnimation = Tween<double>(
+      begin: -2,
+      end: 2,
+    ).animate(CurvedAnimation(
+      parent: _shimmerController,
+      curve: Curves.easeInOutSine,
+    ));
+  }
+
+  @override
+  void dispose() {
+    _shimmerController.dispose();
+    super.dispose();
   }
 
   Future<void> _checkCurrentPatch() async {
@@ -61,7 +88,6 @@ class _DashboardState extends State<Dashboard> {
     });
 
     try {
-      // Check for update status
       final status = await _updater.checkForUpdate();
       
       setState(() {
@@ -78,7 +104,6 @@ class _DashboardState extends State<Dashboard> {
           _showRestartRequiredDialog();
         }
       }
-      
     } catch (e) {
       setState(() {
         _isCheckingForUpdate = false;
@@ -92,10 +117,7 @@ class _DashboardState extends State<Dashboard> {
     });
     
     try {
-      // Reload user data and profile
       await _loadUserData();
-      
-      // Check for Shorebird updates
       await _checkForShorebirdUpdates();
       
       if (mounted) {
@@ -110,10 +132,10 @@ class _DashboardState extends State<Dashboard> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          const SnackBar(
             content: Text('Error refreshing. Make sure you are online'),
             backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
+            duration: Duration(seconds: 3),
           ),
         );
       }
@@ -132,18 +154,15 @@ class _DashboardState extends State<Dashboard> {
     });
 
     try {
-      // Download and apply the update
       await _updater.update();
       
       setState(() {
         _isDownloadingUpdate = false;
       });
 
-      // Show dialog after successful update
       if (mounted) {
         _showUpdateSuccessDialog();
       }
-      
     } on UpdateException catch (error) {
       setState(() {
         _isDownloadingUpdate = false;
@@ -318,7 +337,6 @@ class _DashboardState extends State<Dashboard> {
 
   Future<void> _loadUserData() async {
     try {
-      // Get current user from auth
       final user = _supabase.auth.currentUser;
       
       if (user != null) {
@@ -326,29 +344,40 @@ class _DashboardState extends State<Dashboard> {
           _userEmail = user.email ?? '';
         });
 
-        // Fetch user profile from your profiles table
         final response = await _supabase
             .from('profiles')
             .select()
             .eq('id', user.id)
             .single();
 
+        if (mounted) {
+          setState(() {
+            _userProfile = response;
+            _userName = response['username'] ?? 'Guest';
+            _userEmail = response['email'] ?? '';
+            // Fixed: Check if is_updated field exists and is explicitly true
+            _isUpdated = response['is_updated'] == true;
+            _isLoading = false;
+          });
+          
+          // Show profile update dialog only once per session and if not updated
+          if (!_isUpdated && !_hasCheckedProfile) {
+            _hasCheckedProfile = true;
+            // Use a small delay to ensure the UI is ready
+            Future.delayed(const Duration(milliseconds: 500), () {
+              if (mounted) {
+                _showProfileUpdateToast(context);
+              }
+            });
+          }
+        }
+      } else {
         setState(() {
-          _userProfile = response;
-          _userName = response['username'];
-          _userEmail = response['email'];
-          _isUpdated = response['is_updated'] ?? false; 
           _isLoading = false;
         });
-        
-        // Show toast notification if profile is not updated
-        if (!_isUpdated) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _showProfileUpdateToast(context);
-          });
-        }
       }
     } catch (e) {
+      print('Error loading user data: $e');
       setState(() {
         _isLoading = false;
       });
@@ -430,12 +459,17 @@ class _DashboardState extends State<Dashboard> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () {
+                      onPressed: () async {
                         Navigator.of(context).pop();
-                        Navigator.push(
+                        final result = await Navigator.push(
                           context,
                           MaterialPageRoute(builder: (context) => const ProfileUpdateScreen()),
                         );
+                        // Reload data if profile was updated
+                        if (result == true) {
+                          _hasCheckedProfile = false;
+                          _loadUserData();
+                        }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF1E3A8A),
@@ -471,18 +505,13 @@ class _DashboardState extends State<Dashboard> {
         backgroundColor: const Color(0xFF1E3A8A),
         foregroundColor: Colors.white,
         elevation: 0,
-        title: Row(
-          children: [
-            const Text(
-              'Dashboard',
-              style: TextStyle(fontWeight: FontWeight.w600),
-            ),
-          ],
+        title: const Text(
+          'Dashboard',
+          style: TextStyle(fontWeight: FontWeight.w600),
         ),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            // TODO: Implement remote refresh and update functionality without full app restart
             onPressed: _isCheckingForUpdate || _isDownloadingUpdate || _isLoading
                 ? null
                 : _refreshDashboard,
@@ -490,36 +519,34 @@ class _DashboardState extends State<Dashboard> {
           ),
           IconButton(
             icon: const Icon(Icons.account_circle_outlined),
-            onPressed: () {
-              Navigator.push(
+            onPressed: () async {
+              final result = await Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const ProfileScreen()),
               );
+              // Reload if profile was updated
+              if (result == true) {
+                _hasCheckedProfile = false;
+                _loadUserData();
+              }
             },
           ),
         ],
       ),
       backgroundColor: const Color(0xFFF8FAFC),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? _buildShimmerLoading()
           : SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Welcome Section
                   _buildWelcomeSection(),
                   const SizedBox(height: 24),
-                  
-                  // Stats Cards
-                  const StatsSection(), //BUGFIX: Fixed the hard coded stats section
+                  const StatsSection(),
                   const SizedBox(height: 24),
-                  
-                  // Upcoming Court Dates Section
                   _buildUpcomingDatesSection(context),
                   const SizedBox(height: 24),
-                  
-                  // Quick Actions
                   _buildQuickActionsSection(context),
                 ],
               ),
@@ -527,13 +554,167 @@ class _DashboardState extends State<Dashboard> {
     );
   }
 
+  Widget _buildShimmerLoading() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildShimmerWelcomeCard(),
+          const SizedBox(height: 24),
+          _buildShimmerStatsCards(),
+          const SizedBox(height: 24),
+          _buildShimmerSection('Upcoming Court Dates'),
+          const SizedBox(height: 24),
+          _buildShimmerSection('Quick Actions'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShimmerWelcomeCard() {
+    return AnimatedBuilder(
+      animation: _shimmerAnimation,
+      builder: (context, child) {
+        return Container(
+          height: 120,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                const Color(0xFFE5E7EB),
+                const Color(0xFFF3F4F6),
+                const Color(0xFFE5E7EB),
+              ],
+              stops: [
+                0.0,
+                _shimmerAnimation.value.clamp(0.0, 1.0),
+                1.0,
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildShimmerStatsCards() {
+    return Row(
+      children: List.generate(3, (index) {
+        return Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(
+              right: index < 2 ? 12 : 0,
+            ),
+            child: AnimatedBuilder(
+              animation: _shimmerAnimation,
+              builder: (context, child) {
+                return Container(
+                  height: 100,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        const Color(0xFFE5E7EB),
+                        const Color(0xFFF3F4F6),
+                        const Color(0xFFE5E7EB),
+                      ],
+                      stops: [
+                        0.0,
+                        (_shimmerAnimation.value + index * 0.2).clamp(0.0, 1.0),
+                        1.0,
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      }),
+    );
+  }
+
+  Widget _buildShimmerSection(String title) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1F2937),
+              ),
+            ),
+            AnimatedBuilder(
+              animation: _shimmerAnimation,
+              builder: (context, child) {
+                return Container(
+                  width: 60,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(4),
+                    color: const Color(0xFFE5E7EB),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        ...List.generate(2, (index) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: AnimatedBuilder(
+              animation: _shimmerAnimation,
+              builder: (context, child) {
+                return Container(
+                  height: 80,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        const Color(0xFFE5E7EB),
+                        const Color(0xFFF3F4F6),
+                        const Color(0xFFE5E7EB),
+                      ],
+                      stops: [
+                        0.0,
+                        (_shimmerAnimation.value + index * 0.3).clamp(0.0, 1.0),
+                        1.0,
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
   Widget _buildWelcomeSection() {
     return InkWell(
-      onTap: () {
-        Navigator.push(
+      onTap: () async {
+        final result = await Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const ProfileScreen()),
         );
+        if (result == true) {
+          _hasCheckedProfile = false;
+          _loadUserData();
+        }
       },
       child: Container(
         padding: const EdgeInsets.all(20),
@@ -604,7 +785,6 @@ class _DashboardState extends State<Dashboard> {
     );
   }
 
-
   Widget _buildUpcomingDatesSection(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -655,7 +835,6 @@ class _DashboardState extends State<Dashboard> {
           ),
         ),
         const SizedBox(height: 12),
-        
         Row(
           children: [
             Expanded(
@@ -666,9 +845,7 @@ class _DashboardState extends State<Dashboard> {
                 onPressed: () {
                   AddCaseModal.show(context, onCaseAdded: () {
                     setState(() {});
-                    },
-                    );
-                  
+                  });
                 },
               ),
             ),
@@ -691,7 +868,6 @@ class _DashboardState extends State<Dashboard> {
           ],
         ),
         const SizedBox(height: 12),
-        
         Row(
           children: [
             Expanded(
@@ -700,7 +876,10 @@ class _DashboardState extends State<Dashboard> {
                 icon: Icons.folder_open_outlined,
                 color: const Color(0xFF8B5CF6),
                 onPressed: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => const CasesPage()));
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const CasesPage()),
+                  );
                 },
               ),
             ),
@@ -712,11 +891,11 @@ class _DashboardState extends State<Dashboard> {
                 color: const Color(0xFFF59E0B),
                 onPressed: () {
                   Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const AllDocumentsPage(),
-      ),
-    );
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AllDocumentsPage(),
+                    ),
+                  );
                 },
               ),
             ),
@@ -727,8 +906,6 @@ class _DashboardState extends State<Dashboard> {
   }
 }
 
-
-// Action Button Widget
 class _ActionButton extends StatelessWidget {
   final String label;
   final IconData icon;
