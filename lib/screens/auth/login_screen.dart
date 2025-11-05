@@ -52,7 +52,7 @@ class _LoginPageState extends State<LoginPage> {
         } else if (e.message.toLowerCase().contains('email not confirmed')) {
           errorMessage = 'Please verify your email before logging in.';
         } else {
-          errorMessage = e.message;
+          errorMessage = "An error occured during logging in. Please try again.";
         }
         
         ScaffoldMessenger.of(context).showSnackBar(

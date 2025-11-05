@@ -82,7 +82,7 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error picking file'),
+            content: Text('An error while picking file. Please try again'),
             backgroundColor: Colors.red,
           ),
         );

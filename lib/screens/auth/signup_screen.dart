@@ -70,7 +70,7 @@ class _SignupPageState extends State<SignupPage> {
         } else if (e.statusCode == '422') {
           errorMessage = 'Invalid signup data. Please check your information.';
         } else {
-          errorMessage = e.message;
+          errorMessage = "An error occurred during account creation. Please try again.";
         }
         
         ScaffoldMessenger.of(context).showSnackBar(

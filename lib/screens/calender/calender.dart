@@ -71,7 +71,7 @@ class _CalendarPageState extends State<CalendarPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error loading data: ${e.toString()}'),
+            content: Text('Error occured while loading data'),
             backgroundColor: Colors.red,
           ),
         );

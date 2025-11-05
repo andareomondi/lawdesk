@@ -78,7 +78,6 @@ Future<void> _updateProfile() async {
       Navigator.pop(context);
     }
   } catch (e) {
-    print('Error updating profile: $e');
     setState(() {
       _isLoading = false;
     });

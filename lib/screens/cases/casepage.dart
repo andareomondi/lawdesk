@@ -34,26 +34,6 @@ class _CasesPageState extends State<CasesPage> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.filter_list, color: Color(0xFF6B7280)),
-            onPressed: () {
-              // TODO: Implement filter functionality
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Filter coming soon')),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.search, color: Color(0xFF6B7280)),
-            onPressed: () {
-              // TODO: Implement search functionality
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Search coming soon')),
-              );
-            },
-          ),
-        ],
       ),
       body: SafeArea(
         child: RefreshIndicator(

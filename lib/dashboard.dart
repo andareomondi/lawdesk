@@ -581,7 +581,7 @@ class _DashboardState extends State<Dashboard> {
                         child: Text(
                           _userProfile != null && _userProfile!['lsk_number'] != null
                               ? 'LSK No: ${_userProfile!['lsk_number']}'
-                              : 'Please make sure you are online',
+                              : 'Please make sure you are online and have updated your profile.',
                           style: TextStyle(
                             color: Colors.white.withOpacity(0.9),
                             fontSize: 13,
