@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:lawdesk/screens/documents/upload.dart';
+import 'package:lawdesk/screens/cases/casepage.dart';
 
 class AllDocumentsPage extends StatefulWidget {
   const AllDocumentsPage({Key? key}) : super(key: key);
@@ -555,8 +556,11 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerPr
           ),
           const SizedBox(height: 32),
           ElevatedButton.icon(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const CasesPage()),
+                  ),
+            icon: const Icon(Icons.folder_open_outlined),
             label: const Text('Go to Cases'),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF1E3A8A),
