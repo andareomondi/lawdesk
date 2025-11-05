@@ -12,7 +12,7 @@ class ProfileScreen extends StatefulWidget {
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderStateMixin {
   final _supabase = SupabaseConfig.client;
 
   String _fullName = '';
@@ -24,10 +24,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _memberSince = '';
   bool _isLoading = true;
 
+  late AnimationController _shimmerController;
+  late Animation<double> _shimmerAnimation;
+
   @override
   void initState() {
     super.initState();
+    _setupShimmerAnimation();
     _loadUserProfile();
+  }
+
+  void _setupShimmerAnimation() {
+    _shimmerController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat();
+    
+    _shimmerAnimation = Tween<double>(
+      begin: -2,
+      end: 2,
+    ).animate(CurvedAnimation(
+      parent: _shimmerController,
+      curve: Curves.easeInOutSine,
+    ));
+  }
+
+  @override
+  void dispose() {
+    _shimmerController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadUserProfile() async {
@@ -41,7 +66,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _memberSince = _formatDate(user.createdAt);
         });
 
-        // Fetch from profiles table
         try {
           final profile = await _supabase
               .from('profiles')
@@ -57,7 +81,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _isLoading = false;
           });
         } catch (e) {
-          // If no profile exists, just use auth data
           setState(() {
             _fullName = user.userMetadata?['full_name'] ?? '';
             _username = user.userMetadata?['username'] ?? '';
@@ -84,18 +107,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   String _getMonthName(int month) {
     const months = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December'
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
     ];
     return months[month - 1];
   }
@@ -106,9 +119,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Logout'),
         content: const Text('Are you sure you want to logout?'),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -119,9 +130,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFEF4444),
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
             child: const Text('Logout'),
           ),
@@ -130,7 +139,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
 
     if (confirm == true) {
-      // Use AuthProvider instead of direct Supabase call
       final authProvider = context.read<AuthProvider>();
 
       try {
@@ -144,25 +152,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
               duration: Duration(seconds: 2),
             ),
           );
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const LoginPage()),
+          );
         }
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginPage(),));
-
       } catch (e) {
         if (mounted) {
           showDialog(
             context: context,
             builder: (context) => AlertDialog(
               title: const Text('Error'),
-              content: Text('Error occured during logging out'),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
+              content: const Text('Error occurred during logging out'),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               actions: [
                 ElevatedButton(
                   onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFEF4444),
-                  ),
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
                   child: const Text('Close'),
                 ),
               ],
@@ -173,13 +179,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  void _navigateToEditProfile() {
-    Navigator.push(
+  void _navigateToEditProfile() async {
+    final result = await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => const ProfileUpdateScreen(),
-      ),
-    ).then((_) => _loadUserProfile()); // Reload after update
+      MaterialPageRoute(builder: (context) => const ProfileUpdateScreen()),
+    );
+    if (result == true) {
+      _loadUserProfile();
+    }
   }
 
   @override
@@ -195,25 +202,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => Navigator.pop(context, true),
         ),
       ),
       backgroundColor: const Color(0xFFF8FAFC),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? _buildShimmerLoading()
           : SingleChildScrollView(
               child: Column(
                 children: [
-                  // Header with Profile Picture
                   _buildProfileHeader(),
-
-                  // Profile Details Section
                   Padding(
                     padding: const EdgeInsets.all(16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Personal Information Card
                         _buildSectionTitle('Personal Information'),
                         const SizedBox(height: 12),
                         _buildInfoCard([
@@ -239,8 +242,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ]),
                         const SizedBox(height: 20),
-
-                        // Professional Information Card
                         _buildSectionTitle('Professional Information'),
                         const SizedBox(height: 12),
                         _buildInfoCard([
@@ -252,8 +253,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ]),
                         const SizedBox(height: 20),
-
-                        // Account Information Card
                         _buildSectionTitle('Account Information'),
                         const SizedBox(height: 12),
                         _buildInfoCard([
@@ -280,8 +279,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ]),
                         const SizedBox(height: 32),
-
-                        // Edit Profile Button
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton.icon(
@@ -289,19 +286,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             icon: const Icon(Icons.edit_outlined, size: 20),
                             label: const Text(
                               'Edit Profile',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                             ),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF1E3A8A),
                               foregroundColor: Colors.white,
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 16),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
                               elevation: 2,
-                              shadowColor: const Color(0xFF1E3A8A)
-                                  .withOpacity(0.3),
+                              shadowColor: const Color(0xFF1E3A8A).withOpacity(0.3),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -309,8 +301,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ),
                         const SizedBox(height: 16),
-
-                        // Logout Button
                         SizedBox(
                           width: double.infinity,
                           child: OutlinedButton.icon(
@@ -318,19 +308,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             icon: const Icon(Icons.logout, size: 20),
                             label: const Text(
                               'Logout',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                             ),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: const Color(0xFFEF4444),
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 16),
-                              side: const BorderSide(
-                                color: Color(0xFFEF4444),
-                                width: 2,
-                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              side: const BorderSide(color: Color(0xFFEF4444), width: 2),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -344,6 +327,270 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ],
               ),
             ),
+    );
+  }
+
+  Widget _buildShimmerLoading() {
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          // Shimmer Profile Header
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 16),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: Column(
+              children: [
+                AnimatedBuilder(
+                  animation: _shimmerAnimation,
+                  builder: (context, child) {
+                    return Container(
+                      width: 120,
+                      height: 120,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Colors.white.withOpacity(0.3),
+                            Colors.white.withOpacity(0.5),
+                            Colors.white.withOpacity(0.3),
+                          ],
+                          stops: [
+                            0.0,
+                            _shimmerAnimation.value.clamp(0.0, 1.0),
+                            1.0,
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 16),
+                AnimatedBuilder(
+                  animation: _shimmerAnimation,
+                  builder: (context, child) {
+                    return Container(
+                      height: 24,
+                      width: 150,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(4),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Colors.white.withOpacity(0.3),
+                            Colors.white.withOpacity(0.5),
+                            Colors.white.withOpacity(0.3),
+                          ],
+                          stops: [
+                            0.0,
+                            (_shimmerAnimation.value + 0.1).clamp(0.0, 1.0),
+                            1.0,
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 8),
+                AnimatedBuilder(
+                  animation: _shimmerAnimation,
+                  builder: (context, child) {
+                    return Container(
+                      height: 16,
+                      width: 100,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(4),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Colors.white.withOpacity(0.3),
+                            Colors.white.withOpacity(0.5),
+                            Colors.white.withOpacity(0.3),
+                          ],
+                          stops: [
+                            0.0,
+                            (_shimmerAnimation.value + 0.2).clamp(0.0, 1.0),
+                            1.0,
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+          // Shimmer Content Cards
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: List.generate(3, (sectionIndex) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (sectionIndex > 0) const SizedBox(height: 20),
+                    AnimatedBuilder(
+                      animation: _shimmerAnimation,
+                      builder: (context, child) {
+                        return Container(
+                          height: 18,
+                          width: 150,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(4),
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                const Color(0xFFE5E7EB),
+                                const Color(0xFFF3F4F6),
+                                const Color(0xFFE5E7EB),
+                              ],
+                              stops: [
+                                0.0,
+                                (_shimmerAnimation.value + sectionIndex * 0.1).clamp(0.0, 1.0),
+                                1.0,
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: List.generate(
+                          sectionIndex == 0 ? 3 : (sectionIndex == 1 ? 1 : 3),
+                          (rowIndex) {
+                            return Column(
+                              children: [
+                                if (rowIndex > 0) const Divider(height: 24),
+                                Row(
+                                  children: [
+                                    AnimatedBuilder(
+                                      animation: _shimmerAnimation,
+                                      builder: (context, child) {
+                                        return Container(
+                                          width: 44,
+                                          height: 44,
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(10),
+                                            gradient: LinearGradient(
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                              colors: [
+                                                const Color(0xFFE5E7EB),
+                                                const Color(0xFFF3F4F6),
+                                                const Color(0xFFE5E7EB),
+                                              ],
+                                              stops: [
+                                                0.0,
+                                                (_shimmerAnimation.value + sectionIndex * 0.1 + rowIndex * 0.05).clamp(0.0, 1.0),
+                                                1.0,
+                                              ],
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          AnimatedBuilder(
+                                            animation: _shimmerAnimation,
+                                            builder: (context, child) {
+                                              return Container(
+                                                height: 12,
+                                                width: 80,
+                                                decoration: BoxDecoration(
+                                                  borderRadius: BorderRadius.circular(4),
+                                                  gradient: LinearGradient(
+                                                    begin: Alignment.topLeft,
+                                                    end: Alignment.bottomRight,
+                                                    colors: [
+                                                      const Color(0xFFE5E7EB),
+                                                      const Color(0xFFF3F4F6),
+                                                      const Color(0xFFE5E7EB),
+                                                    ],
+                                                    stops: [
+                                                      0.0,
+                                                      (_shimmerAnimation.value + sectionIndex * 0.1 + rowIndex * 0.05 + 0.1).clamp(0.0, 1.0),
+                                                      1.0,
+                                                    ],
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                          const SizedBox(height: 6),
+                                          AnimatedBuilder(
+                                            animation: _shimmerAnimation,
+                                            builder: (context, child) {
+                                              return Container(
+                                                height: 16,
+                                                width: double.infinity,
+                                                decoration: BoxDecoration(
+                                                  borderRadius: BorderRadius.circular(4),
+                                                  gradient: LinearGradient(
+                                                    begin: Alignment.topLeft,
+                                                    end: Alignment.bottomRight,
+                                                    colors: [
+                                                      const Color(0xFFE5E7EB),
+                                                      const Color(0xFFF3F4F6),
+                                                      const Color(0xFFE5E7EB),
+                                                    ],
+                                                    stops: [
+                                                      0.0,
+                                                      (_shimmerAnimation.value + sectionIndex * 0.1 + rowIndex * 0.05 + 0.2).clamp(0.0, 1.0),
+                                                      1.0,
+                                                    ],
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              }),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -366,10 +613,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             decoration: BoxDecoration(
               color: Colors.white,
               shape: BoxShape.circle,
-              border: Border.all(
-                color: Colors.white,
-                width: 4,
-              ),
+              border: Border.all(color: Colors.white, width: 4),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.2),
@@ -381,15 +625,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Center(
               child: Text(
                 _fullName.isNotEmpty
-                    ? _fullName
-                        .split(' ')
-                        .map((e) => e[0])
-                        .take(2)
-                        .join()
-                        .toUpperCase()
-                    : _email.isNotEmpty
-                        ? _email[0].toUpperCase()
-                        : 'A',
+                    ? _fullName.split(' ').map((e) => e[0]).take(2).join().toUpperCase()
+                    : _email.isNotEmpty ? _email[0].toUpperCase() : 'A',
                 style: const TextStyle(
                   fontSize: 40,
                   fontWeight: FontWeight.bold,
@@ -410,10 +647,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 4),
           Text(
             _username.isNotEmpty ? '@$_username' : _email,
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.9),
-              fontSize: 16,
-            ),
+            style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 16),
           ),
           if (_lskNumber.isNotEmpty) ...[
             const SizedBox(height: 12),
@@ -422,18 +656,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.3),
-                ),
+                border: Border.all(color: Colors.white.withOpacity(0.3)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(
-                    Icons.verified,
-                    color: Colors.white,
-                    size: 16,
-                  ),
+                  const Icon(Icons.verified, color: Colors.white, size: 16),
                   const SizedBox(width: 6),
                   Text(
                     'LSK: $_lskNumber',
@@ -477,9 +705,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ],
       ),
-      child: Column(
-        children: children,
-      ),
+      child: Column(children: children),
     );
   }
 
@@ -498,11 +724,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             color: const Color(0xFF1E3A8A).withOpacity(0.1),
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Icon(
-            icon,
-            color: const Color(0xFF1E3A8A),
-            size: 22,
-          ),
+          child: Icon(icon, color: const Color(0xFF1E3A8A), size: 22),
         ),
         const SizedBox(width: 16),
         Expanded(
@@ -522,9 +744,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 value,
                 style: TextStyle(
                   fontSize: isSmall ? 14 : 16,
-                  color: isEmpty
-                      ? const Color(0xFF9CA3AF)
-                      : const Color(0xFF1F2937),
+                  color: isEmpty ? const Color(0xFF9CA3AF) : const Color(0xFF1F2937),
                   fontWeight: isEmpty ? FontWeight.normal : FontWeight.w600,
                   fontStyle: isEmpty ? FontStyle.italic : FontStyle.normal,
                 ),

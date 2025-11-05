@@ -9,13 +9,16 @@ class AllDocumentsPage extends StatefulWidget {
   State<AllDocumentsPage> createState() => _AllDocumentsPageState();
 }
 
-class _AllDocumentsPageState extends State<AllDocumentsPage> {
+class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerProviderStateMixin {
   final _supabase = Supabase.instance.client;
   List<Map<String, dynamic>> _documents = [];
   Map<int, Map<String, dynamic>> _casesMap = {};
   bool _isLoading = true;
   String _selectedFilter = 'All';
   String _searchQuery = '';
+
+  late AnimationController _shimmerController;
+  late Animation<double> _shimmerAnimation;
 
   final List<String> _documentTypes = [
     'All',
@@ -31,7 +34,29 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> {
   @override
   void initState() {
     super.initState();
+    _setupShimmerAnimation();
     _loadAllDocuments();
+  }
+
+  void _setupShimmerAnimation() {
+    _shimmerController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat();
+    
+    _shimmerAnimation = Tween<double>(
+      begin: -2,
+      end: 2,
+    ).animate(CurvedAnimation(
+      parent: _shimmerController,
+      curve: Curves.easeInOutSine,
+    ));
+  }
+
+  @override
+  void dispose() {
+    _shimmerController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadAllDocuments() async {
@@ -40,19 +65,16 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> {
       final user = _supabase.auth.currentUser;
       if (user == null) throw Exception('No user logged in');
 
-      // First, get all user's cases
       final casesResponse = await _supabase
           .from('cases')
           .select()
           .eq('user', user.id);
 
-      // Create a map of case IDs to case data
       _casesMap = {};
       for (var caseData in casesResponse) {
         _casesMap[caseData['id']] = caseData;
       }
 
-      // Get all case IDs
       final caseIds = _casesMap.keys.toList();
 
       if (caseIds.isEmpty) {
@@ -63,7 +85,6 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> {
         return;
       }
 
-      // Get all documents for these cases
       final documentsResponse = await _supabase
           .from('documents')
           .select()
@@ -78,7 +99,7 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> {
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          const SnackBar(
             content: Text('Error loading cases documents. Make sure you are online'),
             backgroundColor: Colors.red,
           ),
@@ -90,14 +111,12 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> {
   List<Map<String, dynamic>> _getFilteredDocuments() {
     var filtered = _documents;
 
-    // Apply type filter
     if (_selectedFilter != 'All') {
       filtered = filtered.where((doc) {
         return doc['document_type']?.toLowerCase() == _selectedFilter.toLowerCase();
       }).toList();
     }
 
-    // Apply search filter
     if (_searchQuery.isNotEmpty) {
       filtered = filtered.where((doc) {
         final fileName = doc['file_name']?.toString().toLowerCase() ?? '';
@@ -123,15 +142,6 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> {
     }
 
     return grouped;
-  }
-
-  Map<String, int> _getDocumentTypeStats() {
-    final stats = <String, int>{};
-    for (var doc in _documents) {
-      final type = doc['document_type'] ?? 'Other';
-      stats[type] = (stats[type] ?? 0) + 1;
-    }
-    return stats;
   }
 
   int _getTotalFileSize() {
@@ -215,15 +225,10 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text(
           'Delete Document',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF1F2937),
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1F2937)),
         ),
         content: Text('Are you sure you want to delete "${doc['file_name']}"?'),
         actions: [
@@ -233,9 +238,7 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('Delete'),
           ),
         ],
@@ -244,12 +247,8 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> {
 
     if (confirm == true) {
       try {
-        await _supabase.storage
-            .from('case-documents')
-            .remove([doc['file_path']]);
-
+        await _supabase.storage.from('case-documents').remove([doc['file_path']]);
         await _supabase.from('documents').delete().eq('id', doc['id']);
-
         await _loadAllDocuments();
 
         if (mounted) {
@@ -263,7 +262,7 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
+            const SnackBar(
               content: Text('Error deleting this document'),
               backgroundColor: Colors.red,
             ),
@@ -283,10 +282,7 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> {
         elevation: 0,
         title: const Text(
           'All Documents',
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 20,
-          ),
+          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 20),
         ),
         actions: [
           IconButton(
@@ -296,7 +292,7 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> {
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? _buildShimmerLoading()
           : _documents.isEmpty
               ? _buildEmptyState()
               : Column(
@@ -307,6 +303,221 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> {
                     Expanded(child: _buildDocumentsList()),
                   ],
                 ),
+    );
+  }
+
+  Widget _buildShimmerLoading() {
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          // Shimmer Stats Card
+          Container(
+            margin: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              color: Colors.white,
+            ),
+            child: AnimatedBuilder(
+              animation: _shimmerAnimation,
+              builder: (context, child) {
+                return Container(
+                  height: 80,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        const Color(0xFFE5E7EB),
+                        const Color(0xFFF3F4F6),
+                        const Color(0xFFE5E7EB),
+                      ],
+                      stops: [
+                        0.0,
+                        _shimmerAnimation.value.clamp(0.0, 1.0),
+                        1.0,
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          // Shimmer Search Bar
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: AnimatedBuilder(
+              animation: _shimmerAnimation,
+              builder: (context, child) {
+                return Container(
+                  height: 50,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        const Color(0xFFE5E7EB),
+                        const Color(0xFFF3F4F6),
+                        const Color(0xFFE5E7EB),
+                      ],
+                      stops: [
+                        0.0,
+                        (_shimmerAnimation.value + 0.1).clamp(0.0, 1.0),
+                        1.0,
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Shimmer Filter Chips
+          SizedBox(
+            height: 60,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              itemCount: 5,
+              itemBuilder: (context, index) {
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: AnimatedBuilder(
+                    animation: _shimmerAnimation,
+                    builder: (context, child) {
+                      return Container(
+                        width: 80,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              const Color(0xFFE5E7EB),
+                              const Color(0xFFF3F4F6),
+                              const Color(0xFFE5E7EB),
+                            ],
+                            stops: [
+                              0.0,
+                              (_shimmerAnimation.value + index * 0.15).clamp(0.0, 1.0),
+                              1.0,
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                );
+              },
+            ),
+          ),
+          // Shimmer Document Cards
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: List.generate(4, (index) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: AnimatedBuilder(
+                    animation: _shimmerAnimation,
+                    builder: (context, child) {
+                      return Container(
+                        height: 100,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          color: Colors.white,
+                          border: Border.all(color: const Color(0xFFE5E7EB)),
+                        ),
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 50,
+                              height: 50,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(10),
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    const Color(0xFFE5E7EB),
+                                    const Color(0xFFF3F4F6),
+                                    const Color(0xFFE5E7EB),
+                                  ],
+                                  stops: [
+                                    0.0,
+                                    (_shimmerAnimation.value + index * 0.2).clamp(0.0, 1.0),
+                                    1.0,
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Container(
+                                    height: 16,
+                                    width: double.infinity,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(4),
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                        colors: [
+                                          const Color(0xFFE5E7EB),
+                                          const Color(0xFFF3F4F6),
+                                          const Color(0xFFE5E7EB),
+                                        ],
+                                        stops: [
+                                          0.0,
+                                          (_shimmerAnimation.value + index * 0.2 + 0.1).clamp(0.0, 1.0),
+                                          1.0,
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Container(
+                                    height: 12,
+                                    width: 150,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(4),
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                        colors: [
+                                          const Color(0xFFE5E7EB),
+                                          const Color(0xFFF3F4F6),
+                                          const Color(0xFFE5E7EB),
+                                        ],
+                                        stops: [
+                                          0.0,
+                                          (_shimmerAnimation.value + index * 0.2 + 0.2).clamp(0.0, 1.0),
+                                          1.0,
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                );
+              }),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -339,10 +550,7 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> {
           const SizedBox(height: 8),
           const Text(
             'Upload documents to your cases to see them here',
-            style: TextStyle(
-              fontSize: 14,
-              color: Color(0xFF6B7280),
-            ),
+            style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 32),
@@ -354,9 +562,7 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> {
               backgroundColor: const Color(0xFF1E3A8A),
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
           ),
         ],
@@ -366,7 +572,6 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> {
 
   Widget _buildStatsCard() {
     final totalSize = _getTotalFileSize();
-    final stats = _getDocumentTypeStats();
     final uniqueCases = _documents.map((d) => d['case_id']).toSet().length;
 
     return Container(
@@ -387,37 +592,25 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> {
           ),
         ],
       ),
-      child: Column(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildStatItem(
-                icon: Icons.folder_outlined,
-                label: 'Total Documents',
-                value: '${_documents.length}',
-              ),
-              Container(
-                width: 1,
-                height: 40,
-                color: Colors.white24,
-              ),
-              _buildStatItem(
-                icon: Icons.cases_outlined,
-                label: 'Cases',
-                value: '$uniqueCases',
-              ),
-              Container(
-                width: 1,
-                height: 40,
-                color: Colors.white24,
-              ),
-              _buildStatItem(
-                icon: Icons.storage_outlined,
-                label: 'Total Size',
-                value: _formatFileSize(totalSize),
-              ),
-            ],
+          _buildStatItem(
+            icon: Icons.folder_outlined,
+            label: 'Total Documents',
+            value: '${_documents.length}',
+          ),
+          Container(width: 1, height: 40, color: Colors.white24),
+          _buildStatItem(
+            icon: Icons.cases_outlined,
+            label: 'Cases',
+            value: '$uniqueCases',
+          ),
+          Container(width: 1, height: 40, color: Colors.white24),
+          _buildStatItem(
+            icon: Icons.storage_outlined,
+            label: 'Total Size',
+            value: _formatFileSize(totalSize),
           ),
         ],
       ),
@@ -444,10 +637,7 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> {
         const SizedBox(height: 4),
         Text(
           label,
-          style: const TextStyle(
-            color: Colors.white70,
-            fontSize: 12,
-          ),
+          style: const TextStyle(color: Colors.white70, fontSize: 12),
         ),
       ],
     );
@@ -457,11 +647,7 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: TextField(
-        onChanged: (value) {
-          setState(() {
-            _searchQuery = value;
-          });
-        },
+        onChanged: (value) => setState(() => _searchQuery = value),
         decoration: InputDecoration(
           hintText: 'Search documents or cases...',
           prefixIcon: const Icon(Icons.search, color: Color(0xFF6B7280)),
@@ -479,10 +665,7 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> {
             borderRadius: BorderRadius.circular(12),
             borderSide: const BorderSide(color: Color(0xFF1E3A8A), width: 2),
           ),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 12,
-          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         ),
       ),
     );
@@ -504,11 +687,7 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> {
             child: FilterChip(
               label: Text(type),
               selected: isSelected,
-              onSelected: (selected) {
-                setState(() {
-                  _selectedFilter = type;
-                });
-              },
+              onSelected: (selected) => setState(() => _selectedFilter = type),
               backgroundColor: Colors.white,
               selectedColor: const Color(0xFF1E3A8A).withOpacity(0.2),
               checkmarkColor: const Color(0xFF1E3A8A),
@@ -519,9 +698,7 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> {
               side: BorderSide(
                 color: isSelected ? const Color(0xFF1E3A8A) : const Color(0xFFE5E7EB),
               ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             ),
           );
         },
@@ -537,11 +714,7 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.filter_list_off,
-              size: 64,
-              color: Colors.grey[400],
-            ),
+            Icon(Icons.filter_list_off, size: 64, color: Colors.grey[400]),
             const SizedBox(height: 16),
             Text(
               'No documents found',
@@ -554,10 +727,7 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> {
             const SizedBox(height: 8),
             Text(
               'Try adjusting your filters',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[500],
-              ),
+              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
             ),
           ],
         ),
@@ -585,11 +755,7 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> {
                 ),
                 child: Row(
                   children: [
-                    const Icon(
-                      Icons.folder,
-                      color: Color(0xFF1E3A8A),
-                      size: 20,
-                    ),
+                    const Icon(Icons.folder, color: Color(0xFF1E3A8A), size: 20),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -617,11 +783,7 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    const Icon(
-                      Icons.arrow_forward_ios,
-                      size: 14,
-                      color: Color(0xFF1E3A8A),
-                    ),
+                    const Icon(Icons.arrow_forward_ios, size: 14, color: Color(0xFF1E3A8A)),
                   ],
                 ),
               ),
@@ -641,9 +803,7 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: const Color(0xFFE5E7EB),
-        ),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
@@ -706,18 +866,13 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> {
             const SizedBox(height: 2),
             Text(
               '${_formatFileSize(doc['file_size'] ?? 0)} • ${_formatDate(doc['created_at'])}',
-              style: const TextStyle(
-                fontSize: 12,
-                color: Color(0xFF6B7280),
-              ),
+              style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
             ),
           ],
         ),
         trailing: PopupMenuButton<String>(
           icon: const Icon(Icons.more_vert, color: Color(0xFF6B7280)),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           onSelected: (value) {
             if (value == 'view') {
               _navigateToCaseDocuments(doc['case_id'], caseName);
