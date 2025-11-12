@@ -1,4 +1,4 @@
-package com.example.lawdesk
+package com.lawdesk
 
 import io.flutter.embedding.android.FlutterActivity
 
