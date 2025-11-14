@@ -79,7 +79,6 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerPr
       final caseIds = _casesMap.keys.toList();
 
       if (caseIds.isEmpty) {
-        // Add delay for smooth transition
         await Future.delayed(const Duration(milliseconds: 300));
         if (mounted) {
           setState(() {
@@ -96,7 +95,6 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerPr
           .inFilter('case_id', caseIds)
           .order('created_at', ascending: false);
 
-      // Add delay for smooth transition
       await Future.delayed(const Duration(milliseconds: 300));
 
       if (mounted) {
@@ -145,9 +143,7 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerPr
     final grouped = <String, List<Map<String, dynamic>>>{};
 
     for (var doc in filtered) {
-      final caseId = doc['case_id'].toString();
       final caseName = _casesMap[doc['case_id']]?['name'] ?? 'Unknown Case';
-      
       grouped.putIfAbsent(caseName, () => []);
       grouped[caseName]!.add(doc);
     }
@@ -332,7 +328,6 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerPr
       key: const ValueKey('shimmer'),
       child: Column(
         children: [
-          // Shimmer Stats Card
           Container(
             margin: const EdgeInsets.all(16),
             padding: const EdgeInsets.all(20),
@@ -366,7 +361,6 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerPr
               },
             ),
           ),
-          // Shimmer Search Bar
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: AnimatedBuilder(
@@ -396,7 +390,6 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerPr
             ),
           ),
           const SizedBox(height: 8),
-          // Shimmer Filter Chips
           SizedBox(
             height: 60,
             child: ListView.builder(
@@ -436,7 +429,6 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerPr
               },
             ),
           ),
-          // Shimmer Document Cards
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -905,6 +897,16 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerPr
           },
           itemBuilder: (context) => [
             const PopupMenuItem(
+              value: 'view',
+              child: Row(
+                children: [
+                  Icon(Icons.folder_open, size: 20, color: Color(0xFF6B7280)),
+                  SizedBox(width: 12),
+                  Text('View in Case'),
+                ],
+              ),
+            ),
+            const PopupMenuItem(
               value: 'delete',
               child: Row(
                 children: [
@@ -920,13 +922,3 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerPr
     );
   }
 }
-              value: 'view',
-              child: Row(
-                children: [
-                  Icon(Icons.folder_open, size: 20, color: Color(0xFF6B7280)),
-                  SizedBox(width: 12),
-                  Text('View in Case'),
-                ],
-              ),
-            ),
-            const PopupMenuItem(
