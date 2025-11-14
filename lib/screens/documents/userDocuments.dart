@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:lawdesk/screens/documents/upload.dart';
-import 'package:lawdesk/screens/cases/casepage.dart';
 
 class AllDocumentsPage extends StatefulWidget {
   const AllDocumentsPage({Key? key}) : super(key: key);
@@ -62,6 +61,7 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerPr
 
   Future<void> _loadAllDocuments() async {
     setState(() => _isLoading = true);
+    
     try {
       final user = _supabase.auth.currentUser;
       if (user == null) throw Exception('No user logged in');
@@ -79,10 +79,14 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerPr
       final caseIds = _casesMap.keys.toList();
 
       if (caseIds.isEmpty) {
-        setState(() {
-          _documents = [];
-          _isLoading = false;
-        });
+        // Add delay for smooth transition
+        await Future.delayed(const Duration(milliseconds: 300));
+        if (mounted) {
+          setState(() {
+            _documents = [];
+            _isLoading = false;
+          });
+        }
         return;
       }
 
@@ -92,13 +96,19 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerPr
           .inFilter('case_id', caseIds)
           .order('created_at', ascending: false);
 
-      setState(() {
-        _documents = List<Map<String, dynamic>>.from(documentsResponse);
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() => _isLoading = false);
+      // Add delay for smooth transition
+      await Future.delayed(const Duration(milliseconds: 300));
+
       if (mounted) {
+        setState(() {
+          _documents = List<Map<String, dynamic>>.from(documentsResponse);
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      if (mounted) {
+        setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Error loading cases documents. Make sure you are online'),
@@ -292,23 +302,34 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerPr
           ),
         ],
       ),
-      body: _isLoading
-          ? _buildShimmerLoading()
-          : _documents.isEmpty
-              ? _buildEmptyState()
-              : Column(
-                  children: [
-                    _buildStatsCard(),
-                    _buildSearchBar(),
-                    _buildFilterChips(),
-                    Expanded(child: _buildDocumentsList()),
-                  ],
-                ),
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 400),
+        switchInCurve: Curves.easeOut,
+        switchOutCurve: Curves.easeIn,
+        child: _isLoading
+            ? _buildShimmerLoading()
+            : _documents.isEmpty
+                ? _buildEmptyState()
+                : _buildContent(),
+      ),
+    );
+  }
+
+  Widget _buildContent() {
+    return Column(
+      key: const ValueKey('content'),
+      children: [
+        _buildStatsCard(),
+        _buildSearchBar(),
+        _buildFilterChips(),
+        Expanded(child: _buildDocumentsList()),
+      ],
     );
   }
 
   Widget _buildShimmerLoading() {
     return SingleChildScrollView(
+      key: const ValueKey('shimmer'),
       child: Column(
         children: [
           // Shimmer Stats Card
@@ -524,6 +545,7 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerPr
 
   Widget _buildEmptyState() {
     return Center(
+      key: const ValueKey('empty'),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -556,11 +578,8 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerPr
           ),
           const SizedBox(height: 32),
           ElevatedButton.icon(
-            onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const CasesPage()),
-                  ),
-            icon: const Icon(Icons.folder_open_outlined),
+            onPressed: () => Navigator.pop(context),
+            icon: const Icon(Icons.arrow_back),
             label: const Text('Go to Cases'),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF1E3A8A),
@@ -886,16 +905,6 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerPr
           },
           itemBuilder: (context) => [
             const PopupMenuItem(
-              value: 'view',
-              child: Row(
-                children: [
-                  Icon(Icons.folder_open, size: 20, color: Color(0xFF6B7280)),
-                  SizedBox(width: 12),
-                  Text('View in Case'),
-                ],
-              ),
-            ),
-            const PopupMenuItem(
               value: 'delete',
               child: Row(
                 children: [
@@ -911,3 +920,13 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerPr
     );
   }
 }
+              value: 'view',
+              child: Row(
+                children: [
+                  Icon(Icons.folder_open, size: 20, color: Color(0xFF6B7280)),
+                  SizedBox(width: 12),
+                  Text('View in Case'),
+                ],
+              ),
+            ),
+            const PopupMenuItem(

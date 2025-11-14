@@ -56,6 +56,8 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
   }
 
   Future<void> _loadUserProfile() async {
+    setState(() => _isLoading = true);
+    
     try {
       final user = _supabase.auth.currentUser;
 
@@ -73,25 +75,38 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
               .eq('id', user.id)
               .single();
 
-          setState(() {
-            _fullName = profile['full_name'] ?? '';
-            _username = profile['username'] ?? '';
-            _gender = profile['gender'] ?? '';
-            _lskNumber = profile['lsk_number'] ?? '';
-            _isLoading = false;
-          });
+          // Add delay for smooth transition
+          await Future.delayed(const Duration(milliseconds: 300));
+
+          if (mounted) {
+            setState(() {
+              _fullName = profile['full_name'] ?? '';
+              _username = profile['username'] ?? '';
+              _gender = profile['gender'] ?? '';
+              _lskNumber = profile['lsk_number'] ?? '';
+              _isLoading = false;
+            });
+          }
         } catch (e) {
-          setState(() {
-            _fullName = user.userMetadata?['full_name'] ?? '';
-            _username = user.userMetadata?['username'] ?? '';
-            _isLoading = false;
-          });
+          await Future.delayed(const Duration(milliseconds: 300));
+          
+          if (mounted) {
+            setState(() {
+              _fullName = user.userMetadata?['full_name'] ?? '';
+              _username = user.userMetadata?['username'] ?? '';
+              _isLoading = false;
+            });
+          }
         }
       }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
+      await Future.delayed(const Duration(milliseconds: 300));
+      
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -206,132 +221,141 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
         ),
       ),
       backgroundColor: const Color(0xFFF8FAFC),
-      body: _isLoading
-          ? _buildShimmerLoading()
-          : SingleChildScrollView(
-              child: Column(
-                children: [
-                  _buildProfileHeader(),
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildSectionTitle('Personal Information'),
-                        const SizedBox(height: 12),
-                        _buildInfoCard([
-                          _buildInfoRow(
-                            icon: Icons.person_outline,
-                            label: 'Full Name',
-                            value: _fullName.isEmpty ? 'Not set' : _fullName,
-                            isEmpty: _fullName.isEmpty,
-                          ),
-                          const Divider(height: 24),
-                          _buildInfoRow(
-                            icon: Icons.alternate_email,
-                            label: 'Username',
-                            value: _username.isEmpty ? 'Not set' : _username,
-                            isEmpty: _username.isEmpty,
-                          ),
-                          const Divider(height: 24),
-                          _buildInfoRow(
-                            icon: Icons.wc_outlined,
-                            label: 'Gender',
-                            value: _gender.isEmpty ? 'Not set' : _gender,
-                            isEmpty: _gender.isEmpty,
-                          ),
-                        ]),
-                        const SizedBox(height: 20),
-                        _buildSectionTitle('Professional Information'),
-                        const SizedBox(height: 12),
-                        _buildInfoCard([
-                          _buildInfoRow(
-                            icon: Icons.badge_outlined,
-                            label: 'LSK Number',
-                            value: _lskNumber.isEmpty ? 'Not set' : _lskNumber,
-                            isEmpty: _lskNumber.isEmpty,
-                          ),
-                        ]),
-                        const SizedBox(height: 20),
-                        _buildSectionTitle('Account Information'),
-                        const SizedBox(height: 12),
-                        _buildInfoCard([
-                          _buildInfoRow(
-                            icon: Icons.email_outlined,
-                            label: 'Email',
-                            value: _email,
-                            isEmpty: false,
-                          ),
-                          const Divider(height: 24),
-                          _buildInfoRow(
-                            icon: Icons.calendar_today_outlined,
-                            label: 'Member Since',
-                            value: _memberSince,
-                            isEmpty: false,
-                          ),
-                          const Divider(height: 24),
-                          _buildInfoRow(
-                            icon: Icons.fingerprint,
-                            label: 'User ID',
-                            value: _userId.substring(0, 8) + '...',
-                            isEmpty: false,
-                            isSmall: true,
-                          ),
-                        ]),
-                        const SizedBox(height: 32),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            onPressed: _navigateToEditProfile,
-                            icon: const Icon(Icons.edit_outlined, size: 20),
-                            label: const Text(
-                              'Edit Profile',
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF1E3A8A),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              elevation: 2,
-                              shadowColor: const Color(0xFF1E3A8A).withOpacity(0.3),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton.icon(
-                            onPressed: _handleLogout,
-                            icon: const Icon(Icons.logout, size: 20),
-                            label: const Text(
-                              'Logout',
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFFEF4444),
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              side: const BorderSide(color: Color(0xFFEF4444), width: 2),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 32),
-                      ],
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 400),
+        switchInCurve: Curves.easeOut,
+        switchOutCurve: Curves.easeIn,
+        child: _isLoading ? _buildShimmerLoading() : _buildContent(),
+      ),
+    );
+  }
+
+  Widget _buildContent() {
+    return SingleChildScrollView(
+      key: const ValueKey('content'),
+      child: Column(
+        children: [
+          _buildProfileHeader(),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildSectionTitle('Personal Information'),
+                const SizedBox(height: 12),
+                _buildInfoCard([
+                  _buildInfoRow(
+                    icon: Icons.person_outline,
+                    label: 'Full Name',
+                    value: _fullName.isEmpty ? 'Not set' : _fullName,
+                    isEmpty: _fullName.isEmpty,
+                  ),
+                  const Divider(height: 24),
+                  _buildInfoRow(
+                    icon: Icons.alternate_email,
+                    label: 'Username',
+                    value: _username.isEmpty ? 'Not set' : _username,
+                    isEmpty: _username.isEmpty,
+                  ),
+                  const Divider(height: 24),
+                  _buildInfoRow(
+                    icon: Icons.wc_outlined,
+                    label: 'Gender',
+                    value: _gender.isEmpty ? 'Not set' : _gender,
+                    isEmpty: _gender.isEmpty,
+                  ),
+                ]),
+                const SizedBox(height: 20),
+                _buildSectionTitle('Professional Information'),
+                const SizedBox(height: 12),
+                _buildInfoCard([
+                  _buildInfoRow(
+                    icon: Icons.badge_outlined,
+                    label: 'LSK Number',
+                    value: _lskNumber.isEmpty ? 'Not set' : _lskNumber,
+                    isEmpty: _lskNumber.isEmpty,
+                  ),
+                ]),
+                const SizedBox(height: 20),
+                _buildSectionTitle('Account Information'),
+                const SizedBox(height: 12),
+                _buildInfoCard([
+                  _buildInfoRow(
+                    icon: Icons.email_outlined,
+                    label: 'Email',
+                    value: _email,
+                    isEmpty: false,
+                  ),
+                  const Divider(height: 24),
+                  _buildInfoRow(
+                    icon: Icons.calendar_today_outlined,
+                    label: 'Member Since',
+                    value: _memberSince,
+                    isEmpty: false,
+                  ),
+                  const Divider(height: 24),
+                  _buildInfoRow(
+                    icon: Icons.fingerprint,
+                    label: 'User ID',
+                    value: _userId.substring(0, 8) + '...',
+                    isEmpty: false,
+                    isSmall: true,
+                  ),
+                ]),
+                const SizedBox(height: 32),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _navigateToEditProfile,
+                    icon: const Icon(Icons.edit_outlined, size: 20),
+                    label: const Text(
+                      'Edit Profile',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1E3A8A),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      elevation: 2,
+                      shadowColor: const Color(0xFF1E3A8A).withOpacity(0.3),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _handleLogout,
+                    icon: const Icon(Icons.logout, size: 20),
+                    label: const Text(
+                      'Logout',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFFEF4444),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      side: const BorderSide(color: Color(0xFFEF4444), width: 2),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 32),
+              ],
             ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildShimmerLoading() {
     return SingleChildScrollView(
+      key: const ValueKey('shimmer'),
       child: Column(
         children: [
           // Shimmer Profile Header

@@ -10,24 +10,56 @@ class CasesListWidget extends StatefulWidget {
   State<CasesListWidget> createState() => _CasesListWidgetState();
 }
 
-class _CasesListWidgetState extends State<CasesListWidget> {
+class _CasesListWidgetState extends State<CasesListWidget> with SingleTickerProviderStateMixin {
   final _supabase = Supabase.instance.client;
   List<Map<String, dynamic>> _cases = [];
   bool _isLoading = true;
 
+  late AnimationController _shimmerController;
+  late Animation<double> _shimmerAnimation;
+
   @override
   void initState() {
     super.initState();
+    _setupShimmerAnimation();
     _loadCases();
+  }
+
+  void _setupShimmerAnimation() {
+    _shimmerController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat();
+    
+    _shimmerAnimation = Tween<double>(
+      begin: -2,
+      end: 2,
+    ).animate(CurvedAnimation(
+      parent: _shimmerController,
+      curve: Curves.easeInOutSine,
+    ));
+  }
+
+  @override
+  void dispose() {
+    _shimmerController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadCases() async {
     setState(() => _isLoading = true);
+    
     final cases = await _fetchCases();
-    setState(() {
-      _cases = cases;
-      _isLoading = false;
-    });
+    
+    // Add small delay for smooth transition
+    await Future.delayed(const Duration(milliseconds: 300));
+    
+    if (mounted) {
+      setState(() {
+        _cases = cases;
+        _isLoading = false;
+      });
+    }
   }
 
   Future<List<Map<String, dynamic>>> _fetchCases() async {
@@ -42,14 +74,11 @@ class _CasesListWidgetState extends State<CasesListWidget> {
           .from('cases')
           .select()
           .eq('user', user.id)
-          .order('courtDate', ascending: false)
-          .limit(3);
-          
+          .order('courtDate', ascending: true);
       
       if (response is List) {
         final cases = List<Map<String, dynamic>>.from(response);
         
-        // Calculate status based on court date
         final now = DateTime.now();
         final today = DateTime(now.year, now.month, now.day);
         
@@ -114,13 +143,11 @@ class _CasesListWidgetState extends State<CasesListWidget> {
     if (time == null || time.toString().isEmpty) return '';
     
     try {
-      // Parse time format like "06:35:32" or "14:30:00"
       final timeParts = time.toString().split(':');
       if (timeParts.length >= 2) {
         final hour = int.parse(timeParts[0]);
         final minute = int.parse(timeParts[1]);
         
-        // Convert to 12-hour format with AM/PM
         final period = hour >= 12 ? 'PM' : 'AM';
         final hour12 = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
         final minuteStr = minute.toString().padLeft(2, '0');
@@ -144,42 +171,21 @@ class _CasesListWidgetState extends State<CasesListWidget> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(24.0),
-          child: CircularProgressIndicator(),
-        ),
-      );
-    }
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 400),
+      switchInCurve: Curves.easeOut,
+      switchOutCurve: Curves.easeIn,
+      child: _isLoading
+          ? _buildShimmerLoading()
+          : _cases.isEmpty
+              ? _buildEmptyState()
+              : _buildCasesList(),
+    );
+  }
 
-    if (_cases.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.folder_open,
-                size: 48,
-                color: Colors.grey[400],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'No cases found',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey[600],
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
+  Widget _buildCasesList() {
     return Column(
+      key: const ValueKey('cases_list'),
       children: [
         for (int i = 0; i < _cases.length; i++) ...[
           _CourtDateCard(
@@ -195,6 +201,182 @@ class _CasesListWidgetState extends State<CasesListWidget> {
           if (i < _cases.length - 1) const SizedBox(height: 12),
         ],
       ],
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      key: const ValueKey('empty_state'),
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.folder_open,
+              size: 48,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'No cases found',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShimmerLoading() {
+    return Column(
+      key: const ValueKey('shimmer_loading'),
+      children: List.generate(3, (index) {
+        return Padding(
+          padding: EdgeInsets.only(bottom: index < 2 ? 12 : 0),
+          child: AnimatedBuilder(
+            animation: _shimmerAnimation,
+            builder: (context, child) {
+              return Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFE5E7EB)),
+                  color: Colors.white,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                height: 16,
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(4),
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      const Color(0xFFE5E7EB),
+                                      const Color(0xFFF3F4F6),
+                                      const Color(0xFFE5E7EB),
+                                    ],
+                                    stops: [
+                                      0.0,
+                                      (_shimmerAnimation.value + index * 0.2).clamp(0.0, 1.0),
+                                      1.0,
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Container(
+                                height: 12,
+                                width: 120,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(4),
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      const Color(0xFFE5E7EB),
+                                      const Color(0xFFF3F4F6),
+                                      const Color(0xFFE5E7EB),
+                                    ],
+                                    stops: [
+                                      0.0,
+                                      (_shimmerAnimation.value + index * 0.2 + 0.1).clamp(0.0, 1.0),
+                                      1.0,
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Container(
+                          height: 24,
+                          width: 60,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                const Color(0xFFE5E7EB),
+                                const Color(0xFFF3F4F6),
+                                const Color(0xFFE5E7EB),
+                              ],
+                              stops: [
+                                0.0,
+                                (_shimmerAnimation.value + index * 0.2 + 0.2).clamp(0.0, 1.0),
+                                1.0,
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      height: 14,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(4),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            const Color(0xFFE5E7EB),
+                            const Color(0xFFF3F4F6),
+                            const Color(0xFFE5E7EB),
+                          ],
+                          stops: [
+                            0.0,
+                            (_shimmerAnimation.value + index * 0.2 + 0.3).clamp(0.0, 1.0),
+                            1.0,
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      height: 14,
+                      width: 180,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(4),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            const Color(0xFFE5E7EB),
+                            const Color(0xFFF3F4F6),
+                            const Color(0xFFE5E7EB),
+                          ],
+                          stops: [
+                            0.0,
+                            (_shimmerAnimation.value + index * 0.2 + 0.4).clamp(0.0, 1.0),
+                            1.0,
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      }),
     );
   }
 }
@@ -257,7 +439,6 @@ class _CourtDateCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header with case name and status badge
             Row(
               children: [
                 Expanded(
@@ -285,16 +466,11 @@ class _CourtDateCard extends StatelessWidget {
                 ),
                 if (isUrgent)
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF59E0B).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: const Color(0xFFF59E0B).withOpacity(0.3),
-                      ),
+                      border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.3)),
                     ),
                     child: const Text(
                       'URGENT',
@@ -308,16 +484,11 @@ class _CourtDateCard extends StatelessWidget {
                   )
                 else if (isUpcoming)
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: const Color.fromARGB(255, 55, 218, 49).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: const Color.fromARGB(255, 55, 218, 49).withOpacity(0.1),
-                      ),
+                      border: Border.all(color: const Color.fromARGB(255, 55, 218, 49).withOpacity(0.1)),
                     ),
                     child: const Text(
                       'Upcoming',
@@ -331,16 +502,11 @@ class _CourtDateCard extends StatelessWidget {
                   )
                 else if (isExpired)
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: const Color(0xFF6B7280).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: const Color(0xFF6B7280).withOpacity(0.2),
-                      ),
+                      border: Border.all(color: const Color(0xFF6B7280).withOpacity(0.2)),
                     ),
                     child: const Text(
                       'Expired',
@@ -354,16 +520,11 @@ class _CourtDateCard extends StatelessWidget {
                   )
                 else
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: const Color(0xFF10B981).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: const Color(0xFF10B981).withOpacity(0.2),
-                      ),
+                      border: Border.all(color: const Color(0xFF10B981).withOpacity(0.2)),
                     ),
                     child: const Text(
                       'No Worries',
@@ -378,16 +539,12 @@ class _CourtDateCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            
-            // Date and Time Row
             Row(
               children: [
                 Icon(
                   Icons.calendar_today,
                   size: 16,
-                  color: isUrgent 
-                    ? const Color(0xFFF59E0B)
-                    : const Color(0xFF6B7280),
+                  color: isUrgent ? const Color(0xFFF59E0B) : const Color(0xFF6B7280),
                 ),
                 const SizedBox(width: 6),
                 Expanded(
@@ -395,17 +552,13 @@ class _CourtDateCard extends StatelessWidget {
                     courtDate,
                     style: TextStyle(
                       fontSize: 14,
-                      color: isUrgent 
-                        ? const Color(0xFFF59E0B)
-                        : const Color(0xFF1F2937),
+                      color: isUrgent ? const Color(0xFFF59E0B) : const Color(0xFF1F2937),
                       fontWeight: isUrgent ? FontWeight.w600 : FontWeight.normal,
                     ),
                   ),
                 ),
               ],
             ),
-            
-            // Time (if available)
             if (courtTime.isNotEmpty) ...[
               const SizedBox(height: 8),
               Row(
@@ -413,18 +566,14 @@ class _CourtDateCard extends StatelessWidget {
                   Icon(
                     Icons.access_time,
                     size: 16,
-                    color: isUrgent 
-                      ? const Color(0xFFF59E0B)
-                      : const Color(0xFF6B7280),
+                    color: isUrgent ? const Color(0xFFF59E0B) : const Color(0xFF6B7280),
                   ),
                   const SizedBox(width: 6),
                   Text(
                     courtTime,
                     style: TextStyle(
                       fontSize: 14,
-                      color: isUrgent 
-                        ? const Color(0xFFF59E0B)
-                        : const Color(0xFF1F2937),
+                      color: isUrgent ? const Color(0xFFF59E0B) : const Color(0xFF1F2937),
                       fontWeight: isUrgent ? FontWeight.w600 : FontWeight.normal,
                     ),
                   ),
@@ -432,8 +581,6 @@ class _CourtDateCard extends StatelessWidget {
               ),
             ],
             const SizedBox(height: 8),
-            
-            // Court Location
             Row(
               children: [
                 const Icon(
@@ -453,8 +600,6 @@ class _CourtDateCard extends StatelessWidget {
                 ),
               ],
             ),
-            
-            // Description (if available)
             if (hasDescription) ...[
               const SizedBox(height: 12),
               Container(
@@ -462,9 +607,7 @@ class _CourtDateCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: const Color(0xFFF9FAFB),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: const Color(0xFFE5E7EB),
-                  ),
+                  border: Border.all(color: const Color(0xFFE5E7EB)),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,

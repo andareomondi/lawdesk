@@ -524,7 +524,6 @@ class _DashboardState extends State<Dashboard> with SingleTickerProviderStateMix
                 context,
                 MaterialPageRoute(builder: (context) => const ProfileScreen()),
               );
-              // Reload if profile was updated
               if (result == true) {
                 _hasCheckedProfile = false;
                 _loadUserData();
@@ -534,23 +533,33 @@ class _DashboardState extends State<Dashboard> with SingleTickerProviderStateMix
         ],
       ),
       backgroundColor: const Color(0xFFF8FAFC),
-      body: _isLoading
-          ? _buildShimmerLoading()
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildWelcomeSection(),
-                  const SizedBox(height: 24),
-                  const StatsSection(),
-                  const SizedBox(height: 24),
-                  _buildUpcomingDatesSection(context),
-                  const SizedBox(height: 24),
-                  _buildQuickActionsSection(context),
-                ],
-              ),
-            ),
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 400),
+        switchInCurve: Curves.easeOut,
+        switchOutCurve: Curves.easeIn,
+        child: _isLoading
+            ? _buildShimmerLoading()
+            : _buildContent(),
+      ),
+    );
+  }
+
+  Widget _buildContent() {
+    return SingleChildScrollView(
+      key: const ValueKey('content'),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildWelcomeSection(),
+          const SizedBox(height: 24),
+          const StatsSection(),
+          const SizedBox(height: 24),
+          _buildUpcomingDatesSection(context),
+          const SizedBox(height: 24),
+          _buildQuickActionsSection(context),
+        ],
+      ),
     );
   }
 
