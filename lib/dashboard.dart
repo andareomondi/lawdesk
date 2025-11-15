@@ -9,6 +9,7 @@ import 'package:lawdesk/widgets/cases/modal.dart';
 import 'package:lawdesk/screens/documents/userDocuments.dart';
 import 'package:lawdesk/screens/calender/calender.dart';
 import 'package:lawdesk/widgets/dashboard/statCard.dart';
+import 'package:liquid_pull_to_refresh/liquid_pull_to_refresh.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -510,14 +511,7 @@ class _DashboardState extends State<Dashboard> with SingleTickerProviderStateMix
           style: TextStyle(fontWeight: FontWeight.w600),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _isCheckingForUpdate || _isDownloadingUpdate || _isLoading
-                ? null
-                : _refreshDashboard,
-            tooltip: 'Refresh Dashboard',
-          ),
-          IconButton(
+         IconButton(
             icon: const Icon(Icons.account_circle_outlined),
             onPressed: () async {
               final result = await Navigator.push(
@@ -533,13 +527,19 @@ class _DashboardState extends State<Dashboard> with SingleTickerProviderStateMix
         ],
       ),
       backgroundColor: const Color(0xFFF8FAFC),
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 400),
-        switchInCurve: Curves.easeOut,
-        switchOutCurve: Curves.easeIn,
-        child: _isLoading
-            ? _buildShimmerLoading()
-            : _buildContent(),
+      body: LiquidPullToRefresh(
+        onRefresh: _refreshDashboard,
+        color: const Color(0xFF1E3A8A),
+        height: 80,
+        backgroundColor: Colors.white,
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 400),
+          switchInCurve: Curves.easeOut,
+          switchOutCurve: Curves.easeIn,
+          child: _isLoading
+              ? _buildShimmerLoading()
+              : _buildContent(),
+        ),
       ),
     );
   }
