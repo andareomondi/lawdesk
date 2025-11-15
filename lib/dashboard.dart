@@ -10,8 +10,7 @@ import 'package:lawdesk/screens/documents/userDocuments.dart';
 import 'package:lawdesk/screens/calender/calender.dart';
 import 'package:lawdesk/widgets/dashboard/statCard.dart';
 import 'package:liquid_pull_to_refresh/liquid_pull_to_refresh.dart';
-import 'package:delightful_toast/delight_toast.dart';
-import 'package:delightful_toast/toast/components/toast_card.dart';
+import 'package:lawdesk/widgets/delightful_toast.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -124,53 +123,19 @@ Future<void> _refreshDashboard() async {
     await _checkForShorebirdUpdates();
     
     if (mounted) {
-      DelightToastBar(
-        autoDismiss: true,
-        snackbarDuration: const Duration(seconds: 2),
-        builder: (context) => const ToastCard(
-          leading: Icon(
-            Icons.check_circle,
-            size: 28,
-            color: Color(0xFF10B981),
-          ),
-          title: Text(
-            "Success!",
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: 14,
-            ),
-          ),
-          subtitle: Text(
-            "Dashboard refreshed successfully",
-            style: TextStyle(fontSize: 12),
-          ),
-        ),
-      ).show(context);
+      AppToast.showSuccess(
+        context: context,
+        title: "Success!",
+        message: "Dashboard refreshed successfully",
+      );
     }
   } catch (e) {
     if (mounted) {
-      DelightToastBar(
-        autoDismiss: true,
-        snackbarDuration: const Duration(seconds: 3),
-        builder: (context) => const ToastCard(
-          leading: Icon(
-            Icons.error_outline,
-            size: 28,
-            color: Colors.red,
-          ),
-          title: Text(
-            "Error",
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: 14,
-            ),
-          ),
-          subtitle: Text(
-            "Error refreshing. Make sure you are online",
-            style: TextStyle(fontSize: 12),
-          ),
-        ),
-      ).show(context);
+      AppToast.showError(
+        context: context,
+        title: "Error",
+        message: "Error refreshing. Make sure you are online",
+      );
     }
   } finally {
     if (mounted) {
@@ -180,6 +145,7 @@ Future<void> _refreshDashboard() async {
     }
   }
 }
+
   Future<void> _downloadAndApplyUpdate() async {
     setState(() {
       _isDownloadingUpdate = true;
