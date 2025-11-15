@@ -3,6 +3,7 @@ import 'package:email_validator/email_validator.dart';
 import 'package:lawdesk/providers/auth_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:lawdesk/widgets/delightful_toast.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -43,12 +44,11 @@ class _SignupPageState extends State<SignupPage> {
       );
       
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Account created successfully! Please check your email to verify.'),
-            backgroundColor: Color(0xFF10B981),
-            duration: Duration(seconds: 5),
-          ),
+        // Show success message 
+        AppToast.showSuccess(
+          context: context,
+          title: 'Account Created',
+          message: 'Your account has been created successfully. Please check your email to verify your account.',
         );
         
         // Navigate back to login
@@ -73,23 +73,20 @@ class _SignupPageState extends State<SignupPage> {
           errorMessage = "An error occurred during account creation. Please try again.";
         }
         
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
-          ),
-        );
+       AppToast.showError(
+          context: context,
+          title: 'Signup Failed',
+          message: errorMessage,
+        ); 
       }
     } catch (e) {
       // Handle any other unexpected errors
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('An unexpected error occurred during account creation. Please try again.'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppToast.showError(
+          context: context,
+          title: 'Signup Failed',
+          message: 'An unexpected error occurred. Please try again later.',
+        ); 
       }
     } finally {
       if (mounted) {
