@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:lawdesk/widgets/cases/details.dart';
+import 'package:lawdesk/widgets/delightful_toast.dart';
 
 class CalendarPage extends StatefulWidget {
   const CalendarPage({Key? key}) : super(key: key);
@@ -69,11 +70,10 @@ class _CalendarPageState extends State<CalendarPage> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error occured while loading data'),
-            backgroundColor: Colors.red,
-          ),
+        AppToast.showError(
+          context: context,
+          title: 'Error',
+          message: 'Failed to load calendar data.',
         );
       }
     }

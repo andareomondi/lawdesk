@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:io';
+import 'package:lawdesk/widgets/delightful_toast.dart';
 
 class CaseDocumentsPage extends StatefulWidget {
   final int caseId;
@@ -56,12 +57,7 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error loading documents. Make sure you are online'),
-            backgroundColor: Colors.red,
-          ),
-        );
+       AppToast.showError(context: context, title: "Error occured", message: "Failed to load documents. Please try again."); 
       }
     }
   }
@@ -80,12 +76,7 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('An error while picking file. Please try again'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppToast.showError(context: context, title: "Error occured", message: "Failed to pick the document. Please try again.");
       }
     }
   }
@@ -161,21 +152,11 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
       await _loadDocuments();
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Document uploaded successfully!'),
-            backgroundColor: Color(0xFF10B981),
-          ),
-        );
+        AppToast.showSuccess(context: context, title: "Upload Successful", message: "Document uploaded successfully.");
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error uploading the document. Please try again'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppToast.showError(context: context, title: "Error occured", message: "Failed to upload the document. Please try again.");
       }
     } finally {
       setState(() => _isUploading = false);
@@ -226,21 +207,11 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
         await _loadDocuments();
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Document deleted successfully'),
-              backgroundColor: Color(0xFF10B981),
-            ),
-          );
+          AppToast.showSuccess(context: context, title: "Deletion Successful", message: "Document deleted successfully.");
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error deleting the document. Please try again'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          AppToast.showError(context: context, title: "Error occured", message: "Failed to delete the document. Please try again.");
         }
       }
     }
@@ -248,9 +219,7 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
 
   Future<void> _downloadDocument(Map<String, dynamic> doc) async {
     try {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Downloading...')),
-      );
+      AppToast.showSuccess(context: context, title: "Download Started", message: "Downloading document...");
 
       final response = await _supabase.storage
           .from('case-documents')
@@ -259,21 +228,11 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
       // In a real app, you'd save this to the device
       // For now, just show success
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Document downloaded successfully'),
-            backgroundColor: Color(0xFF10B981),
-          ),
-        );
+        AppToast.showSuccess(context: context, title: "Download Successful", message: "Document downloaded successfully.");
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error downloading this document. Please try again'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppToast.showError(context: context, title: "Error occured", message: "Failed to download the document. Please try again.");
       }
     }
   }
