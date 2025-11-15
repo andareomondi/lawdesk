@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:lawdesk/screens/documents/upload.dart';
 import 'package:lawdesk/config/supabase_config.dart';
+import 'package:lawdesk/widgets/delightful_toast.dart';
 
 class CaseDetailsPage extends StatefulWidget {
   final String caseId;
@@ -98,12 +99,10 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Error loading case details'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-          ),
+        AppToast.showError(
+          context: context,
+          title: 'Error',
+          message: 'Failed to load case details. Please try again later.',
         );
       }
     }
@@ -144,12 +143,10 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
     } catch (e) {
       setState(() => _isLoadingNotes = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Error loading notes'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-          ),
+        AppToast.showError(
+          context: context,
+          title: 'Error',
+          message: 'Failed to load notes. Please try again later.',
         );
       }
     }
@@ -171,12 +168,10 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
     } catch (e) {
       setState(() => _isLoadingEvents = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Error loading events'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-          ),
+        AppToast.showError(
+          context: context,
+          title: 'Error',
+          message: 'Failed to load events. Please try again later.',
         );
       }
     }
@@ -466,12 +461,10 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
 
   Future<void> _saveChanges() async {
     if (_nameController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Case name cannot be empty'),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-        ),
+      AppToast.showError( 
+        context: context,
+        title: 'Validation Error',
+        message: 'Case name cannot be empty',
       );
       return;
     }
@@ -505,24 +498,19 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
       });
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Case updated successfully'),
-            backgroundColor: const Color(0xFF10B981),
-            behavior: SnackBarBehavior.floating,
-          ),
+        AppToast.showSuccess(
+          context: context,
+          title: 'Success',
+          message: 'Case updated successfully',
         );
       }
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error updating case. Please try again later'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 4),
-          ),
+        AppToast.showError(
+          context: context,
+          title: 'Error',
+          message: 'Failed to update case. Please try again later.',
         );
       }
     }
@@ -558,12 +546,11 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
       await _supabase.from('cases').delete().eq('id', widget.caseId);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Case deleted successfully'),
-            backgroundColor: const Color(0xFF10B981),
-            behavior: SnackBarBehavior.floating,
-          ),
+        //app toast success
+        AppToast.showSuccess(
+          context: context,
+          title: 'Success',
+          message: 'Case deleted successfully',
         );
 
         Navigator.pop(context, true);
@@ -582,18 +569,10 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
           errorMessage = 'Case not found';
         }
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 4),
-            action: SnackBarAction(
-              label: 'Retry',
-              textColor: Colors.white,
-              onPressed: _deleteCase,
-            ),
-          ),
+        AppToast.showError(
+          context: context,
+          title: 'Error occured',
+          message: errorMessage,
         );
       }
     }
@@ -801,12 +780,10 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
 
   Future<void> _saveNote() async {
     if (_noteNameController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Note title cannot be empty'),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-        ),
+      AppToast.showError(
+        context: context,
+        title: 'Validation Error',
+        message: 'Note title cannot be empty',
       );
       return;
     }
@@ -824,22 +801,19 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
       await _loadNotes();
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Note added successfully'),
-            backgroundColor: const Color(0xFF10B981),
-            behavior: SnackBarBehavior.floating,
-          ),
+        //app toast success
+        AppToast.showSuccess(
+          context: context,
+          title: 'Success',
+          message: 'Note added successfully',
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Error adding note. Please try again'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-          ),
+        AppToast.showError(
+          context: context,
+          title: 'Error',
+          message: 'Failed to add note. Please try again later.',
         );
       }
     }
@@ -875,22 +849,19 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
       await _loadNotes();
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Note deleted successfully'),
-            backgroundColor: const Color(0xFF10B981),
-            behavior: SnackBarBehavior.floating,
-          ),
+        // app toast success
+        AppToast.showSuccess(
+          context: context,
+          title: 'Success',
+          message: 'Note deleted successfully',
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Error deleting note. Please try again'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-          ),
+        AppToast.showError(
+          context: context,
+          title: 'Error',
+          message: 'Failed to delete note. Please try again later.',
         );
       }
     }
@@ -1212,23 +1183,18 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
 
 Future<void> _saveEvent() async {
   if (_eventSelectedDate == null) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Please select an event date'),
-        backgroundColor: Colors.red,
-        behavior: SnackBarBehavior.floating,
-      ),
+    AppToast.showError(context: context, 
+      title: 'Validation Error',
+      message: 'Please select an event date',
     );
+
     return;
   }
 
   if (_isCustomAgenda && _eventAgendaController.text.trim().isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Please enter custom agenda'),
-        backgroundColor: Colors.red,
-        behavior: SnackBarBehavior.floating,
-      ),
+    AppToast.showError(context: context, 
+      title: 'Validation Error',
+      message: 'Please enter custom agenda',
     );
     return;
   }
@@ -1262,22 +1228,19 @@ Future<void> _saveEvent() async {
     await _loadEvents();
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Event added successfully'),
-          backgroundColor: const Color(0xFF10B981),
-          behavior: SnackBarBehavior.floating,
-        ),
+      //app toast success
+      AppToast.showSuccess(
+        context: context,
+        title: 'Success',
+        message: 'Event added successfully',
       );
     }
   } catch (e) {
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error adding event: ${e.toString()}'),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-        ),
+      AppToast.showError(
+        context: context,
+        title: 'Error',
+        message: 'Failed to add event. Please try again later.',
       );
     }
   }
@@ -1286,23 +1249,19 @@ Future<void> _saveEvent() async {
 // Replace your _updateEvent method with this:
 Future<void> _updateEvent() async {
   if (_eventSelectedDate == null) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Please select an event date'),
-        backgroundColor: Colors.red,
-        behavior: SnackBarBehavior.floating,
-      ),
+    AppToast.showError(
+      context: context,
+      title: 'Validation Error',
+      message: 'Please select an event date',
     );
     return;
   }
 
   if (_isCustomAgenda && _eventAgendaController.text.trim().isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Please enter custom agenda'),
-        backgroundColor: Colors.red,
-        behavior: SnackBarBehavior.floating,
-      ),
+    AppToast.showError(
+      context: context,
+      title: 'Validation Error',
+      message: 'Please enter custom agenda',
     );
     return;
   }
@@ -1335,22 +1294,19 @@ Future<void> _updateEvent() async {
     await _loadEvents();
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Event updated successfully'),
-          backgroundColor: const Color(0xFF10B981),
-          behavior: SnackBarBehavior.floating,
-        ),
+      // app toast success
+      AppToast.showSuccess(
+        context: context,
+        title: 'Success',
+        message: 'Event updated successfully',
       );
     }
   } catch (e) {
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error updating event: ${e.toString()}'),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-        ),
+      AppToast.showError(
+        context: context,
+        title: 'Error',
+        message: 'Failed to update event. Please try again later.',
       );
     }
   }
@@ -1385,22 +1341,19 @@ Future<void> _updateEvent() async {
       await _loadEvents();
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Event deleted successfully'),
-            backgroundColor: const Color(0xFF10B981),
-            behavior: SnackBarBehavior.floating,
-          ),
+        // app toast success
+        AppToast.showSuccess(
+          context: context,
+          title: 'Success',
+          message: 'Event deleted successfully',
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Error deleting event. Please try again'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-          ),
+        AppToast.showError(
+          context: context,
+          title: 'Error',
+          message: 'Failed to delete event. Please try again later.',
         );
       }
     }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:lawdesk/widgets/delightful_toast.dart';
 
 class AddCaseModal extends StatefulWidget {
   final VoidCallback? onCaseAdded;
@@ -103,9 +104,9 @@ class _AddCaseModalState extends State<AddCaseModal> {
     if (!_formKey.currentState!.validate()) return;
     
     if (_selectedCourtDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a court date')),
-      );
+      AppToast.showError(context: context,
+        title: 'Date Required',
+        message: 'Please select a court date.');
       return;
     }
 
@@ -147,22 +148,16 @@ class _AddCaseModalState extends State<AddCaseModal> {
 
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Case added successfully!'),
-            backgroundColor: Color(0xFF10B981),
-          ),
-        );
+        AppToast.showSuccess(context: context,
+          title: 'Case Added',
+          message: 'Your new case has been added successfully.');
         widget.onCaseAdded?.call();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error occured during Case creation. Please try again'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppToast.showError(context: context,
+          title: 'Error',
+          message: 'Failed to add case. Please try again.');
       }
     } finally {
       if (mounted) {
