@@ -223,13 +223,7 @@ Future<void> _refreshDashboard() async {
                 child: ElevatedButton(
                   onPressed: () {
                     Navigator.of(context).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Please close and reopen the app to complete the update'),
-                        duration: Duration(seconds: 5),
-                        backgroundColor: Color(0xFF10B981),
-                      ),
-                    );
+                    AppToast.showSuccess(context: context, title: "Hurray!", message: "Please close and reopen the app to complete the update");
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF10B981),

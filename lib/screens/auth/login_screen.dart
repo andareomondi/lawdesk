@@ -5,6 +5,8 @@ import 'package:lawdesk/screens/auth/forgotPassword.dart';
 import 'package:lawdesk/providers/auth_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:lawdesk/widgets/delightful_toast.dart';
+
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -54,23 +56,20 @@ class _LoginPageState extends State<LoginPage> {
         } else {
           errorMessage = "An error occured during logging in. Please try again.";
         }
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: Colors.red,
-          ),
+        AppToast.showError(
+          context: context,
+          title: 'Login Failed',
+          message: errorMessage,
         );
       }
     } catch (e) {
       // Handle any other unexpected errors
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('An unexpected error occurred. Please try again.'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppToast.showError(
+          context: context,
+          title: 'Login Failed',
+          message: 'An unexpected error occurred. Please try again.',
+        ); 
       }
     } finally {
       if (mounted) {
