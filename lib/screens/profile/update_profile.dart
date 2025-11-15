@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:lawdesk/widgets/delightful_toast.dart';
 
 class ProfileUpdateScreen extends StatefulWidget {
   const ProfileUpdateScreen({super.key});
@@ -43,11 +44,10 @@ Future<void> _updateProfile() async {
   
   // Check if user exists before proceeding
   if (user == null) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('No user logged in. Please sign in again.'),
-        backgroundColor: Colors.red,
-      ),
+    AppToast.showError( 
+      context: context,
+      title: 'Error',
+      message: 'No authenticated user found.',
     );
     setState(() {
       _isLoading = false;
@@ -69,11 +69,9 @@ Future<void> _updateProfile() async {
     });
     
     if (mounted) { // Check if widget is still mounted
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Profile updated successfully!'),
-          backgroundColor: Color(0xFF10B981),
-        ),
+      AppToast.showSuccess(context: context, 
+        title: 'Success', 
+        message: 'Profile updated successfully.'
       );
       Navigator.pop(context);
     }
@@ -83,11 +81,10 @@ Future<void> _updateProfile() async {
     });
     
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to update profile: $e'),
-          backgroundColor: Colors.red,
-        ),
+      AppToast.showError(
+        context: context,
+        title: 'Update Failed',
+        message: 'An error occurred while updating your profile. Please try again.',
       );
     }
   }

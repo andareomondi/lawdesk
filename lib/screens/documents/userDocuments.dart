@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:lawdesk/screens/documents/upload.dart';
+import 'package:lawdesk/widgets/delightful_toast.dart';
 
 class AllDocumentsPage extends StatefulWidget {
   const AllDocumentsPage({Key? key}) : super(key: key);
@@ -107,12 +108,7 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerPr
       await Future.delayed(const Duration(milliseconds: 300));
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Error loading cases documents. Make sure you are online'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppToast.showError( context: context, title: 'Error', message: 'Failed to load documents' );
       }
     }
   }
@@ -259,21 +255,11 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerPr
         await _loadAllDocuments();
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Document deleted successfully'),
-              backgroundColor: Color(0xFF10B981),
-            ),
-          );
+          AppToast.showSuccess(context: context, title: "Deletion succesful", message: "Document deleted successfully");
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Error deleting this document'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          AppToast.showError(context: context, title: "Error", message: "Failed to delete document");
         }
       }
     }

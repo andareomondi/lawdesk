@@ -4,6 +4,7 @@ import '../../config/supabase_config.dart';
 import '../../providers/auth_provider.dart';
 import 'update_profile.dart';
 import 'package:lawdesk/screens/auth/login_screen.dart';
+import 'package:lawdesk/widgets/delightful_toast.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -160,13 +161,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
         await authProvider.signOut();
         
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Logged out successfully'),
-              backgroundColor: Color(0xFF10B981),
-              duration: Duration(seconds: 2),
-            ),
-          );
+          AppToast.showSuccess(context: context, title: "Operation sucessfull", message: "Logged out successfully");
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => const LoginPage()),
