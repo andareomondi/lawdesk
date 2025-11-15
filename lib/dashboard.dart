@@ -10,6 +10,8 @@ import 'package:lawdesk/screens/documents/userDocuments.dart';
 import 'package:lawdesk/screens/calender/calender.dart';
 import 'package:lawdesk/widgets/dashboard/statCard.dart';
 import 'package:liquid_pull_to_refresh/liquid_pull_to_refresh.dart';
+import 'package:delightful_toast/delight_toast.dart';
+import 'package:delightful_toast/toast/components/toast_card.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -112,43 +114,72 @@ class _DashboardState extends State<Dashboard> with SingleTickerProviderStateMix
     }
   }
 
-  Future<void> _refreshDashboard() async {
-    setState(() {
-      _isLoading = true;
-    });
+Future<void> _refreshDashboard() async {
+  setState(() {
+    _isLoading = true;
+  });
+  
+  try {
+    await _loadUserData();
+    await _checkForShorebirdUpdates();
     
-    try {
-      await _loadUserData();
-      await _checkForShorebirdUpdates();
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Dashboard refreshed successfully'),
-            backgroundColor: Color(0xFF10B981),
-            duration: Duration(seconds: 2),
+    if (mounted) {
+      DelightToastBar(
+        autoDismiss: true,
+        snackbarDuration: const Duration(seconds: 2),
+        builder: (context) => const ToastCard(
+          leading: Icon(
+            Icons.check_circle,
+            size: 28,
+            color: Color(0xFF10B981),
           ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Error refreshing. Make sure you are online'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 3),
+          title: Text(
+            "Success!",
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
+            ),
           ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+          subtitle: Text(
+            "Dashboard refreshed successfully",
+            style: TextStyle(fontSize: 12),
+          ),
+        ),
+      ).show(context);
+    }
+  } catch (e) {
+    if (mounted) {
+      DelightToastBar(
+        autoDismiss: true,
+        snackbarDuration: const Duration(seconds: 3),
+        builder: (context) => const ToastCard(
+          leading: Icon(
+            Icons.error_outline,
+            size: 28,
+            color: Colors.red,
+          ),
+          title: Text(
+            "Error",
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
+            ),
+          ),
+          subtitle: Text(
+            "Error refreshing. Make sure you are online",
+            style: TextStyle(fontSize: 12),
+          ),
+        ),
+      ).show(context);
+    }
+  } finally {
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
-
+}
   Future<void> _downloadAndApplyUpdate() async {
     setState(() {
       _isDownloadingUpdate = true;
