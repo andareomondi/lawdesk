@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:io';
+import 'package:lawdesk/widgets/delightful_toast.dart';
 
 class CaseDocumentsPage extends StatefulWidget {
   final int caseId;
@@ -19,6 +20,10 @@ class CaseDocumentsPage extends StatefulWidget {
 
 class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
   final _supabase = Supabase.instance.client;
+  
+  // FIXED: Consistent bucket name throughout
+  static const String BUCKET_NAME = 'case_documents';
+  
   List<Map<String, dynamic>> _documents = [];
   bool _isLoading = true;
   bool _isUploading = false;
@@ -56,36 +61,24 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error loading documents. Make sure you are online'),
-            backgroundColor: Colors.red,
-          ),
-        );
+       AppToast.showError(context: context, title: "Error occurred", message: "Failed to load documents: ${e.toString()}"); 
       }
     }
   }
 
   Future<void> _pickAndUploadFile() async {
     try {
-      // Pick file
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'],
       );
 
       if (result != null && result.files.single.path != null) {
-        // Show document type selector
         await _showDocumentTypeDialog(result.files.single);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('An error while picking file. Please try again'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppToast.showError(context: context, title: "Error occurred", message: "Failed to pick the document: ${e.toString()}");
       }
     }
   }
@@ -134,19 +127,40 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
       final user = _supabase.auth.currentUser;
       if (user == null) throw Exception('No user logged in');
 
-      // Create file path: caseId/timestamp-filename
+      // FIXED: Create flat file path without folder structure
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final fileName = file.name;
-      final filePath = '${widget.caseId}/$timestamp-$fileName';
+      // Use case_id as prefix in filename instead of folder
+      final filePath = 'case_${widget.caseId}_${timestamp}_$fileName';
+
+      print('Uploading to path: $filePath'); // Debug logging
 
       // Upload to Supabase Storage
       final fileBytes = await File(file.path!).readAsBytes();
-      await _supabase.storage
-          .from('case_documents')
-          .uploadBinary(filePath, fileBytes);
+      
+      // FIXED: Added proper upload options
+      final uploadResponse = await _supabase.storage
+          .from(BUCKET_NAME)
+          .uploadBinary(
+            filePath, 
+            fileBytes,
+            fileOptions: FileOptions(
+              cacheControl: '3600',
+              upsert: false,
+            ),
+          );
+
+      print('Upload response: $uploadResponse'); // Debug logging
+
+      // FIXED: Get public URL for the uploaded file
+      final publicUrl = _supabase.storage
+          .from(BUCKET_NAME)
+          .getPublicUrl(filePath);
+
+      print('Public URL: $publicUrl'); // Debug logging
 
       // Insert record into documents table
-      await _supabase.from('documents').insert({
+      final insertResponse = await _supabase.from('documents').insert({
         'case_id': widget.caseId,
         'uploaded_by': user.id,
         'file_name': fileName,
@@ -154,28 +168,22 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
         'file_size': file.size,
         'mime_type': file.extension,
         'document_type': documentType,
-        'bucket_name': 'case-documents',
-      });
+        'bucket_name': BUCKET_NAME,
+        'public_url': publicUrl, // Store the public URL
+      }).select();
+
+      print('Insert response: $insertResponse'); // Debug logging
 
       // Reload documents
       await _loadDocuments();
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Document uploaded successfully!'),
-            backgroundColor: Color(0xFF10B981),
-          ),
-        );
+        AppToast.showSuccess(context: context, title: "Upload Successful", message: "Document uploaded successfully.");
       }
     } catch (e) {
+      print('Upload error: $e'); // Debug logging
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error uploading the document. Please try again'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppToast.showError(context: context, title: "Error occurred", message: "Failed to upload: ${e.toString()}");
       }
     } finally {
       setState(() => _isUploading = false);
@@ -215,9 +223,9 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
 
     if (confirm == true) {
       try {
-        // Delete from storage
+        // FIXED: Use consistent bucket name
         await _supabase.storage
-            .from('case-documents')
+            .from(BUCKET_NAME)
             .remove([doc['file_path']]);
 
         // Delete from database
@@ -226,21 +234,12 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
         await _loadDocuments();
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Document deleted successfully'),
-              backgroundColor: Color(0xFF10B981),
-            ),
-          );
+          AppToast.showSuccess(context: context, title: "Deletion Successful", message: "Document deleted successfully.");
         }
       } catch (e) {
+        print('Delete error: $e'); // Debug logging
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error deleting the document. Please try again'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          AppToast.showError(context: context, title: "Error occurred", message: "Failed to delete: ${e.toString()}");
         }
       }
     }
@@ -248,32 +247,22 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
 
   Future<void> _downloadDocument(Map<String, dynamic> doc) async {
     try {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Downloading...')),
-      );
+      AppToast.showSuccess(context: context, title: "Download Started", message: "Downloading document...");
 
+      // FIXED: Use consistent bucket name
       final response = await _supabase.storage
-          .from('case-documents')
+          .from(BUCKET_NAME)
           .download(doc['file_path']);
 
       // In a real app, you'd save this to the device
       // For now, just show success
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Document downloaded successfully'),
-            backgroundColor: Color(0xFF10B981),
-          ),
-        );
+        AppToast.showSuccess(context: context, title: "Download Successful", message: "Document downloaded successfully (${response.length} bytes).");
       }
     } catch (e) {
+      print('Download error: $e'); // Debug logging
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error downloading this document. Please try again'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppToast.showError(context: context, title: "Error occurred", message: "Failed to download: ${e.toString()}");
       }
     }
   }

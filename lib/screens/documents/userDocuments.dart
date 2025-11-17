@@ -250,7 +250,7 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerPr
 
     if (confirm == true) {
       try {
-        await _supabase.storage.from('case-documents').remove([doc['file_path']]);
+        await _supabase.storage.from('case_documents').remove([doc['file_path']]);
         await _supabase.from('documents').delete().eq('id', doc['id']);
         await _loadAllDocuments();
 
