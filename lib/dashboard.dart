@@ -570,34 +570,6 @@ class _DashboardState extends State<Dashboard> with SingleTickerProviderStateMix
       children: [
         if (_isFabExpanded) ...[
           _buildFabOption(
-            label: 'Documents',
-            icon: Icons.description_outlined,
-            color: const Color(0xFFF59E0B),
-            onPressed: () {
-              _closeFab();
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const AllDocumentsPage(),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 12),
-          _buildFabOption(
-            label: 'All Cases',
-            icon: Icons.folder_open_outlined,
-            color: const Color(0xFF8B5CF6),
-            onPressed: () {
-              _closeFab();
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const CasesPage()),
-              );
-            },
-          ),
-          const SizedBox(height: 12),
-          _buildFabOption(
             label: 'View Calendar',
             icon: Icons.calendar_month_outlined,
             color: const Color(0xFF10B981),
@@ -610,7 +582,35 @@ class _DashboardState extends State<Dashboard> with SingleTickerProviderStateMix
                 ),
               );
             },
+         ),
+          const SizedBox(height: 12),
+          _buildFabOption(
+            label: 'View Cases',
+            icon: Icons.folder_open_outlined,
+            color: const Color(0xFF8B5CF6),
+            onPressed: () {
+              _closeFab();
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const CasesPage()),
+              );
+            },
           ),
+          const SizedBox(height: 12),
+          _buildFabOption(
+            label: 'Documents',
+            icon: Icons.description_outlined,
+            color: const Color(0xFFF59E0B),
+            onPressed: () {
+              _closeFab();
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AllDocumentsPage(),
+                ),
+              );
+            },
+           ),
           const SizedBox(height: 12),
           _buildFabOption(
             label: 'New Case',
