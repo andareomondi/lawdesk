@@ -28,13 +28,16 @@ class _DashboardState extends State<Dashboard> with SingleTickerProviderStateMix
   String _userEmail = '';
   Map<String, dynamic>? _userProfile;
   bool _isLoading = true;
-  bool _isUpdated = false; // Changed default to false
-  bool _hasCheckedProfile = false; // Track if we've checked profile
+  bool _isUpdated = false;
+  bool _hasCheckedProfile = false;
   
   // Shorebird update variables
   bool _isCheckingForUpdate = false;
   bool _isDownloadingUpdate = false;
   int? _currentPatchNumber;
+
+  // FAB expansion state
+  bool _isFabExpanded = false;
 
   // Animation controller for shimmer effect
   late AnimationController _shimmerController;
@@ -113,38 +116,38 @@ class _DashboardState extends State<Dashboard> with SingleTickerProviderStateMix
     }
   }
 
-Future<void> _refreshDashboard() async {
-  setState(() {
-    _isLoading = true;
-  });
-  
-  try {
-    await _loadUserData();
-    await _checkForShorebirdUpdates();
+  Future<void> _refreshDashboard() async {
+    setState(() {
+      _isLoading = true;
+    });
     
-    if (mounted) {
-      AppToast.showSuccess(
-        context: context,
-        title: "Success!",
-        message: "Dashboard refreshed successfully",
-      );
-    }
-  } catch (e) {
-    if (mounted) {
-      AppToast.showError(
-        context: context,
-        title: "Error",
-        message: "Error refreshing. Make sure you are online",
-      );
-    }
-  } finally {
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-      });
+    try {
+      await _loadUserData();
+      await _checkForShorebirdUpdates();
+      
+      if (mounted) {
+        AppToast.showSuccess(
+          context: context,
+          title: "Success!",
+          message: "Dashboard refreshed successfully",
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        AppToast.showError(
+          context: context,
+          title: "Error",
+          message: "Error refreshing. Make sure you are online",
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
-}
 
   Future<void> _downloadAndApplyUpdate() async {
     setState(() {
@@ -347,15 +350,12 @@ Future<void> _refreshDashboard() async {
             _userProfile = response;
             _userName = response['username'] ?? 'Guest';
             _userEmail = response['email'] ?? '';
-            // Fixed: Check if is_updated field exists and is explicitly true
             _isUpdated = response['is_updated'] == true;
             _isLoading = false;
           });
           
-          // Show profile update dialog only once per session and if not updated
           if (!_isUpdated && !_hasCheckedProfile) {
             _hasCheckedProfile = true;
-            // Use a small delay to ensure the UI is ready
             Future.delayed(const Duration(milliseconds: 500), () {
               if (mounted) {
                 _showProfileUpdateToast(context);
@@ -457,7 +457,6 @@ Future<void> _refreshDashboard() async {
                           context,
                           MaterialPageRoute(builder: (context) => const ProfileUpdateScreen()),
                         );
-                        // Reload data if profile was updated
                         if (result == true) {
                           _hasCheckedProfile = false;
                           _loadUserData();
@@ -490,47 +489,195 @@ Future<void> _refreshDashboard() async {
     );
   }
 
+  void _toggleFab() {
+    setState(() {
+      _isFabExpanded = !_isFabExpanded;
+    });
+  }
+
+  void _closeFab() {
+    if (_isFabExpanded) {
+      setState(() {
+        _isFabExpanded = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF1E3A8A),
-        foregroundColor: Colors.white,
-        elevation: 0,
-        title: const Text(
-          'Dashboard',
-          style: TextStyle(fontWeight: FontWeight.w600),
+    return GestureDetector(
+      onTap: _closeFab,
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF1E3A8A),
+          foregroundColor: Colors.white,
+          elevation: 0,
+          title: const Text(
+            'Dashboard',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.account_circle_outlined),
+              onPressed: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                );
+                if (result == true) {
+                  _hasCheckedProfile = false;
+                  _loadUserData();
+                }
+              },
+            ),
+          ],
         ),
-        actions: [
-         IconButton(
-            icon: const Icon(Icons.account_circle_outlined),
-            onPressed: () async {
-              final result = await Navigator.push(
+        backgroundColor: const Color(0xFFF8FAFC),
+        body: Stack(
+          children: [
+            LiquidPullToRefresh(
+              onRefresh: _refreshDashboard,
+              color: const Color(0xFF1E3A8A),
+              height: 80,
+              backgroundColor: Colors.white,
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 400),
+                switchInCurve: Curves.easeOut,
+                switchOutCurve: Curves.easeIn,
+                child: _isLoading
+                    ? _buildShimmerLoading()
+                    : _buildContent(),
+              ),
+            ),
+            if (_isFabExpanded)
+              GestureDetector(
+                onTap: _closeFab,
+                child: Container(
+                  color: Colors.black54,
+                ),
+              ),
+          ],
+        ),
+        floatingActionButton: _buildExpandableFab(),
+      ),
+    );
+  }
+
+  Widget _buildExpandableFab() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        if (_isFabExpanded) ...[
+          _buildFabOption(
+            label: 'Documents',
+            icon: Icons.description_outlined,
+            color: const Color(0xFFF59E0B),
+            onPressed: () {
+              _closeFab();
+              Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                MaterialPageRoute(
+                  builder: (context) => const AllDocumentsPage(),
+                ),
               );
-              if (result == true) {
-                _hasCheckedProfile = false;
-                _loadUserData();
-              }
             },
           ),
+          const SizedBox(height: 12),
+          _buildFabOption(
+            label: 'All Cases',
+            icon: Icons.folder_open_outlined,
+            color: const Color(0xFF8B5CF6),
+            onPressed: () {
+              _closeFab();
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const CasesPage()),
+              );
+            },
+          ),
+          const SizedBox(height: 12),
+          _buildFabOption(
+            label: 'View Calendar',
+            icon: Icons.calendar_month_outlined,
+            color: const Color(0xFF10B981),
+            onPressed: () {
+              _closeFab();
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const CalendarPage(),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 12),
+          _buildFabOption(
+            label: 'New Case',
+            icon: Icons.add_circle_outline,
+            color: const Color(0xFF1E3A8A),
+            onPressed: () {
+              _closeFab();
+              AddCaseModal.show(context, onCaseAdded: () {
+                setState(() {});
+              });
+            },
+          ),
+          const SizedBox(height: 16),
         ],
-      ),
-      backgroundColor: const Color(0xFFF8FAFC),
-      body: LiquidPullToRefresh(
-        onRefresh: _refreshDashboard,
-        color: const Color(0xFF1E3A8A),
-        height: 80,
-        backgroundColor: Colors.white,
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 400),
-          switchInCurve: Curves.easeOut,
-          switchOutCurve: Curves.easeIn,
-          child: _isLoading
-              ? _buildShimmerLoading()
-              : _buildContent(),
+        FloatingActionButton(
+          onPressed: _toggleFab,
+          backgroundColor: const Color(0xFF1E3A8A),
+          child: AnimatedRotation(
+            duration: const Duration(milliseconds: 300),
+            turns: _isFabExpanded ? 0.125 : 0,
+            child: Icon(
+              _isFabExpanded ? Icons.close : Icons.menu,
+              color: Colors.white,
+            ),
+          ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildFabOption({
+    required String label,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onPressed,
+  }) {
+    return AnimatedScale(
+      duration: const Duration(milliseconds: 200),
+      scale: _isFabExpanded ? 1.0 : 0.0,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Material(
+            color: Colors.white,
+            elevation: 4,
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1F2937),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          FloatingActionButton(
+            onPressed: onPressed,
+            backgroundColor: color,
+            heroTag: label,
+            mini: true,
+            child: Icon(icon, color: Colors.white),
+          ),
+        ],
       ),
     );
   }
@@ -544,11 +691,12 @@ Future<void> _refreshDashboard() async {
         children: [
           _buildWelcomeSection(),
           const SizedBox(height: 24),
-          const StatsSection(),
+          _isLoading 
+              ? _buildShimmerStatsCards()
+              : const StatsSection(),
           const SizedBox(height: 24),
           _buildUpcomingDatesSection(context),
-          const SizedBox(height: 24),
-          _buildQuickActionsSection(context),
+          const SizedBox(height: 80), // Extra padding for FAB
         ],
       ),
     );
@@ -565,8 +713,6 @@ Future<void> _refreshDashboard() async {
           _buildShimmerStatsCards(),
           const SizedBox(height: 24),
           _buildShimmerSection('Upcoming Court Dates'),
-          const SizedBox(height: 24),
-          _buildShimmerSection('Quick Actions'),
         ],
       ),
     );
@@ -817,136 +963,10 @@ Future<void> _refreshDashboard() async {
           ],
         ),
         const SizedBox(height: 12),
-        const CasesListWidget(),
+        _isLoading
+            ? _buildShimmerSection('Loading cases...')
+            : const CasesListWidget(),
       ],
-    );
-  }
-
-  Widget _buildQuickActionsSection(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Quick Actions',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF1F2937),
-          ),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _ActionButton(
-                label: 'New Case',
-                icon: Icons.add_circle_outline,
-                color: const Color(0xFF1E3A8A),
-                onPressed: () {
-                  AddCaseModal.show(context, onCaseAdded: () {
-                    setState(() {});
-                  });
-                },
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _ActionButton(
-                label: 'View Calendar',
-                icon: Icons.calendar_month_outlined,
-                color: const Color(0xFF10B981),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const CalendarPage(),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _ActionButton(
-                label: 'All Cases',
-                icon: Icons.folder_open_outlined,
-                color: const Color(0xFF8B5CF6),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const CasesPage()),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _ActionButton(
-                label: 'Documents',
-                icon: Icons.description_outlined,
-                color: const Color(0xFFF59E0B),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const AllDocumentsPage(),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _ActionButton extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final Color color;
-  final VoidCallback onPressed;
-
-  const _ActionButton({
-    required this.label,
-    required this.icon,
-    required this.color,
-    required this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        elevation: 2,
-        shadowColor: color.withOpacity(0.3),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 20),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
