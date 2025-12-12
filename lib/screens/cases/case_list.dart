@@ -170,28 +170,42 @@ class _CasesListWidgetState extends State<CasesListWidget> with SingleTickerProv
 
     if (_cases.isEmpty) {
       return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.folder_open,
-                size: 48,
-                color: Colors.grey[400],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'No cases found',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey[600],
-                ),
-              ),
-            ],
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(32),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1E3A8A).withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.folder_open,
+              size: 80,
+              color: Color(0xFF1E3A8A),
+            ),
           ),
-        ),
-      );
+          const SizedBox(height: 24),
+          const Text(
+            'No Schedule Yet',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1F2937),
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Add cases and events to see them here',
+            style: TextStyle(
+              fontSize: 14,
+              color: Color(0xFF6B7280),
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
     }
 
     return Column(
