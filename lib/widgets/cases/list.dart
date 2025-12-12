@@ -223,7 +223,7 @@ class _CasesListWidgetState extends State<CasesListWidget> with SingleTickerProv
           ),
           const SizedBox(height: 24),
           const Text(
-            'No Schedule Yet',
+            'No Cases Yet',
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
@@ -232,7 +232,7 @@ class _CasesListWidgetState extends State<CasesListWidget> with SingleTickerProv
           ),
           const SizedBox(height: 8),
           const Text(
-            'Add cases and events to see them here',
+            'Add cases to see them here',
             style: TextStyle(
               fontSize: 14,
               color: Color(0xFF6B7280),
