@@ -67,7 +67,7 @@ class _AddCaseModalState extends State<AddCaseModal> {
       
       // Load all courts (shared across users)
       final courtsData = await _supabase
-          .from('courts')
+          .from('court')
           .select('name')
           .order('name');
 
@@ -151,28 +151,6 @@ class _AddCaseModalState extends State<AddCaseModal> {
     });
   }
 
-  Future<void> _addNewCourt(String courtName) async {
-    try {
-      await _supabase.from('courts').insert({'name': courtName});
-      await _loadData(); // Reload courts
-      if (mounted) {
-        AppToast.showSuccess(
-          context: context,
-          title: 'Court Added',
-          message: 'New court added successfully.',
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        AppToast.showError(
-          context: context,
-          title: 'Error',
-          message: 'Failed to add court. It may already exist.',
-        );
-      }
-    }
-  }
-
   Future<void> _submitCase() async {
     if (!_formKey.currentState!.validate()) return;
     
@@ -205,16 +183,15 @@ class _AddCaseModalState extends State<AddCaseModal> {
 
     setState(() => _isLoading = true);
 
+
     try {
       final user = _supabase.auth.currentUser;
+      
       if (user == null) throw Exception('No user logged in');
 
       final courtName = _courtNameController.text.trim();
+      print('$_selectedClientId, ${_caseNumberController.text.trim()}, $courtName, ${_descriptionController.text.trim()}, ${_selectedCourtDate!.toIso8601String().split('T')[0]}, $_selectedTime, ${user.id}');
       
-      // Check if court exists, if not add it
-      if (!_courts.contains(courtName)) {
-        await _addNewCourt(courtName);
-      }
 
       // Format time as HH:mm:ss for the time column
       String? timeString;
@@ -244,6 +221,7 @@ class _AddCaseModalState extends State<AddCaseModal> {
         widget.onCaseAdded?.call();
       }
     } catch (e) {
+      print('Error adding case: $e');
       if (mounted) {
         AppToast.showError(
           context: context,
@@ -364,7 +342,7 @@ class _AddCaseModalState extends State<AddCaseModal> {
                             ),
                             items: _clients.map((client) {
                               return DropdownMenuItem<String>(
-                                value: client['id'].toString(),
+                                value: client['name'],
                                 child: Text(client['name']),
                               );
                             }).toList(),
