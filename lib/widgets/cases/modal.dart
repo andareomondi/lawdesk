@@ -292,72 +292,162 @@ class _AddCaseModalState extends State<AddCaseModal> {
                           color: Color(0xFF6B7280),
                         ),
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 16),
 
                       // Client Dropdown
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text(
-                                'Client',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  color: Color(0xFF374151),
-                                ),
-                              ),
-                              TextButton.icon(
-                                onPressed: _openAddClientModal,
-                                icon: const Icon(Icons.add, size: 16),
-                                label: const Text('Add Client'),
-                                style: TextButton.styleFrom(
-                                  foregroundColor: const Color(0xFF1E3A8A),
-                                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          DropdownButtonFormField<String>(
-                            value: _selectedClientId,
-                            decoration: InputDecoration(
-                              hintText: _clients.isEmpty 
-                                  ? 'No clients available - Add one first'
-                                  : 'Select a client',
-                              prefixIcon: const Icon(Icons.person, color: Color(0xFF6B7280)),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: Color(0xFF1E3A8A), width: 2),
-                              ),
+                          const Text(
+                            'Client',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF374151),
                             ),
-                            items: _clients.map((client) {
-                              return DropdownMenuItem<String>(
-                                value: client['name'],
-                                child: Text(client['name']),
-                              );
-                            }).toList(),
-                            onChanged: _clients.isEmpty ? null : (value) {
-                              setState(() => _selectedClientId = value);
-                            },
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Please select a client';
-                              }
-                              return null;
-                            },
+                          ),
+                          TextButton.icon(
+                            onPressed: _openAddClientModal,
+                            icon: const Icon(Icons.add, size: 16),
+                            label: const Text('Add Client'),
+                            style: TextButton.styleFrom(
+                              foregroundColor: const Color(0xFF1E3A8A),
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                            ),
                           ),
                         ],
                       ),
+                      const SizedBox(height: 8),
+Autocomplete<String>(
+  optionsBuilder: (TextEditingValue textEditingValue) {
+    final names = _clients.map((c) => c['name'] as String).toList();
+    final input = textEditingValue.text.toLowerCase();
+
+    // Filtered results
+    final filtered = input.isEmpty
+        ? names
+        : names.where((name) => name.toLowerCase().contains(input)).toList();
+
+    // Add "not found" message if no match
+    if (filtered.isEmpty && input.isNotEmpty) {
+      return ['__not_found__'];
+    }
+
+    return filtered;
+  },
+
+  displayStringForOption: (option) {
+    return option == '__not_found__'
+        ? ''
+        : option;
+  },
+
+  onSelected: (String selection) {
+    if (selection == '__not_found__') return;
+
+    setState(() {
+      _selectedClientId = selection;
+    });
+  },
+
+  fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+    // DO NOT override controller.text — allows normal typing
+
+    return TextFormField(
+      controller: controller,
+      focusNode: focusNode,
+      decoration: InputDecoration(
+        labelText: 'Client',
+        hintText: _clients.isEmpty
+            ? 'No clients available - Add one first'
+            : 'Select or type client name',
+        prefixIcon: const Icon(Icons.person, color: Color(0xFF6B7280)),
+        suffixIcon: const Icon(Icons.arrow_drop_down, color: Color(0xFF6B7280)),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFF1E3A8A), width: 2),
+        ),
+      ),
+
+      onChanged: (value) {
+        final names = _clients.map((c) => c['name'] as String).toList();
+
+        if (names.contains(value)) {
+          setState(() => _selectedClientId = value);
+        } else {
+          setState(() => _selectedClientId = null);
+        }
+      },
+
+      validator: (value) {
+        final names = _clients.map((c) => c['name'] as String).toList();
+
+        if (value == null || value.trim().isEmpty) {
+          return 'Please select a client';
+        }
+        if (!names.contains(value.trim())) {
+          return 'Client not registered — add the client first';
+        }
+        return null;
+      },
+    );
+  },
+
+  optionsViewBuilder: (context, onSelected, options) {
+    return Align(
+      alignment: Alignment.topLeft,
+      child: Material(
+        elevation: 4,
+        borderRadius: BorderRadius.circular(12),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: 240, minWidth: 300),
+          child: Scrollbar(
+            thumbVisibility: true,
+            child: ListView.builder(
+              padding: EdgeInsets.zero,
+              itemCount: options.length,
+              itemBuilder: (context, index) {
+                final option = options.elementAt(index);
+
+                // Special not-found tile
+                if (option == '__not_found__') {
+                  return ListTile(
+                    title: const Text(
+                      'Client not registered. Please add the client first',
+                      style: TextStyle(color: Colors.redAccent),
+                    ),
+                    onTap: () {}, // disabled
+                  );
+                }
+
+                return ListTile(
+                  title: Text(option),
+                  onTap: () => onSelected(option),
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+  },
+)
+
+
+                    ],
+                  ),
+
+
+
                       const SizedBox(height: 16),
 
                       // Case Number
