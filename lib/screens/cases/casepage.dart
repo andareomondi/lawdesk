@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lawdesk/screens/cases/case_list.dart';
+import 'package:lawdesk/widgets/cases/list.dart';
 import 'package:lawdesk/widgets/cases/modal.dart';
 
 class CasesPage extends StatefulWidget {
@@ -10,12 +10,11 @@ class CasesPage extends StatefulWidget {
 }
 
 class _CasesPageState extends State<CasesPage> {
-  // Key to force rebuild of CasesList
-  Key _casesListKey = UniqueKey();
+  final GlobalKey<CasesListWidgetState> _casesListKey = GlobalKey<CasesListWidgetState>();
 
   void _refreshCases() {
     setState(() {
-      _casesListKey = UniqueKey(); // Force CasesList to rebuild
+      _casesListKey.currentState?.loadCases(); // Force CasesList to rebuild
     });
   }
 
@@ -139,7 +138,7 @@ class _CasesPageState extends State<CasesPage> {
                   const SizedBox(height: 12),
                   
                   // Cases List with key to force rebuild
-                  CasesListWidget(key: _casesListKey),
+                  CasesListWidget(key: _casesListKey, onCaseChanged: (){},),
                 ],
               ),
             ),

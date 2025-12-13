@@ -23,6 +23,9 @@ class Dashboard extends StatefulWidget {
 class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   final _supabase = Supabase.instance.client;
   final _updater = ShorebirdUpdater();
+
+  final GlobalKey<CasesListWidgetState> _casesListKey = GlobalKey();
+final GlobalKey<StatsSectionState> _statsKey = GlobalKey<StatsSectionState>();
   
   // User data variables
   String _userName = 'Guest';
@@ -138,6 +141,9 @@ _fabController = AnimationController(
     try {
       await _loadUserData();
       await _checkForShorebirdUpdates();
+
+      _casesListKey.currentState?.loadCases();
+      _statsKey.currentState?.loadStats();
       
       if (mounted) {
         AppToast.showSuccess(
@@ -578,7 +584,7 @@ void _toggleFab() {
                     const SizedBox(height: 24),
                     _isLoading 
                         ? _buildShimmerStatsCards()
-                        : const StatsSection(),
+                        : StatsSection(key: _statsKey),
                     const SizedBox(height: 24),
                     _buildUpcomingDatesSection(context),
                     const SizedBox(height: 80), // Extra padding for FAB
@@ -657,7 +663,10 @@ if (_isFabExpanded)
                     delay: 3,
                     onPressed: () {
                       _closeFab();
-                      AddCaseModal.show(context, onCaseAdded: () => setState(() {}));
+                      AddCaseModal.show(context, onCaseAdded: () {
+                        _casesListKey.currentState?.loadCases();
+                        _statsKey.currentState?.loadStats();
+                        });
                     },
                   ),
                   const SizedBox(height: 24),
@@ -990,7 +999,12 @@ Widget _buildFabMenuItem({
         const SizedBox(height: 12),
         _isLoading
             ? _buildShimmerSection('Loading cases...')
-            : const CasesListWidget(),
+            :CasesListWidget(key: _casesListKey, 
+            limit: 5,
+            onCaseChanged: () {
+              _statsKey.currentState?.loadStats();
+            },
+            ),
       ],
     );
   }

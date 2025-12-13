@@ -4,13 +4,14 @@ import 'package:intl/intl.dart';
 import 'package:lawdesk/widgets/cases/details.dart';
 
 class CasesListWidget extends StatefulWidget {
-  const CasesListWidget({Key? key}) : super(key: key);
+  final VoidCallback? onCaseChanged;
+  const CasesListWidget({Key? key, this.onCaseChanged}) : super(key: key);
 
   @override
-  State<CasesListWidget> createState() => _CasesListWidgetState();
+  State<CasesListWidget> createState() => CasesListWidgetState();
 }
 
-class _CasesListWidgetState extends State<CasesListWidget> with SingleTickerProviderStateMixin {
+class CasesListWidgetState extends State<CasesListWidget> with SingleTickerProviderStateMixin {
   final _supabase = Supabase.instance.client;
   List<Map<String, dynamic>> _cases = [];
   bool _isLoading = true;
@@ -22,7 +23,7 @@ class _CasesListWidgetState extends State<CasesListWidget> with SingleTickerProv
   void initState() {
     super.initState();
     _setupShimmerAnimation();
-    _loadCases();
+    loadCases();
   }
 
   void _setupShimmerAnimation() {
@@ -46,7 +47,7 @@ class _CasesListWidgetState extends State<CasesListWidget> with SingleTickerProv
     super.dispose();
   }
 
-  Future<void> _loadCases() async {
+  Future<void> loadCases() async {
     setState(() => _isLoading = true);
     
     final cases = await _fetchCases();
@@ -70,11 +71,12 @@ class _CasesListWidgetState extends State<CasesListWidget> with SingleTickerProv
     }
     
     try {
-      final response = await _supabase
+      var response = await _supabase
           .from('cases')
           .select()
           .eq('user', user.id)
-          .order('courtDate', ascending: true);
+          .order('courtDate', ascending: true)
+          .limit(5);
       
       if (response is List) {
         final cases = List<Map<String, dynamic>>.from(response);
@@ -160,13 +162,17 @@ class _CasesListWidgetState extends State<CasesListWidget> with SingleTickerProv
     }
   }
 
-  void _navigateToCaseDetails(String caseId) {
-    Navigator.push(
+  void _navigateToCaseDetails(String caseId) async {
+    final result = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => CaseDetailsPage(caseId: caseId),
       ),
     );
+    if (result == true && mounted) {
+      loadCases();
+      widget.onCaseChanged?.call();
+    }
   }
 
   @override

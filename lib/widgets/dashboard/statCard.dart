@@ -23,10 +23,10 @@ class StatsSection extends StatefulWidget {
   const StatsSection({Key? key}) : super(key: key);
 
   @override
-  State<StatsSection> createState() => _StatsSectionState();
+  State<StatsSection> createState() => StatsSectionState();
 }
 
-class _StatsSectionState extends State<StatsSection> {
+class StatsSectionState extends State<StatsSection> {
   final _supabase = Supabase.instance.client;
   bool _isLoading = true;
   String? _errorMessage;
@@ -35,7 +35,7 @@ class _StatsSectionState extends State<StatsSection> {
   @override
   void initState() {
     super.initState();
-    _fetchStats();
+    loadStats();
   }
 
   String _calculateStatus(DateTime courtDate) {
@@ -55,7 +55,7 @@ class _StatsSectionState extends State<StatsSection> {
     }
   }
 
-  Future<void> _fetchStats() async {
+  Future<void> loadStats() async {
     try {
       setState(() {
         _isLoading = true;
