@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lawdesk/widgets/cases/list.dart';
+import 'package:lawdesk/screens/cases/all_cases_list.dart'; // CHANGED IMPORT
 import 'package:lawdesk/widgets/cases/modal.dart';
 
 class CasesPage extends StatefulWidget {
@@ -10,12 +10,11 @@ class CasesPage extends StatefulWidget {
 }
 
 class _CasesPageState extends State<CasesPage> {
-  final GlobalKey<CasesListWidgetState> _casesListKey = GlobalKey<CasesListWidgetState>();
+  // Use GlobalKey for the all cases list
+  final GlobalKey<AllCasesListWidgetState> _allCasesListKey = GlobalKey<AllCasesListWidgetState>();
 
   void _refreshCases() {
-    setState(() {
-      _casesListKey.currentState?.loadCases(); // Force CasesList to rebuild
-    });
+    _allCasesListKey.currentState?.loadCases();
   }
 
   @override
@@ -137,8 +136,8 @@ class _CasesPageState extends State<CasesPage> {
                   ),
                   const SizedBox(height: 12),
                   
-                  // Cases List with key to force rebuild
-                  CasesListWidget(key: _casesListKey, onCaseChanged: (){},),
+                  // All Cases List with filtering
+                  AllCasesListWidget(key: _allCasesListKey),
                 ],
               ),
             ),
