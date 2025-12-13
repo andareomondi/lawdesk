@@ -533,155 +533,26 @@ class _DashboardState extends State<Dashboard> with SingleTickerProviderStateMix
           ],
         ),
         backgroundColor: const Color(0xFFF8FAFC),
-        body: Stack(
-          children: [
-            LiquidPullToRefresh(
-              onRefresh: _refreshDashboard,
-              color: const Color(0xFF1E3A8A),
-              height: 80,
-              backgroundColor: Colors.white,
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 400),
-                switchInCurve: Curves.easeOut,
-                switchOutCurve: Curves.easeIn,
-                child: _isLoading
-                    ? _buildShimmerLoading()
-                    : _buildContent(),
-              ),
-            ),
-            if (_isFabExpanded)
-              GestureDetector(
-                onTap: _closeFab,
-                child: Container(
-                  color: Colors.black54,
-                ),
-              ),
-          ],
+        body: LiquidPullToRefresh(
+          onRefresh: _refreshDashboard,
+          color: const Color(0xFF1E3A8A),
+          height: 80,
+          backgroundColor: Colors.white,
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 400),
+            switchInCurve: Curves.easeOut,
+            switchOutCurve: Curves.easeIn,
+            child: _isLoading
+                ? _buildShimmerLoading()
+                : _buildContent(),
+          ),
         ),
-        floatingActionButton: _buildExpandableFab(),
+        floatingActionButton: null,
       ),
     );
   }
 
-  Widget _buildExpandableFab() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        if (_isFabExpanded) ...[
-          _buildFabOption(
-            label: 'View Calendar',
-            icon: Icons.calendar_month_outlined,
-            color: const Color(0xFF10B981),
-            onPressed: () {
-              _closeFab();
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const CalendarPage(),
-                ),
-              );
-            },
-         ),
-          const SizedBox(height: 12),
-          _buildFabOption(
-            label: 'Documents',
-            icon: Icons.description_outlined,
-            color: const Color(0xFFF59E0B),
-            onPressed: () {
-              _closeFab();
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const AllDocumentsPage(),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 12),
-          _buildFabOption(
-            label: 'View Cases ',
-            icon: Icons.folder_open_outlined,
-            color: const Color(0xFF8B5CF6),
-            onPressed: () {
-              _closeFab();
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const CasesPage()),
-              );
-            },
-           ),
-          const SizedBox(height: 12),
-          _buildFabOption(
-            label: 'New Case',
-            icon: Icons.add_circle_outline,
-            color: const Color(0xFF1E3A8A),
-            onPressed: () {
-              _closeFab();
-              AddCaseModal.show(context, onCaseAdded: () {
-                setState(() {});
-              });
-            },
-          ),
-          const SizedBox(height: 16),
-        ],
-        FloatingActionButton(
-          onPressed: _toggleFab,
-          backgroundColor: const Color(0xFF1E3A8A),
-          child: AnimatedRotation(
-            duration: const Duration(milliseconds: 300),
-            turns: _isFabExpanded ? 0.125 : 0,
-            child: Icon(
-              _isFabExpanded ? Icons.close : Icons.menu,
-              color: Colors.white,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFabOption({
-    required String label,
-    required IconData icon,
-    required Color color,
-    required VoidCallback onPressed,
-  }) {
-    return AnimatedScale(
-      duration: const Duration(milliseconds: 200),
-      scale: _isFabExpanded ? 1.0 : 0.0,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Material(
-            color: Colors.white,
-            elevation: 4,
-            borderRadius: BorderRadius.circular(8),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF1F2937),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          FloatingActionButton(
-            onPressed: onPressed,
-            backgroundColor: color,
-            heroTag: label,
-            mini: true,
-            child: Icon(icon, color: Colors.white),
-          ),
-        ],
-      ),
-    );
-  }
-
+  
   Widget _buildContent() {
     return SingleChildScrollView(
       key: const ValueKey('content'),
@@ -696,6 +567,8 @@ class _DashboardState extends State<Dashboard> with SingleTickerProviderStateMix
               : const StatsSection(),
           const SizedBox(height: 24),
           _buildUpcomingDatesSection(context),
+          const SizedBox(height: 24),
+          _buildQuickActionsButton(),
           const SizedBox(height: 80), // Extra padding for FAB
         ],
       ),
@@ -969,4 +842,150 @@ class _DashboardState extends State<Dashboard> with SingleTickerProviderStateMix
       ],
     );
   }
+  Widget _buildQuickActionsButton() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ElevatedButton(
+          onPressed: _toggleFab,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF1E3A8A),
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            elevation: 2,
+            shadowColor: const Color(0xFF1E3A8A).withOpacity(0.3),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              AnimatedRotation(
+                duration: const Duration(milliseconds: 300),
+                turns: _isFabExpanded ? 0.125 : 0,
+                child: Icon(
+                  _isFabExpanded ? Icons.close : Icons.apps,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                _isFabExpanded ? 'Close Menu' : 'Quick Actions',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (_isFabExpanded) ...[
+          const SizedBox(height: 16),
+          _buildActionsList(),
+        ],
+      ],
+    );
+  }
+
+Widget _buildActionsList() {
+  return AnimatedSize(
+    duration: const Duration(milliseconds: 400),
+    curve: Curves.easeOut,
+    child: Column(
+      children: [
+        _buildActionButton(
+          label: 'New Case',
+          icon: Icons.add_circle_outline,
+          color: const Color(0xFF1E3A8A),
+          onPressed: () {
+            _closeFab();
+            AddCaseModal.show(context, onCaseAdded: () {
+              setState(() {});
+            });
+          },
+        ),
+        const SizedBox(height: 12),
+        _buildActionButton(
+          label: 'View Calendar',
+          icon: Icons.calendar_month_outlined,
+          color: const Color(0xFF10B981),
+          onPressed: () {
+            _closeFab();
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const CalendarPage(),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 12),
+        _buildActionButton(
+          label: 'All Cases',
+          icon: Icons.folder_open_outlined,
+          color: const Color(0xFF8B5CF6),
+          onPressed: () {
+            _closeFab();
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const CasesPage()),
+            );
+          },
+        ),
+        const SizedBox(height: 12),
+        _buildActionButton(
+          label: 'Documents',
+          icon: Icons.description_outlined,
+          color: const Color(0xFFF59E0B),
+          onPressed: () {
+            _closeFab();
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const AllDocumentsPage(),
+              ),
+            );
+          },
+        ),
+      ],
+    ),
+  );
+}
+
+Widget _buildActionButton({
+  required String label,
+  required IconData icon,
+  required Color color,
+  required VoidCallback onPressed,
+}) {
+  return ElevatedButton(
+    onPressed: onPressed,
+    style: ElevatedButton.styleFrom(
+      backgroundColor: color,
+      foregroundColor: Colors.white,
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      elevation: 2,
+      shadowColor: color.withOpacity(0.3),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+    ),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(icon, size: 20),
+        const SizedBox(width: 8),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 }
