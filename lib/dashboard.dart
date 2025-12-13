@@ -12,6 +12,7 @@ import 'package:lawdesk/screens/calender/calender.dart';
 import 'package:lawdesk/widgets/dashboard/statCard.dart';
 import 'package:liquid_pull_to_refresh/liquid_pull_to_refresh.dart';
 import 'package:lawdesk/widgets/delightful_toast.dart';
+import 'package:lawdesk/widgets/cases/client_modal.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -624,35 +625,40 @@ if (_isFabExpanded)
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   _buildFabMenuItem(
-                    label: 'Documents',
-                    icon: Icons.description_outlined,
-                    color: const Color(0xFFF59E0B),
+                    label: 'Open Calender',
+                    icon: Icons.calendar_month_outlined,
+
+                    color: const Color(0xFF10B981),
                     delay: 0,
                     onPressed: () {
                       _closeFab();
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => const AllDocumentsPage()));
+
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => const CalendarPage()));
                     },
                   ),
                   const SizedBox(height: 16),
                   _buildFabMenuItem(
-                    label: 'All Cases',
-                    icon: Icons.folder_open_outlined,
-                    color: const Color(0xFF8B5CF6),
+                    label: 'Documents',
+                    icon: Icons.description_outlined,
+
+                    color: const Color(0xFFF59E0B),
                     delay: 1,
                     onPressed: () {
                       _closeFab();
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => const CasesPage()));
-                    },
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => const AllDocumentsPage()));
+                  },
                   ),
                   const SizedBox(height: 16),
                   _buildFabMenuItem(
-                    label: 'View Calendar',
-                    icon: Icons.calendar_month_outlined,
-                    color: const Color(0xFF10B981),
+                    label: 'New Client',
+                    icon: Icons.person_add_alt_outlined,
+                    color: const Color(0xFF8B5CF6),
                     delay: 2,
                     onPressed: () {
                       _closeFab();
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => const CalendarPage()));
+                      AddClientModal.show(context, onClientAdded: () {
+                        _loadUserData();
+                        });
                     },
                   ),
                   const SizedBox(height: 16),
@@ -884,116 +890,86 @@ Widget _buildFabMenuItem({
     );
   }
 
- Widget _buildWelcomeSection() {
-  if (_isLoading) {
-    // Show shimmer while loading
-    return AnimatedBuilder(
-      animation: _shimmerAnimation,
-      builder: (context, child) {
-        return Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                const Color(0xFFE5E7EB),
-                const Color(0xFFF3F4F6),
-                const Color(0xFFE5E7EB),
-              ],
-              stops: [
-                0.0,
-                _shimmerAnimation.value.clamp(0.0, 1.0),
-                1.0,
-              ],
-            ),
-          ),
-          height: 120,
+  Widget _buildWelcomeSection() {
+    return InkWell(
+      onTap: () async {
+        final result = await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const ProfileScreen()),
         );
+        if (result == true) {
+          _hasCheckedProfile = false;
+          _loadUserData();
+        }
       },
-    );
-  }
-
-  return InkWell(
-    onTap: () async {
-      final result = await Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const ProfileScreen()),
-      );
-      if (result == true) {
-        _hasCheckedProfile = false;
-        _loadUserData();
-      }
-    },
-    child: Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF1E3A8A).withOpacity(0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Welcome back,',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF1E3A8A).withOpacity(0.3),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Welcome back,',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _userName.toUpperCase(),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
+                  const SizedBox(height: 4),
+                  Text(
+                    _userName.toUpperCase(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        _userProfile != null && _userProfile!['lsk_number'] != null
-                            ? 'LSK No: ${_userProfile!['lsk_number']}'
-                            : 'Please make sure you are online and have updated your profile.',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.9),
-                          fontSize: 13,
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _userProfile != null && _userProfile!['lsk_number'] != null
+                              ? 'LSK No: ${_userProfile!['lsk_number']}'
+                              : 'Please make sure you are online and have updated your profile.',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.9),
+                            fontSize: 13,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-          const Icon(
-            Icons.gavel,
-            size: 60,
-            color: Colors.white24,
-          ),
-        ],
+            const Icon(
+              Icons.gavel,
+              size: 60,
+              color: Colors.white24,
+            ),
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
 Widget _buildUpcomingDatesSection(BuildContext context) {
   return Column(
@@ -1037,4 +1013,6 @@ Widget _buildUpcomingDatesSection(BuildContext context) {
             ),
     ],
   );
+}
+
 }

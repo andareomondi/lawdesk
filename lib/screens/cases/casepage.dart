@@ -27,7 +27,7 @@ class _CasesPageState extends State<CasesPage> {
         title: const Text(
           'My Cases',
           style: TextStyle(
-            color: Color(0xFF1F2937),
+            color: Colors.white,
             fontSize: 20,
             fontWeight: FontWeight.bold,
           ),
