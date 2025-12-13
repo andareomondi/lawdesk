@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:ui' as dart_ui;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shorebird_code_push/shorebird_code_push.dart';
 import 'package:lawdesk/screens/profile/update_profile.dart';
@@ -19,7 +20,7 @@ class Dashboard extends StatefulWidget {
   State<Dashboard> createState() => _DashboardState();
 }
 
-class _DashboardState extends State<Dashboard> with SingleTickerProviderStateMixin {
+class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   final _supabase = Supabase.instance.client;
   final _updater = ShorebirdUpdater();
   
@@ -42,6 +43,8 @@ class _DashboardState extends State<Dashboard> with SingleTickerProviderStateMix
   // Animation controller for shimmer effect
   late AnimationController _shimmerController;
   late Animation<double> _shimmerAnimation;
+late AnimationController _fabController;
+  late Animation<double> _expandAnimation;
 
   @override
   void initState() {
@@ -50,6 +53,16 @@ class _DashboardState extends State<Dashboard> with SingleTickerProviderStateMix
     _loadUserData();
     _checkCurrentPatch();
     _checkForShorebirdUpdates();
+
+_fabController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 250),
+    );
+    _expandAnimation = CurvedAnimation(
+      parent: _fabController,
+      curve: Curves.easeOut,
+      reverseCurve: Curves.easeIn,
+    );
   }
 
   void _setupShimmerAnimation() {
@@ -70,6 +83,7 @@ class _DashboardState extends State<Dashboard> with SingleTickerProviderStateMix
   @override
   void dispose() {
     _shimmerController.dispose();
+    _fabController.dispose();
     super.dispose();
   }
 
@@ -117,9 +131,6 @@ class _DashboardState extends State<Dashboard> with SingleTickerProviderStateMix
   }
 
   Future<void> _refreshDashboard() async {
-    setState(() {
-      _isLoading = true;
-    });
     
     try {
       await _loadUserData();
@@ -139,12 +150,6 @@ class _DashboardState extends State<Dashboard> with SingleTickerProviderStateMix
           title: "Error",
           message: "Error refreshing. Make sure you are online",
         );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
       }
     }
   }
@@ -489,9 +494,14 @@ class _DashboardState extends State<Dashboard> with SingleTickerProviderStateMix
     );
   }
 
-  void _toggleFab() {
+void _toggleFab() {
     setState(() {
       _isFabExpanded = !_isFabExpanded;
+      if (_isFabExpanded) {
+        _fabController.forward();
+      } else {
+        _fabController.reverse();
+      }
     });
   }
 
@@ -499,15 +509,23 @@ class _DashboardState extends State<Dashboard> with SingleTickerProviderStateMix
     if (_isFabExpanded) {
       setState(() {
         _isFabExpanded = false;
+        _fabController.reverse();
       });
     }
   }
-
-  @override
+@override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: _closeFab,
+    // We use PopScope to close the FAB if the user presses the back button
+    return PopScope(
+      canPop: !_isFabExpanded,
+      onPopInvoked: (didPop) {
+        if (!didPop && _isFabExpanded) {
+          _closeFab();
+        }
+      },
       child: Scaffold(
+      extendBody: true,
+      resizeToAvoidBottomInset: false,
         appBar: AppBar(
           backgroundColor: const Color(0xFF1E3A8A),
           foregroundColor: Colors.white,
@@ -533,91 +551,222 @@ class _DashboardState extends State<Dashboard> with SingleTickerProviderStateMix
           ],
         ),
         backgroundColor: const Color(0xFFF8FAFC),
-        body: LiquidPullToRefresh(
-          onRefresh: _refreshDashboard,
-          color: const Color(0xFF1E3A8A),
-          height: 80,
-          backgroundColor: Colors.white,
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 400),
-            switchInCurve: Curves.easeOut,
-            switchOutCurve: Curves.easeIn,
-            child: _isLoading
-                ? _buildShimmerLoading()
-                : _buildContent(),
-          ),
-        ),
-        floatingActionButton: null,
-      ),
-    );
-  }
-
-  
-  Widget _buildContent() {
-    return SingleChildScrollView(
-      key: const ValueKey('content'),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildWelcomeSection(),
-          const SizedBox(height: 24),
-          _isLoading 
-              ? _buildShimmerStatsCards()
-              : const StatsSection(),
-          const SizedBox(height: 24),
-          _buildUpcomingDatesSection(context),
-          const SizedBox(height: 24),
-          _buildQuickActionsButton(),
-          const SizedBox(height: 80), // Extra padding for FAB
-        ],
-      ),
-    );
-  }
-
-  Widget _buildShimmerLoading() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildShimmerWelcomeCard(),
-          const SizedBox(height: 24),
-          _buildShimmerStatsCards(),
-          const SizedBox(height: 24),
-          _buildShimmerSection('Upcoming Court Dates'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildShimmerWelcomeCard() {
-    return AnimatedBuilder(
-      animation: _shimmerAnimation,
-      builder: (context, child) {
-        return Container(
-          height: 120,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                const Color(0xFFE5E7EB),
-                const Color(0xFFF3F4F6),
-                const Color(0xFFE5E7EB),
-              ],
-              stops: [
-                0.0,
-                _shimmerAnimation.value.clamp(0.0, 1.0),
-                1.0,
-              ],
+        // STACK allows us to place the overlay on top of the content
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            // -------------------------------------------
+            // LAYER 1: Main Content
+            // -------------------------------------------
+            LiquidPullToRefresh(
+              onRefresh: _refreshDashboard,
+              color: const Color(0xFF1E3A8A),
+              height: 80,
+              backgroundColor: Colors.white,
+              animSpeedFactor: 2.0,
+              showChildOpacityTransition: false,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 100), // Extra bottom padding for FAB
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildWelcomeSection(),
+                    const SizedBox(height: 24),
+                    _isLoading 
+                        ? _buildShimmerStatsCards()
+                        : const StatsSection(),
+                    const SizedBox(height: 24),
+                    _buildUpcomingDatesSection(context),
+                    const SizedBox(height: 80), // Extra padding for FAB
+                  ],
+                ),
+              ),
             ),
-          ),
-        );
-      },
+
+if (_isFabExpanded)
+              Positioned.fill(
+                child: GestureDetector(
+                  onTap: _closeFab,
+                  child: AnimatedBuilder(
+                    animation: _expandAnimation,
+                    builder: (context, child) {
+                      return Container(
+                        color: Colors.black.withOpacity(_expandAnimation.value * 0.6),
+                        // Optional: Add backdrop blur for a premium feel
+                        child: BackdropFilter(
+                          filter: dart_ui.ImageFilter.blur(
+                            sigmaX: _expandAnimation.value * 3,
+                            sigmaY: _expandAnimation.value * 3,
+                          ),
+                          child: const SizedBox.expand(),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+
+            Positioned(
+              right: 16,
+              bottom: 16 + MediaQuery.of(context).viewPadding.bottom, // Respect safe area
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  _buildFabMenuItem(
+                    label: 'Documents',
+                    icon: Icons.description_outlined,
+                    color: const Color(0xFFF59E0B),
+                    delay: 0,
+                    onPressed: () {
+                      _closeFab();
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => const AllDocumentsPage()));
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  _buildFabMenuItem(
+                    label: 'All Cases',
+                    icon: Icons.folder_open_outlined,
+                    color: const Color(0xFF8B5CF6),
+                    delay: 1,
+                    onPressed: () {
+                      _closeFab();
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => const CasesPage()));
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  _buildFabMenuItem(
+                    label: 'View Calendar',
+                    icon: Icons.calendar_month_outlined,
+                    color: const Color(0xFF10B981),
+                    delay: 2,
+                    onPressed: () {
+                      _closeFab();
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => const CalendarPage()));
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  _buildFabMenuItem(
+                    label: 'New Case',
+                    icon: Icons.add_circle_outline,
+                    color: const Color(0xFF1E3A8A),
+                    delay: 3,
+                    onPressed: () {
+                      _closeFab();
+                      AddCaseModal.show(context, onCaseAdded: () => setState(() {}));
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                  
+                  // Main Toggle Button
+                  FloatingActionButton.extended(
+                    heroTag: 'main_fab',
+                    onPressed: _toggleFab,
+                    backgroundColor: const Color(0xFF1E3A8A),
+                    elevation: 6,
+                    label: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 200),
+                      transitionBuilder: (Widget child, Animation<double> animation) {
+                        return FadeTransition(opacity: animation, child: child);
+                      },
+                      child: Text(
+                        _isFabExpanded ? 'Close' : 'Quick Actions',
+                        key: ValueKey<bool>(_isFabExpanded),
+                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: Colors.white),
+                      ),
+                    ),
+                    icon: AnimatedRotation(
+                      turns: _isFabExpanded ? 0.5 : 0,
+                      duration: const Duration(milliseconds: 200),
+                      child: Icon(color: Colors.white,
+                        _isFabExpanded ? Icons.close : Icons.apps,
+                        key: ValueKey<bool>(_isFabExpanded),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),  
+
+          ],
+
+        ),
+
+      ),
     );
   }
+
+
+Widget _buildFabMenuItem({
+    required String label,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onPressed,
+    required int delay,
+  }) {
+    // We calculate a staggered animation interval for each item
+    final intervalStart = 0.1 * delay; 
+    final intervalEnd = 0.6 + (0.1 * delay); 
+    
+    final animation = CurvedAnimation(
+      parent: _fabController,
+      curve: Interval(
+        intervalStart > 1.0 ? 1.0 : intervalStart,
+        intervalEnd > 1.0 ? 1.0 : intervalEnd,
+        curve: Curves.easeOutBack,
+      ),
+    );
+
+    return ScaleTransition(
+      scale: animation,
+      alignment: Alignment.centerRight,
+      child: FadeTransition(
+        opacity: animation,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            // Label
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.15),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1F2937),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Button
+            FloatingActionButton(
+              heroTag: 'fab_$label', // Unique tag to prevent errors
+              onPressed: onPressed,
+              backgroundColor: color,
+              mini: true,
+              elevation: 4,
+              child: Icon(icon, color: Colors.white, size: 20),
+            ),
+            const SizedBox(width: 4), // Tiny adjustment to align center of mini FAB with main FAB
+          ],
+        ),
+      ),
+    );
+  }
+
 
   Widget _buildShimmerStatsCards() {
     return Row(
@@ -842,150 +991,4 @@ class _DashboardState extends State<Dashboard> with SingleTickerProviderStateMix
       ],
     );
   }
-  Widget _buildQuickActionsButton() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        ElevatedButton(
-          onPressed: _toggleFab,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF1E3A8A),
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            elevation: 2,
-            shadowColor: const Color(0xFF1E3A8A).withOpacity(0.3),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              AnimatedRotation(
-                duration: const Duration(milliseconds: 300),
-                turns: _isFabExpanded ? 0.125 : 0,
-                child: Icon(
-                  _isFabExpanded ? Icons.close : Icons.apps,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                _isFabExpanded ? 'Close Menu' : 'Quick Actions',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-        if (_isFabExpanded) ...[
-          const SizedBox(height: 16),
-          _buildActionsList(),
-        ],
-      ],
-    );
-  }
-
-Widget _buildActionsList() {
-  return AnimatedSize(
-    duration: const Duration(milliseconds: 400),
-    curve: Curves.easeOut,
-    child: Column(
-      children: [
-        _buildActionButton(
-          label: 'New Case',
-          icon: Icons.add_circle_outline,
-          color: const Color(0xFF1E3A8A),
-          onPressed: () {
-            _closeFab();
-            AddCaseModal.show(context, onCaseAdded: () {
-              setState(() {});
-            });
-          },
-        ),
-        const SizedBox(height: 12),
-        _buildActionButton(
-          label: 'View Calendar',
-          icon: Icons.calendar_month_outlined,
-          color: const Color(0xFF10B981),
-          onPressed: () {
-            _closeFab();
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const CalendarPage(),
-              ),
-            );
-          },
-        ),
-        const SizedBox(height: 12),
-        _buildActionButton(
-          label: 'All Cases',
-          icon: Icons.folder_open_outlined,
-          color: const Color(0xFF8B5CF6),
-          onPressed: () {
-            _closeFab();
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const CasesPage()),
-            );
-          },
-        ),
-        const SizedBox(height: 12),
-        _buildActionButton(
-          label: 'Documents',
-          icon: Icons.description_outlined,
-          color: const Color(0xFFF59E0B),
-          onPressed: () {
-            _closeFab();
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const AllDocumentsPage(),
-              ),
-            );
-          },
-        ),
-      ],
-    ),
-  );
-}
-
-Widget _buildActionButton({
-  required String label,
-  required IconData icon,
-  required Color color,
-  required VoidCallback onPressed,
-}) {
-  return ElevatedButton(
-    onPressed: onPressed,
-    style: ElevatedButton.styleFrom(
-      backgroundColor: color,
-      foregroundColor: Colors.white,
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      elevation: 2,
-      shadowColor: color.withOpacity(0.3),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-    ),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(icon, size: 20),
-        const SizedBox(width: 8),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
 }
