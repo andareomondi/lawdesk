@@ -131,6 +131,9 @@ _fabController = AnimationController(
   }
 
   Future<void> _refreshDashboard() async {
+    setState(() {
+      _isLoading = true;
+        });
     
     try {
       await _loadUserData();
