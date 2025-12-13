@@ -1000,7 +1000,6 @@ Widget _buildFabMenuItem({
         _isLoading
             ? _buildShimmerSection('Loading cases...')
             :CasesListWidget(key: _casesListKey, 
-            limit: 5,
             onCaseChanged: () {
               _statsKey.currentState?.loadStats();
             },
