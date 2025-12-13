@@ -884,127 +884,157 @@ Widget _buildFabMenuItem({
     );
   }
 
-  Widget _buildWelcomeSection() {
-    return InkWell(
-      onTap: () async {
-        final result = await Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const ProfileScreen()),
-        );
-        if (result == true) {
-          _hasCheckedProfile = false;
-          _loadUserData();
-        }
-      },
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+ Widget _buildWelcomeSection() {
+  if (_isLoading) {
+    // Show shimmer while loading
+    return AnimatedBuilder(
+      animation: _shimmerAnimation,
+      builder: (context, child) {
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                const Color(0xFFE5E7EB),
+                const Color(0xFFF3F4F6),
+                const Color(0xFFE5E7EB),
+              ],
+              stops: [
+                0.0,
+                _shimmerAnimation.value.clamp(0.0, 1.0),
+                1.0,
+              ],
+            ),
           ),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF1E3A8A).withOpacity(0.3),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Welcome back,',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _userName.toUpperCase(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          _userProfile != null && _userProfile!['lsk_number'] != null
-                              ? 'LSK No: ${_userProfile!['lsk_number']}'
-                              : 'Please make sure you are online and have updated your profile.',
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.9),
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const Icon(
-              Icons.gavel,
-              size: 60,
-              color: Colors.white24,
-            ),
-          ],
-        ),
-      ),
+          height: 120,
+        );
+      },
     );
   }
 
-  Widget _buildUpcomingDatesSection(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              'Upcoming Court Dates',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1F2937),
-              ),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const CalendarPage(),
-                  ),
-                );
-              },
-              child: const Text(
-                'View All',
-                style: TextStyle(color: Color(0xFF1E3A8A)),
-              ),
-            ),
-          ],
+  return InkWell(
+    onTap: () async {
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const ProfileScreen()),
+      );
+      if (result == true) {
+        _hasCheckedProfile = false;
+        _loadUserData();
+      }
+    },
+    child: Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        const SizedBox(height: 12),
-        _isLoading
-            ? _buildShimmerSection('Loading cases...')
-            :CasesListWidget(key: _casesListKey, 
-            onCaseChanged: () {
-              _statsKey.currentState?.loadStats();
-            },
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF1E3A8A).withOpacity(0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Welcome back,',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _userName.toUpperCase(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        _userProfile != null && _userProfile!['lsk_number'] != null
+                            ? 'LSK No: ${_userProfile!['lsk_number']}'
+                            : 'Please make sure you are online and have updated your profile.',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.9),
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-      ],
-    );
-  }
+          ),
+          const Icon(
+            Icons.gavel,
+            size: 60,
+            color: Colors.white24,
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+Widget _buildUpcomingDatesSection(BuildContext context) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text(
+            'Upcoming Court Dates',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1F2937),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const CasesPage(), // This navigates to the full cases page
+                ),
+              );
+            },
+            child: const Text(
+              'View All',
+              style: TextStyle(color: Color(0xFF1E3A8A)),
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 12),
+      _isLoading
+          ? _buildShimmerSection('Loading cases...') // Show shimmer during loading
+          : CasesListWidget(
+              key: _casesListKey, 
+              onCaseChanged: () {
+                _statsKey.currentState?.loadStats();
+              },
+            ),
+    ],
+  );
 }

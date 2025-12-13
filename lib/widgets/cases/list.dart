@@ -71,12 +71,14 @@ class CasesListWidgetState extends State<CasesListWidget> with SingleTickerProvi
     }
     
     try {
-      var response = await _supabase
+      final response = await _supabase
           .from('cases')
           .select()
           .eq('user', user.id)
           .order('courtDate', ascending: true)
           .limit(5);
+
+          await Future.delayed(const Duration(milliseconds: 300));
       
       if (response is List) {
         final cases = List<Map<String, dynamic>>.from(response);
