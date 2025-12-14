@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'dart:ui' as dart_ui;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shorebird_code_push/shorebird_code_push.dart';
@@ -29,7 +30,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
 final GlobalKey<StatsSectionState> _statsKey = GlobalKey<StatsSectionState>();
   
   // User data variables
-  String _userName = 'Guest';
+  String _userName = '';
   String _userEmail = '';
   Map<String, dynamic>? _userProfile;
   bool _isLoading = true;
@@ -147,6 +148,7 @@ _fabController = AnimationController(
       _statsKey.currentState?.loadStats();
       
       if (mounted) {
+        HapticFeedback.mediumImpact();
         AppToast.showSuccess(
           context: context,
           title: "Success!",
@@ -363,7 +365,7 @@ _fabController = AnimationController(
         if (mounted) {
           setState(() {
             _userProfile = response;
-            _userName = response['username'] ?? 'Guest';
+            _userName = response['username'] ?? '';
             _userEmail = response['email'] ?? '';
             _isUpdated = response['is_updated'] == true;
             _isLoading = false;
@@ -505,6 +507,7 @@ _fabController = AnimationController(
   }
 
 void _toggleFab() {
+  HapticFeedback.lightImpact();
     setState(() {
       _isFabExpanded = !_isFabExpanded;
       if (_isFabExpanded) {
@@ -581,7 +584,9 @@ void _toggleFab() {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildWelcomeSection(),
+                    _isLoading 
+                        ? _buildShimmerWelcomeCard()
+                        : _buildWelcomeSection(),
                     const SizedBox(height: 24),
                     _isLoading 
                         ? _buildShimmerStatsCards()
@@ -824,72 +829,7 @@ Widget _buildFabMenuItem({
       }),
     );
   }
-
-  Widget _buildShimmerSection(String title) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1F2937),
-              ),
-            ),
-            AnimatedBuilder(
-              animation: _shimmerAnimation,
-              builder: (context, child) {
-                return Container(
-                  width: 60,
-                  height: 20,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(4),
-                    color: const Color(0xFFE5E7EB),
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        ...List.generate(2, (index) {
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: AnimatedBuilder(
-              animation: _shimmerAnimation,
-              builder: (context, child) {
-                return Container(
-                  height: 80,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        const Color(0xFFE5E7EB),
-                        const Color(0xFFF3F4F6),
-                        const Color(0xFFE5E7EB),
-                      ],
-                      stops: [
-                        0.0,
-                        (_shimmerAnimation.value + index * 0.3).clamp(0.0, 1.0),
-                        1.0,
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          );
-        }),
-      ],
-    );
-  }
-
+  
   Widget _buildWelcomeSection() {
     return InkWell(
       onTap: () async {
@@ -934,7 +874,7 @@ Widget _buildFabMenuItem({
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    _userName.toUpperCase(),
+                    _userName.isNotEmpty ? _userName.toUpperCase() : 'LAWDESK USER',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 24,
@@ -948,7 +888,7 @@ Widget _buildFabMenuItem({
                         child: Text(
                           _userProfile != null && _userProfile!['lsk_number'] != null
                               ? 'LSK No: ${_userProfile!['lsk_number']}'
-                              : 'Please make sure you are online and have updated your profile.',
+                              : 'Tap to update profile',
                           style: TextStyle(
                             color: Colors.white.withOpacity(0.9),
                             fontSize: 13,
@@ -1004,7 +944,7 @@ Widget _buildUpcomingDatesSection(BuildContext context) {
       ),
       const SizedBox(height: 12),
       _isLoading
-          ? _buildShimmerSection('Loading cases...') // Show shimmer during loading
+          ? _buildShimmerCasesList() // Show shimmer during loading
           : CasesListWidget(
               key: _casesListKey, 
               onCaseChanged: () {
@@ -1012,6 +952,67 @@ Widget _buildUpcomingDatesSection(BuildContext context) {
               },
             ),
     ],
+  );
+}
+Widget _buildShimmerWelcomeCard() {
+  return AnimatedBuilder(
+    animation: _shimmerAnimation,
+    builder: (context, child) {
+      return Container(
+        height: 120,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              const Color(0xFFE5E7EB),
+              const Color(0xFFF3F4F6),
+              const Color(0xFFE5E7EB),
+            ],
+            stops: [
+              0.0,
+              _shimmerAnimation.value.clamp(0.0, 1.0),
+              1.0,
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+Widget _buildShimmerCasesList() {
+  return Column(
+    children: List.generate(2, (index) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: AnimatedBuilder(
+          animation: _shimmerAnimation,
+          builder: (context, child) {
+            return Container(
+              height: 100,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    const Color(0xFFE5E7EB),
+                    const Color(0xFFF3F4F6),
+                    const Color(0xFFE5E7EB),
+                  ],
+                  stops: [
+                    0.0,
+                    (_shimmerAnimation.value + index * 0.3).clamp(0.0, 1.0),
+                    1.0,
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      );
+    }),
   );
 }
 
