@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:lawdesk/widgets/cases/details.dart';
+import 'package:lawdesk/widgets/delightful_toast.dart';
 
 class CasesListWidget extends StatefulWidget {
   final VoidCallback? onCaseChanged;
@@ -134,16 +135,12 @@ Future<void> _postponeCase(String caseId, DateTime newDate, TimeOfDay newTime) a
         .eq('id', caseId);
 
     // Show success message
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Court date postponed successfully'),
-          backgroundColor: Color(0xFF10B981),
-          duration: Duration(seconds: 2),
-        ),
-      );
-
-      // Reload cases to reflect changes
+if (mounted) {
+        AppToast.showSuccess(
+          context: context,
+          title: "Success!",
+          message: "Case postpone scheduled successfully.",
+        );
       await loadCases();
       
       // For list.dart only - trigger the callback
@@ -151,14 +148,12 @@ Future<void> _postponeCase(String caseId, DateTime newDate, TimeOfDay newTime) a
     }
   } catch (e) {
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to postpone court date'),
-          backgroundColor: Color(0xFFEF4444),
-          duration: Duration(seconds: 2),
-        ),
+      AppToast.showError( 
+        context: context,
+        title: "Error",
+        message: "Failed to postpone case. Please try again.",
       );
-    }
+         }
   }
 }
 
