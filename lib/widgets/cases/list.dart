@@ -41,6 +41,127 @@ class CasesListWidgetState extends State<CasesListWidget> with SingleTickerProvi
     ));
   }
 
+Future<void> _showPostponeModal(String caseId) async {
+  DateTime? selectedDate;
+  TimeOfDay? selectedTime;
+
+  await showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: const Text('Postpone Court Date'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.calendar_today),
+                  title: Text(
+                    selectedDate == null
+                        ? 'Select New Date'
+                        : DateFormat('EEEE, MMMM d, yyyy').format(selectedDate!),
+                  ),
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: DateTime.now().add(const Duration(days: 1)),
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
+                    );
+                    if (picked != null) {
+                      setDialogState(() => selectedDate = picked);
+                    }
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.access_time),
+                  title: Text(
+                    selectedTime == null
+                        ? 'Select New Time'
+                        : selectedTime!.format(context),
+                  ),
+                  onTap: () async {
+                    final picked = await showTimePicker(
+                      context: context,
+                      initialTime: TimeOfDay.now(),
+                    );
+                    if (picked != null) {
+                      setDialogState(() => selectedTime = picked);
+                    }
+                  },
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: selectedDate == null || selectedTime == null
+                    ? null
+                    : () async {
+                        Navigator.pop(context);
+                        await _postponeCase(caseId, selectedDate!, selectedTime!);
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1E3A8A),
+                ),
+                child: const Text('Save'),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+}
+
+Future<void> _postponeCase(String caseId, DateTime newDate, TimeOfDay newTime) async {
+  try {
+    // Format the date and time
+    final formattedDate = DateFormat('yyyy-MM-dd').format(newDate);
+    final formattedTime = '${newTime.hour.toString().padLeft(2, '0')}:${newTime.minute.toString().padLeft(2, '0')}:00';
+
+    // Update in Supabase
+    await _supabase
+        .from('cases')
+        .update({
+          'courtDate': formattedDate,
+          'time': formattedTime,
+        })
+        .eq('id', caseId);
+
+    // Show success message
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Court date postponed successfully'),
+          backgroundColor: Color(0xFF10B981),
+          duration: Duration(seconds: 2),
+        ),
+      );
+
+      // Reload cases to reflect changes
+      await loadCases();
+      
+      // For list.dart only - trigger the callback
+      widget.onCaseChanged?.call(); // This line only in CasesListWidgetState
+    }
+  } catch (e) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to postpone court date'),
+          backgroundColor: Color(0xFFEF4444),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+}
+
   @override
   void dispose() {
     _shimmerController.dispose();
@@ -205,6 +326,8 @@ class CasesListWidgetState extends State<CasesListWidget> with SingleTickerProvi
             description: _cases[i]['description'],
             status: _cases[i]['status'] ?? 'Unknown status',
             onTap: () => _navigateToCaseDetails(_cases[i]['id'].toString()),
+            caseId: _cases[i]['id'].toString(),
+            onPostpone: _showPostponeModal,
           ),
           if (i < _cases.length - 1) const SizedBox(height: 12),
         ],
@@ -411,6 +534,8 @@ class _CourtDateCard extends StatelessWidget {
   final String? description;
   final String status;
   final VoidCallback onTap;
+  final Function(String caseId)? onPostpone;
+  final String caseId;
 
   const _CourtDateCard({
     required this.caseName,
@@ -421,6 +546,8 @@ class _CourtDateCard extends StatelessWidget {
     this.description,
     required this.status,
     required this.onTap,
+    this.onPostpone,
+    required this.caseId,
   });
 
   @override
@@ -655,6 +782,38 @@ class _CourtDateCard extends StatelessWidget {
                 ),
               ),
             ],
+
+// After the description section
+if (!isExpired && onPostpone != null) ...[
+  const SizedBox(height: 12),
+  const Divider(color: Color(0xFFE5E7EB)),
+  const SizedBox(height: 8),
+  InkWell(
+    onTap: () => onPostpone!(caseId),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.schedule,
+            size: 16,
+            color: Color(0xFF1E3A8A),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            'Postpone Court Date',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1E3A8A),
+            ),
+          ),
+        ],
+      ),
+    ),
+  ),
+],
           ],
         ),
       ),
