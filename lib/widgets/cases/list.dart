@@ -109,7 +109,7 @@ Future<void> _showPostponeModal(String caseId) async {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF1E3A8A),
                 ),
-                child: const Text('Save'),
+                child: const Text('Save', style: TextStyle(color: Colors.white) ,),
               ),
             ],
           );
@@ -143,8 +143,7 @@ if (mounted) {
         );
       await loadCases();
       
-      // For list.dart only - trigger the callback
-      widget.onCaseChanged?.call(); // This line only in CasesListWidgetState
+      widget.onCaseChanged?.call(); 
     }
   } catch (e) {
     if (mounted) {
@@ -778,7 +777,6 @@ class _CourtDateCard extends StatelessWidget {
               ),
             ],
 
-// After the description section
 if (!isExpired && onPostpone != null) ...[
   const SizedBox(height: 12),
   const Divider(color: Color(0xFFE5E7EB)),
