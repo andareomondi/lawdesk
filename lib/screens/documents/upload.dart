@@ -436,6 +436,7 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
   }
 
   Widget _buildDocumentsList() {
+    // TODO: Add on click function which previews it if it's a viewable file. Viewable file include images and pdfs only
     // Group documents by type
     final groupedDocs = <String, List<Map<String, dynamic>>>{};
     for (var doc in _documents) {
