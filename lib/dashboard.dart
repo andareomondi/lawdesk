@@ -548,6 +548,7 @@ void _toggleFab() {
             style: TextStyle(fontWeight: FontWeight.w600),
           ),
           actions: [
+          // TODO: Replace this with a drawer which should be wrapped in a builer widget.
             IconButton(
               icon: const Icon(Icons.account_circle_outlined),
               onPressed: () async {
