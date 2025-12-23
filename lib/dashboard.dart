@@ -15,6 +15,11 @@ import 'package:liquid_pull_to_refresh/liquid_pull_to_refresh.dart';
 import 'package:lawdesk/widgets/delightful_toast.dart';
 import 'package:lawdesk/widgets/cases/client_modal.dart';
 import 'package:lawdesk/widgets/dashboard/dashboard_drawer.dart';
+import 'package:lawdesk/services/connectivity_service.dart';
+import 'package:lawdesk/services/offline_storage_service.dart';
+import 'package:lawdesk/widgets/offline_banner.dart';
+import 'package:lawdesk/widgets/offline_indicator.dart';
+import 'package:lawdesk/utils/offline_action_helper.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -37,7 +42,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   bool _isLoading = true;
   bool _isUpdated = false;
   bool _hasCheckedProfile = false;
-
+  bool _isOfflineMode = false;
   // Shorebird update variables
   bool _isCheckingForUpdate = false;
   bool _isDownloadingUpdate = false;
@@ -56,6 +61,33 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     _setupShimmerAnimation();
+    _loadUserData();
+    _checkCurrentPatch();
+    _checkForShorebirdUpdates();
+
+    connectivityService.initialize();
+
+    connectivityService.connectionStream.listen((isConnected) {
+      if (mounted) {
+        setState(() {
+          _isOfflineMode = !isConnected;
+        });
+
+        if (isConnected) {
+          // When connection is restored, refresh data
+          _loadUserData();
+          _casesListKey.currentState?.loadCases();
+          _statsKey.currentState?.loadStats();
+
+          AppToast.showSuccess(
+            context: context,
+            title: "Back Online",
+            message: "Connection restored. Data synced.",
+          );
+        }
+      }
+    });
+
     _loadUserData();
     _checkCurrentPatch();
     _checkForShorebirdUpdates();
@@ -133,6 +165,11 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   }
 
   Future<void> _refreshDashboard() async {
+    // Check if online before refreshing
+    if (!OfflineActionHelper.canPerformAction(context, actionName: 'refresh')) {
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
@@ -352,27 +389,49 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
           _userEmail = user.email ?? '';
         });
 
-        final response = await _supabase
-            .from('profiles')
-            .select()
-            .eq('id', user.id)
-            .single();
+        // Try to fetch from server if online
+        if (connectivityService.isConnected) {
+          final response = await _supabase
+              .from('profiles')
+              .select()
+              .eq('id', user.id)
+              .single();
 
-        if (mounted) {
-          setState(() {
-            _userProfile = response;
-            _userName = response['username'] ?? '';
-            _userEmail = response['email'] ?? '';
-            _isUpdated = response['is_updated'] == true;
-            _isLoading = false;
-          });
+          if (mounted) {
+            setState(() {
+              _userProfile = response;
+              _userName = response['username'] ?? '';
+              _userEmail = response['email'] ?? '';
+              _isUpdated = response['is_updated'] == true;
+              _isLoading = false;
+            });
 
-          if (!_isUpdated && !_hasCheckedProfile) {
-            _hasCheckedProfile = true;
-            Future.delayed(const Duration(milliseconds: 500), () {
-              if (mounted) {
-                _showProfileUpdateToast(context);
-              }
+            // Cache the profile data
+            await offlineStorage.cacheProfile(response);
+
+            if (!_isUpdated && !_hasCheckedProfile) {
+              _hasCheckedProfile = true;
+              Future.delayed(const Duration(milliseconds: 500), () {
+                if (mounted) {
+                  _showProfileUpdateToast(context);
+                }
+              });
+            }
+          }
+        } else {
+          // Load from cache when offline
+          final cachedProfile = await offlineStorage.getCachedProfile();
+          if (cachedProfile != null && mounted) {
+            setState(() {
+              _userProfile = cachedProfile;
+              _userName = cachedProfile['username'] ?? '';
+              _userEmail = cachedProfile['email'] ?? '';
+              _isUpdated = cachedProfile['is_updated'] == true;
+              _isLoading = false;
+            });
+          } else {
+            setState(() {
+              _isLoading = false;
             });
           }
         }
@@ -383,9 +442,22 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
       }
     } catch (e) {
       print('Error loading user data: $e');
-      setState(() {
-        _isLoading = false;
-      });
+
+      // Try to load from cache on error
+      final cachedProfile = await offlineStorage.getCachedProfile();
+      if (cachedProfile != null && mounted) {
+        setState(() {
+          _userProfile = cachedProfile;
+          _userName = cachedProfile['username'] ?? '';
+          _userEmail = cachedProfile['email'] ?? '';
+          _isUpdated = cachedProfile['is_updated'] == true;
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -545,7 +617,6 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
             style: TextStyle(fontWeight: FontWeight.w600),
           ),
           actions: [
-            // TODO: Replace this with a drawer which should be wrapped in a builer widget.
             Builder(
               builder: (context) {
                 return IconButton(
@@ -557,6 +628,11 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
               },
             ),
           ],
+          // Add connection status indicator in AppBar
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(0),
+            child: const OfflineBanner(),
+          ),
         ),
         drawer: DashboardDrawer(
           userName: _userName,
@@ -567,13 +643,10 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
           },
         ),
         backgroundColor: const Color(0xFFF8FAFC),
-        // STACK allows us to place the overlay on top of the content
         body: Stack(
           fit: StackFit.expand,
           children: [
-            // -------------------------------------------
-            // LAYER 1: Main Content
-            // -------------------------------------------
+            // Main Content
             LiquidPullToRefresh(
               onRefresh: _refreshDashboard,
               color: const Color(0xFF1E3A8A),
@@ -583,15 +656,13 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
               showChildOpacityTransition: false,
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(
-                  16,
-                  16,
-                  16,
-                  100,
-                ), // Extra bottom padding for FAB
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Show offline indicator when offline
+                    if (_isOfflineMode) const OfflineDataIndicator(),
+
                     _isLoading
                         ? _buildShimmerWelcomeCard()
                         : _buildWelcomeSection(),
@@ -601,12 +672,13 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
                         : StatsSection(key: _statsKey),
                     const SizedBox(height: 24),
                     _buildUpcomingDatesSection(context),
-                    const SizedBox(height: 80), // Extra padding for FAB
+                    const SizedBox(height: 80),
                   ],
                 ),
               ),
             ),
 
+            // Overlay for expanded FAB
             if (_isFabExpanded)
               Positioned.fill(
                 child: GestureDetector(
@@ -618,7 +690,6 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
                         color: Colors.black.withOpacity(
                           _expandAnimation.value * 0.6,
                         ),
-                        // Optional: Add backdrop blur for a premium feel
                         child: BackdropFilter(
                           filter: dart_ui.ImageFilter.blur(
                             sigmaX: _expandAnimation.value * 3,
@@ -632,49 +703,54 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
                 ),
               ),
 
+            // FAB and menu items remain the same...
             Positioned(
               right: 16,
-              bottom:
-                  16 +
-                  MediaQuery.of(
-                    context,
-                  ).viewPadding.bottom, // Respect safe area
+              bottom: 16 + MediaQuery.of(context).viewPadding.bottom,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
+                  // Update each FAB menu item to check connectivity
                   _buildFabMenuItem(
                     label: 'Open Calender',
                     icon: Icons.calendar_month_outlined,
-
                     color: const Color(0xFF10B981),
                     delay: 0,
                     onPressed: () {
-                      _closeFab();
-
-                      Navigator.push(
+                      if (OfflineActionHelper.canPerformAction(
                         context,
-                        MaterialPageRoute(
-                          builder: (context) => const CalendarPage(),
-                        ),
-                      );
+                        actionName: 'open calendar',
+                      )) {
+                        _closeFab();
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const CalendarPage(),
+                          ),
+                        );
+                      }
                     },
                   ),
                   const SizedBox(height: 16),
                   _buildFabMenuItem(
                     label: 'Documents',
                     icon: Icons.description_outlined,
-
                     color: const Color(0xFFF59E0B),
                     delay: 1,
                     onPressed: () {
-                      _closeFab();
-                      Navigator.push(
+                      if (OfflineActionHelper.canPerformAction(
                         context,
-                        MaterialPageRoute(
-                          builder: (context) => const AllDocumentsPage(),
-                        ),
-                      );
+                        actionName: 'access documents',
+                      )) {
+                        _closeFab();
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const AllDocumentsPage(),
+                          ),
+                        );
+                      }
                     },
                   ),
                   const SizedBox(height: 16),
@@ -684,13 +760,18 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
                     color: const Color(0xFF8B5CF6),
                     delay: 2,
                     onPressed: () {
-                      _closeFab();
-                      AddClientModal.show(
+                      if (OfflineActionHelper.canPerformAction(
                         context,
-                        onClientAdded: () {
-                          _loadUserData();
-                        },
-                      );
+                        actionName: 'add client',
+                      )) {
+                        _closeFab();
+                        AddClientModal.show(
+                          context,
+                          onClientAdded: () {
+                            _loadUserData();
+                          },
+                        );
+                      }
                     },
                   ),
                   const SizedBox(height: 16),
@@ -700,19 +781,22 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
                     color: const Color(0xFF1E3A8A),
                     delay: 3,
                     onPressed: () {
-                      _closeFab();
-                      AddCaseModal.show(
+                      if (OfflineActionHelper.canPerformAction(
                         context,
-                        onCaseAdded: () {
-                          _casesListKey.currentState?.loadCases();
-                          _statsKey.currentState?.loadStats();
-                        },
-                      );
+                        actionName: 'add case',
+                      )) {
+                        _closeFab();
+                        AddCaseModal.show(
+                          context,
+                          onCaseAdded: () {
+                            _casesListKey.currentState?.loadCases();
+                            _statsKey.currentState?.loadStats();
+                          },
+                        );
+                      }
                     },
                   ),
                   const SizedBox(height: 24),
-
-                  // Main Toggle Button
                   FloatingActionButton.extended(
                     heroTag: 'main_fab',
                     onPressed: _toggleFab,
