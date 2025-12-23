@@ -3,6 +3,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:lawdesk/widgets/cases/details.dart';
 import 'package:lawdesk/widgets/delightful_toast.dart';
+import 'package:lawdesk/services/connectivity_service.dart';
+import 'package:lawdesk/services/offline_storage_service.dart';
+import 'package:lawdesk/utils/offline_action_helper.dart';
 
 class AllCasesListWidget extends StatefulWidget {
   const AllCasesListWidget({Key? key}) : super(key: key);
@@ -11,12 +14,13 @@ class AllCasesListWidget extends StatefulWidget {
   State<AllCasesListWidget> createState() => AllCasesListWidgetState();
 }
 
-class AllCasesListWidgetState extends State<AllCasesListWidget> with SingleTickerProviderStateMixin {
+class AllCasesListWidgetState extends State<AllCasesListWidget>
+    with SingleTickerProviderStateMixin {
   final _supabase = Supabase.instance.client;
   List<Map<String, dynamic>> _cases = [];
   List<Map<String, dynamic>> _filteredCases = [];
   bool _isLoading = true;
-
+  bool _isOfflineMode = false;
   // Filter and Search variables
   String _searchQuery = '';
   String _selectedFilter = 'All'; // All, Urgent, Upcoming, Expired, No Worries
@@ -26,9 +30,26 @@ class AllCasesListWidgetState extends State<AllCasesListWidget> with SingleTicke
   late Animation<double> _shimmerAnimation;
 
   @override
+  @override
   void initState() {
     super.initState();
     _setupShimmerAnimation();
+
+    // Listen to connectivity changes
+    connectivityService.connectionStream.listen((isConnected) {
+      if (mounted) {
+        setState(() {
+          _isOfflineMode = !isConnected;
+        });
+
+        if (isConnected) {
+          // Refresh data when connection is restored
+          loadCases();
+        }
+      }
+    });
+
+    _isOfflineMode = !connectivityService.isConnected;
     loadCases();
   }
 
@@ -37,129 +58,147 @@ class AllCasesListWidgetState extends State<AllCasesListWidget> with SingleTicke
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     )..repeat();
-    
-    _shimmerAnimation = Tween<double>(
-      begin: -2,
-      end: 2,
-    ).animate(CurvedAnimation(
-      parent: _shimmerController,
-      curve: Curves.easeInOutSine,
-    ));
+
+    _shimmerAnimation = Tween<double>(begin: -2, end: 2).animate(
+      CurvedAnimation(parent: _shimmerController, curve: Curves.easeInOutSine),
+    );
   }
 
+  Future<void> _showPostponeModal(String caseId) async {
+    // Check if online before allowing postponement
+    if (!OfflineActionHelper.canPerformAction(
+      context,
+      actionName: 'postpone case',
+    )) {
+      return;
+    }
 
+    DateTime? selectedDate;
+    TimeOfDay? selectedTime;
 
-Future<void> _showPostponeModal(String caseId) async {
-  DateTime? selectedDate;
-  TimeOfDay? selectedTime;
-
-  await showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return StatefulBuilder(
-        builder: (context, setDialogState) {
-          return AlertDialog(
-            title: const Text('Postpone Court Date'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.calendar_today),
-                  title: Text(
-                    selectedDate == null
-                        ? 'Select New Date'
-                        : DateFormat('EEEE, MMMM d, yyyy').format(selectedDate!),
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Postpone Court Date'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.calendar_today),
+                    title: Text(
+                      selectedDate == null
+                          ? 'Select New Date'
+                          : DateFormat(
+                              'EEEE, MMMM d, yyyy',
+                            ).format(selectedDate!),
+                    ),
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: DateTime.now().add(
+                          const Duration(days: 1),
+                        ),
+                        firstDate: DateTime.now(),
+                        lastDate: DateTime.now().add(
+                          const Duration(days: 365 * 2),
+                        ),
+                      );
+                      if (picked != null) {
+                        setDialogState(() => selectedDate = picked);
+                      }
+                    },
                   ),
-                  onTap: () async {
-                    final picked = await showDatePicker(
-                      context: context,
-                      initialDate: DateTime.now().add(const Duration(days: 1)),
-                      firstDate: DateTime.now(),
-                      lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
-                    );
-                    if (picked != null) {
-                      setDialogState(() => selectedDate = picked);
-                    }
-                  },
+                  ListTile(
+                    leading: const Icon(Icons.access_time),
+                    title: Text(
+                      selectedTime == null
+                          ? 'Select New Time'
+                          : selectedTime!.format(context),
+                    ),
+                    onTap: () async {
+                      final picked = await showTimePicker(
+                        context: context,
+                        initialTime: TimeOfDay.now(),
+                      );
+                      if (picked != null) {
+                        setDialogState(() => selectedTime = picked);
+                      }
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
                 ),
-                ListTile(
-                  leading: const Icon(Icons.access_time),
-                  title: Text(
-                    selectedTime == null
-                        ? 'Select New Time'
-                        : selectedTime!.format(context),
+                ElevatedButton(
+                  onPressed: selectedDate == null || selectedTime == null
+                      ? null
+                      : () async {
+                          Navigator.pop(context);
+                          await _postponeCase(
+                            caseId,
+                            selectedDate!,
+                            selectedTime!,
+                          );
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1E3A8A),
                   ),
-                  onTap: () async {
-                    final picked = await showTimePicker(
-                      context: context,
-                      initialTime: TimeOfDay.now(),
-                    );
-                    if (picked != null) {
-                      setDialogState(() => selectedTime = picked);
-                    }
-                  },
+                  child: const Text(
+                    'Save',
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
               ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: selectedDate == null || selectedTime == null
-                    ? null
-                    : () async {
-                        Navigator.pop(context);
-                        await _postponeCase(caseId, selectedDate!, selectedTime!);
-                      },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1E3A8A),
-                ),
-                child: const Text('Save', style: TextStyle(color: Colors.white) ,),
-              ),
-            ],
-          );
-        },
-      );
-    },
-  );
-}
+            );
+          },
+        );
+      },
+    );
+  }
 
-Future<void> _postponeCase(String caseId, DateTime newDate, TimeOfDay newTime) async {
-  try {
-    // Format the date and time
-    final formattedDate = DateFormat('yyyy-MM-dd').format(newDate);
-    final formattedTime = '${newTime.hour.toString().padLeft(2, '0')}:${newTime.minute.toString().padLeft(2, '0')}:00';
+  Future<void> _postponeCase(
+    String caseId,
+    DateTime newDate,
+    TimeOfDay newTime,
+  ) async {
+    try {
+      // Format the date and time
+      final formattedDate = DateFormat('yyyy-MM-dd').format(newDate);
+      final formattedTime =
+          '${newTime.hour.toString().padLeft(2, '0')}:${newTime.minute.toString().padLeft(2, '0')}:00';
 
-    // Update in Supabase
-    await _supabase
-        .from('cases')
-        .update({
-          'courtDate': formattedDate,
-          'time': formattedTime,
-        })
-        .eq('id', caseId);
+      // Update in Supabase
+      await _supabase
+          .from('cases')
+          .update({'courtDate': formattedDate, 'time': formattedTime})
+          .eq('id', caseId);
 
-    // Show success message
-if (mounted) {
+      // Show success message
+      if (mounted) {
         AppToast.showSuccess(
           context: context,
           title: "Success!",
           message: "Case postpone scheduled successfully.",
         );
-      await loadCases();
+        await loadCases();
+      }
+    } catch (e) {
+      if (mounted) {
+        AppToast.showError(
+          context: context,
+          title: "Error",
+          message: "Failed to postpone case. Please try again.",
+        );
+      }
     }
-  } catch (e) {
-    if (mounted) {
-      AppToast.showError( 
-        context: context,
-        title: "Error",
-        message: "Failed to postpone case. Please try again.",
-      );
-         }
   }
-}
+
   @override
   void dispose() {
     _shimmerController.dispose();
@@ -179,53 +218,97 @@ if (mounted) {
 
   Future<List<Map<String, dynamic>>> _fetchCases() async {
     final user = _supabase.auth.currentUser;
-    
+
     if (user == null) {
       return [];
     }
-    
+
     try {
-      final response = await _supabase
-          .from('cases')
-          .select()
-          .eq('user', user.id)
-          .order('courtDate', ascending: true);
-      
-      if (response is List) {
-        final cases = List<Map<String, dynamic>>.from(response);
-        
-        final now = DateTime.now();
-        final today = DateTime(now.year, now.month, now.day);
-        
-        for (var case_ in cases) {
-          if (case_['courtDate'] != null) {
-            try {
-              final courtDate = DateTime.parse(case_['courtDate']);
-              final courtDateOnly = DateTime(courtDate.year, courtDate.month, courtDate.day);
-              final daysDifference = courtDateOnly.difference(today).inDays;
-              
-              if (daysDifference < 0) {
-                case_['status'] = 'expired';
-              } else if (daysDifference <= 2) {
-                case_['status'] = 'urgent';
-              } else if (daysDifference > 2 && daysDifference < 5) {
-                case_['status'] = 'upcoming';
-              } else {
-                case_['status'] = 'no worries';
-              }
-            } catch (e) {
-              case_['status'] = 'unknown';
-            }
-          }
+      // Check if online
+      if (connectivityService.isConnected) {
+        final response = await _supabase
+            .from('cases')
+            .select()
+            .eq('user', user.id)
+            .order('courtDate', ascending: true);
+
+        if (response is List) {
+          final cases = List<Map<String, dynamic>>.from(response);
+
+          // Process status for each case
+          final processedCases = _processStatusForCases(cases);
+
+          // Cache all cases
+          await offlineStorage.cacheCases(processedCases);
+
+          return processedCases;
         }
-        
-        return cases;
+
+        return [];
+      } else {
+        // Load from cache when offline
+        final cachedCases = await offlineStorage.getCachedCases();
+
+        if (cachedCases != null) {
+          final cases = List<Map<String, dynamic>>.from(cachedCases);
+
+          // Process status with current date
+          final processedCases = _processStatusForCases(cases);
+
+          return processedCases;
+        }
+
+        return [];
       }
-      
-      return [];
-    } catch (e, stackTrace) {
+    } catch (e) {
+      print('Error loading cases: $e');
+
+      // Try to load from cache on error
+      final cachedCases = await offlineStorage.getCachedCases();
+
+      if (cachedCases != null) {
+        final cases = List<Map<String, dynamic>>.from(cachedCases);
+        final processedCases = _processStatusForCases(cases);
+        return processedCases;
+      }
+
       return [];
     }
+  }
+
+  List<Map<String, dynamic>> _processStatusForCases(
+    List<Map<String, dynamic>> cases,
+  ) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    for (var case_ in cases) {
+      if (case_['courtDate'] != null) {
+        try {
+          final courtDate = DateTime.parse(case_['courtDate']);
+          final courtDateOnly = DateTime(
+            courtDate.year,
+            courtDate.month,
+            courtDate.day,
+          );
+          final daysDifference = courtDateOnly.difference(today).inDays;
+
+          if (daysDifference < 0) {
+            case_['status'] = 'expired';
+          } else if (daysDifference <= 2) {
+            case_['status'] = 'urgent';
+          } else if (daysDifference > 2 && daysDifference < 5) {
+            case_['status'] = 'upcoming';
+          } else {
+            case_['status'] = 'no worries';
+          }
+        } catch (e) {
+          case_['status'] = 'unknown';
+        }
+      }
+    }
+
+    return cases;
   }
 
   void _applyFilters() {
@@ -245,8 +328,10 @@ if (mounted) {
         final number = (case_['number'] ?? '').toString().toLowerCase();
         final court = (case_['court_name'] ?? '').toString().toLowerCase();
         final query = _searchQuery.toLowerCase();
-        
-        return name.contains(query) || number.contains(query) || court.contains(query);
+
+        return name.contains(query) ||
+            number.contains(query) ||
+            court.contains(query);
       }).toList();
     }
 
@@ -256,7 +341,9 @@ if (mounted) {
         if (a['courtDate'] == null && b['courtDate'] == null) return 0;
         if (a['courtDate'] == null) return 1;
         if (b['courtDate'] == null) return -1;
-        return DateTime.parse(a['courtDate']).compareTo(DateTime.parse(b['courtDate']));
+        return DateTime.parse(
+          a['courtDate'],
+        ).compareTo(DateTime.parse(b['courtDate']));
       });
     } else if (_selectedSort == 'Name') {
       filtered.sort((a, b) {
@@ -300,24 +387,28 @@ if (mounted) {
 
   String _formatCourtDate(dynamic courtDate) {
     if (courtDate == null) return 'Date not set';
-    
+
     try {
       final date = DateTime.parse(courtDate.toString());
       final dayName = DateFormat('EEEE').format(date);
       final day = date.day;
       final monthName = DateFormat('MMMM').format(date);
       final year = date.year;
-      
+
       String getOrdinalSuffix(int day) {
         if (day >= 11 && day <= 13) return 'th';
         switch (day % 10) {
-          case 1: return 'st';
-          case 2: return 'nd';
-          case 3: return 'rd';
-          default: return 'th';
+          case 1:
+            return 'st';
+          case 2:
+            return 'nd';
+          case 3:
+            return 'rd';
+          default:
+            return 'th';
         }
       }
-      
+
       return '$dayName, $day${getOrdinalSuffix(day)} $monthName $year';
     } catch (e) {
       return courtDate.toString();
@@ -326,17 +417,17 @@ if (mounted) {
 
   String _formatTime(dynamic time) {
     if (time == null || time.toString().isEmpty) return '';
-    
+
     try {
       final timeParts = time.toString().split(':');
       if (timeParts.length >= 2) {
         final hour = int.parse(timeParts[0]);
         final minute = int.parse(timeParts[1]);
-        
+
         final period = hour >= 12 ? 'PM' : 'AM';
         final hour12 = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
         final minuteStr = minute.toString().padLeft(2, '0');
-        
+
         return '$hour12:$minuteStr $period';
       }
       return time.toString();
@@ -346,13 +437,12 @@ if (mounted) {
   }
 
   Future<void> _navigateToCaseDetails(String caseId) async {
+    // Allow viewing case details offline, but editing will be blocked inside
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => CaseDetailsPage(caseId: caseId),
-      ),
+      MaterialPageRoute(builder: (context) => CaseDetailsPage(caseId: caseId)),
     );
-    
+
     // If case was deleted OR updated, reload
     if (result == true && mounted) {
       loadCases();
@@ -363,7 +453,61 @@ if (mounted) {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Search Bar
+        // Show offline indicator when offline
+        if (_isOfflineMode)
+          Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFEF3C7),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: const Color(0xFFF59E0B).withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF59E0B).withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Icon(
+                    Icons.cloud_off,
+                    color: Color(0xFFF59E0B),
+                    size: 16,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Viewing Offline Data',
+                        style: TextStyle(
+                          color: Color(0xFF92400E),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        'Editing disabled until connection restored',
+                        style: TextStyle(
+                          color: Color(0xFFB45309),
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        const SizedBox(height: 16),
+
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
@@ -381,7 +525,10 @@ if (mounted) {
                   decoration: const InputDecoration(
                     hintText: 'Search by case name, number, or court...',
                     border: InputBorder.none,
-                    hintStyle: TextStyle(color: Color(0xFF9CA3AF), fontSize: 14),
+                    hintStyle: TextStyle(
+                      color: Color(0xFF9CA3AF),
+                      fontSize: 14,
+                    ),
                   ),
                 ),
               ),
@@ -407,12 +554,18 @@ if (mounted) {
                     value: _selectedFilter,
                     isExpanded: true,
                     icon: const Icon(Icons.filter_list, size: 20),
-                    items: ['All', 'Urgent', 'Upcoming', 'Expired', 'No Worries']
-                        .map((filter) => DropdownMenuItem(
-                              value: filter,
-                              child: Text(filter, style: const TextStyle(fontSize: 14)),
-                            ))
-                        .toList(),
+                    items:
+                        ['All', 'Urgent', 'Upcoming', 'Expired', 'No Worries']
+                            .map(
+                              (filter) => DropdownMenuItem(
+                                value: filter,
+                                child: Text(
+                                  filter,
+                                  style: const TextStyle(fontSize: 14),
+                                ),
+                              ),
+                            )
+                            .toList(),
                     onChanged: (value) => _updateFilter(value!),
                   ),
                 ),
@@ -435,10 +588,15 @@ if (mounted) {
                     isExpanded: true,
                     icon: const Icon(Icons.sort, size: 20),
                     items: ['Date', 'Name', 'Court']
-                        .map((sort) => DropdownMenuItem(
-                              value: sort,
-                              child: Text('Sort: $sort', style: const TextStyle(fontSize: 14)),
-                            ))
+                        .map(
+                          (sort) => DropdownMenuItem(
+                            value: sort,
+                            child: Text(
+                              'Sort: $sort',
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                          ),
+                        )
                         .toList(),
                     onChanged: (value) => _updateSort(value!),
                   ),
@@ -473,7 +631,9 @@ if (mounted) {
             final index = entry.key;
             final case_ = entry.value;
             return Padding(
-              padding: EdgeInsets.only(bottom: index < _filteredCases.length - 1 ? 12 : 0),
+              padding: EdgeInsets.only(
+                bottom: index < _filteredCases.length - 1 ? 12 : 0,
+              ),
               child: _CourtDateCard(
                 caseName: case_['name'] ?? 'Unnamed Case',
                 caseNumber: case_['number'] ?? 'N/A',
@@ -525,10 +685,7 @@ if (mounted) {
               _searchQuery.isNotEmpty
                   ? 'Try adjusting your search or filters'
                   : 'Add cases to see them here',
-              style: const TextStyle(
-                fontSize: 14,
-                color: Color(0xFF6B7280),
-              ),
+              style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
               textAlign: TextAlign.center,
             ),
           ],
@@ -576,7 +733,8 @@ if (mounted) {
                                     ],
                                     stops: [
                                       0.0,
-                                      (_shimmerAnimation.value + index * 0.2).clamp(0.0, 1.0),
+                                      (_shimmerAnimation.value + index * 0.2)
+                                          .clamp(0.0, 1.0),
                                       1.0,
                                     ],
                                   ),
@@ -598,7 +756,10 @@ if (mounted) {
                                     ],
                                     stops: [
                                       0.0,
-                                      (_shimmerAnimation.value + index * 0.2 + 0.1).clamp(0.0, 1.0),
+                                      (_shimmerAnimation.value +
+                                              index * 0.2 +
+                                              0.1)
+                                          .clamp(0.0, 1.0),
                                       1.0,
                                     ],
                                   ),
@@ -623,7 +784,8 @@ if (mounted) {
                               ],
                               stops: [
                                 0.0,
-                                (_shimmerAnimation.value + index * 0.2 + 0.2).clamp(0.0, 1.0),
+                                (_shimmerAnimation.value + index * 0.2 + 0.2)
+                                    .clamp(0.0, 1.0),
                                 1.0,
                               ],
                             ),
@@ -647,7 +809,10 @@ if (mounted) {
                           ],
                           stops: [
                             0.0,
-                            (_shimmerAnimation.value + index * 0.2 + 0.3).clamp(0.0, 1.0),
+                            (_shimmerAnimation.value + index * 0.2 + 0.3).clamp(
+                              0.0,
+                              1.0,
+                            ),
                             1.0,
                           ],
                         ),
@@ -695,8 +860,9 @@ class _CourtDateCard extends StatelessWidget {
     final isUpcoming = status == 'upcoming';
     final isNoWorries = status == 'no worries';
     final isExpired = status == 'expired';
-    final hasDescription = description != null && description!.trim().isNotEmpty;
-    
+    final hasDescription =
+        description != null && description!.trim().isNotEmpty;
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
@@ -706,13 +872,13 @@ class _CourtDateCard extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isUrgent 
-              ? const Color(0xFFF59E0B)
-              : isUpcoming
+            color: isUrgent
+                ? const Color(0xFFF59E0B)
+                : isUpcoming
                 ? const Color.fromARGB(255, 91, 204, 129)
                 : isExpired
-                  ? const Color(0xFF6B7280)
-                  : const Color(0xFF10B981),
+                ? const Color(0xFF6B7280)
+                : const Color(0xFF10B981),
             width: isUrgent ? 2 : 1,
           ),
           boxShadow: [
@@ -753,11 +919,16 @@ class _CourtDateCard extends StatelessWidget {
                 ),
                 if (isUrgent)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF59E0B).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.3)),
+                      border: Border.all(
+                        color: const Color(0xFFF59E0B).withOpacity(0.3),
+                      ),
                     ),
                     child: const Text(
                       'URGENT',
@@ -771,11 +942,26 @@ class _CourtDateCard extends StatelessWidget {
                   )
                 else if (isUpcoming)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
-                      color: const Color.fromARGB(255, 55, 218, 49).withOpacity(0.1),
+                      color: const Color.fromARGB(
+                        255,
+                        55,
+                        218,
+                        49,
+                      ).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color.fromARGB(255, 55, 218, 49).withOpacity(0.1)),
+                      border: Border.all(
+                        color: const Color.fromARGB(
+                          255,
+                          55,
+                          218,
+                          49,
+                        ).withOpacity(0.1),
+                      ),
                     ),
                     child: const Text(
                       'Upcoming',
@@ -789,11 +975,16 @@ class _CourtDateCard extends StatelessWidget {
                   )
                 else if (isExpired)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFF6B7280).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFF6B7280).withOpacity(0.2)),
+                      border: Border.all(
+                        color: const Color(0xFF6B7280).withOpacity(0.2),
+                      ),
                     ),
                     child: const Text(
                       'Expired',
@@ -807,11 +998,16 @@ class _CourtDateCard extends StatelessWidget {
                   )
                 else
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFF10B981).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFF10B981).withOpacity(0.2)),
+                      border: Border.all(
+                        color: const Color(0xFF10B981).withOpacity(0.2),
+                      ),
                     ),
                     child: const Text(
                       'No Worries',
@@ -831,7 +1027,9 @@ class _CourtDateCard extends StatelessWidget {
                 Icon(
                   Icons.calendar_today,
                   size: 16,
-                  color: isUrgent ? const Color(0xFFF59E0B) : const Color(0xFF6B7280),
+                  color: isUrgent
+                      ? const Color(0xFFF59E0B)
+                      : const Color(0xFF6B7280),
                 ),
                 const SizedBox(width: 6),
                 Expanded(
@@ -839,8 +1037,12 @@ class _CourtDateCard extends StatelessWidget {
                     courtDate,
                     style: TextStyle(
                       fontSize: 14,
-                      color: isUrgent ? const Color(0xFFF59E0B) : const Color(0xFF1F2937),
-                      fontWeight: isUrgent ? FontWeight.w600 : FontWeight.normal,
+                      color: isUrgent
+                          ? const Color(0xFFF59E0B)
+                          : const Color(0xFF1F2937),
+                      fontWeight: isUrgent
+                          ? FontWeight.w600
+                          : FontWeight.normal,
                     ),
                   ),
                 ),
@@ -853,15 +1055,21 @@ class _CourtDateCard extends StatelessWidget {
                   Icon(
                     Icons.access_time,
                     size: 16,
-                    color: isUrgent ? const Color(0xFFF59E0B) : const Color(0xFF6B7280),
+                    color: isUrgent
+                        ? const Color(0xFFF59E0B)
+                        : const Color(0xFF6B7280),
                   ),
                   const SizedBox(width: 6),
                   Text(
                     courtTime,
                     style: TextStyle(
                       fontSize: 14,
-                      color: isUrgent ? const Color(0xFFF59E0B) : const Color(0xFF1F2937),
-                      fontWeight: isUrgent ? FontWeight.w600 : FontWeight.normal,
+                      color: isUrgent
+                          ? const Color(0xFFF59E0B)
+                          : const Color(0xFF1F2937),
+                      fontWeight: isUrgent
+                          ? FontWeight.w600
+                          : FontWeight.normal,
                     ),
                   ),
                 ],
@@ -921,40 +1129,35 @@ class _CourtDateCard extends StatelessWidget {
                 ),
               ),
             ],
-if (!isExpired && onPostpone != null) ...[
-  const SizedBox(height: 12),
-  const Divider(color: Color(0xFFE5E7EB)),
-  const SizedBox(height: 8),
-  InkWell(
-    onTap: () => onPostpone!(caseId),
-    child: Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.schedule,
-            size: 16,
-            color: Color(0xFF1E3A8A),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            'Postpone Court Date',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF1E3A8A),
-            ),
-          ),
-        ],
-      ),
-    ),
-  ),
-],
+            if (!isExpired && onPostpone != null) ...[
+              const SizedBox(height: 12),
+              const Divider(color: Color(0xFFE5E7EB)),
+              const SizedBox(height: 8),
+              InkWell(
+                onTap: () => onPostpone!(caseId),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.schedule, size: 16, color: Color(0xFF1E3A8A)),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Postpone Court Date',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1E3A8A),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
     );
   }
 }
-

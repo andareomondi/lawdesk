@@ -615,23 +615,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
             'Dashboard',
             style: TextStyle(fontWeight: FontWeight.w600),
           ),
-          actions: [
-            Builder(
-              builder: (context) {
-                return IconButton(
-                  icon: const Icon(Icons.menu),
-                  onPressed: () {
-                    Scaffold.of(context).openDrawer();
-                  },
-                );
-              },
-            ),
-          ],
           // Add connection status indicator in AppBar
-          bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(0),
-            child: const OfflineBanner(),
-          ),
         ),
         drawer: DashboardDrawer(
           userName: _userName,
