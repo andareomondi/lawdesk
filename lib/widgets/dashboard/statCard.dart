@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:lawdesk/screens/cases/casepage.dart';
 import 'package:lawdesk/screens/calender/calender.dart';
+import 'package:lawdesk/services/connectivity_service.dart';
+import 'package:lawdesk/services/offline_storage_service.dart';
 
 // Model class for stats data
 class StatsData {
@@ -41,7 +43,11 @@ class StatsSectionState extends State<StatsSection> {
   String _calculateStatus(DateTime courtDate) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final courtDateOnly = DateTime(courtDate.year, courtDate.month, courtDate.day);
+    final courtDateOnly = DateTime(
+      courtDate.year,
+      courtDate.month,
+      courtDate.day,
+    );
     final daysDifference = courtDateOnly.difference(today).inDays;
 
     if (daysDifference < 0) {
@@ -67,74 +73,140 @@ class StatsSectionState extends State<StatsSection> {
         throw Exception('User not authenticated');
       }
 
-      // Fetch all cases for the user
-      final response = await _supabase
-          .from('cases')
-          .select()
-          .eq('user', user.id);
+      // Check if online
+      if (connectivityService.isConnected) {
+        // Fetch all cases for the user from server
+        final response = await _supabase
+            .from('cases')
+            .select()
+            .eq('user', user.id);
 
-      if (response is List) {
-        final cases = List<Map<String, dynamic>>.from(response);
-        final now = DateTime.now();
-        final today = DateTime(now.year, now.month, now.day);
-        final firstDayOfMonth = DateTime(now.year, now.month, 1);
-        final startOfWeek = today.subtract(Duration(days: today.weekday - 1));
-        final endOfWeek = startOfWeek.add(const Duration(days: 7));
+        if (response is List) {
+          final cases = List<Map<String, dynamic>>.from(response);
+          final statsData = _processStatsData(cases);
 
-        int totalCases = cases.length;
-        int monthlyIncrease = 0;
-        int dueThisWeek = 0;
-        int urgentCases = 0;
+          setState(() {
+            _statsData = statsData;
+            _isLoading = false;
+          });
 
-        // Process each case
-        for (var case_ in cases) {
-          if (case_['courtDate'] != null) {
-            try {
-              final courtDate = DateTime.parse(case_['courtDate']);
-              final courtDateOnly = DateTime(courtDate.year, courtDate.month, courtDate.day);
+          // Cache the stats
+          await offlineStorage.cacheStats({
+            'totalCases': statsData.totalCases,
+            'monthlyIncrease': statsData.monthlyIncrease,
+            'dueThisWeek': statsData.dueThisWeek,
+            'urgentCases': statsData.urgentCases,
+          });
 
-              // Calculate status
-              final status = _calculateStatus(courtDate);
-              
-              // Count urgent cases
-              if (status == 'urgent') {
-                urgentCases++;
-              }
-
-              // Count cases due this week
-              if (courtDateOnly.isAfter(startOfWeek.subtract(const Duration(days: 1))) &&
-                  courtDateOnly.isBefore(endOfWeek.add(const Duration(days: 1)))) {
-                dueThisWeek++;
-              }
-
-              // Count monthly increase (cases with court date this month)
-              if (courtDateOnly.isAfter(firstDayOfMonth.subtract(const Duration(days: 1))) &&
-                  courtDateOnly.isBefore(DateTime(now.year, now.month + 1, 1))) {
-                monthlyIncrease++;
-              }
-            } catch (e) {
-              // Skip cases with invalid dates
-              continue;
-            }
-          }
+          // Also cache the cases data for consistency
+          await offlineStorage.cacheCases(cases);
         }
+      } else {
+        // Load from cache when offline
+        final cachedStats = await offlineStorage.getCachedStats();
 
+        if (cachedStats != null) {
+          setState(() {
+            _statsData = StatsData(
+              totalCases: cachedStats['totalCases'] ?? 0,
+              monthlyIncrease: cachedStats['monthlyIncrease'] ?? 0,
+              dueThisWeek: cachedStats['dueThisWeek'] ?? 0,
+              urgentCases: cachedStats['urgentCases'] ?? 0,
+            );
+            _isLoading = false;
+          });
+        } else {
+          // No cached data available
+          setState(() {
+            _errorMessage = 'No offline data available';
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      print('Error loading stats: $e');
+
+      // Try to load from cache on error
+      final cachedStats = await offlineStorage.getCachedStats();
+
+      if (cachedStats != null && mounted) {
         setState(() {
           _statsData = StatsData(
-            totalCases: totalCases,
-            monthlyIncrease: monthlyIncrease,
-            dueThisWeek: dueThisWeek,
-            urgentCases: urgentCases,
+            totalCases: cachedStats['totalCases'] ?? 0,
+            monthlyIncrease: cachedStats['monthlyIncrease'] ?? 0,
+            dueThisWeek: cachedStats['dueThisWeek'] ?? 0,
+            urgentCases: cachedStats['urgentCases'] ?? 0,
           );
           _isLoading = false;
         });
+      } else {
+        setState(() {
+          _errorMessage = 'Failed to load stats';
+          _isLoading = false;
+        });
       }
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Failed to load stats';
-        _isLoading = false;
-      });
     }
+  }
+
+  StatsData _processStatsData(List<Map<String, dynamic>> cases) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final firstDayOfMonth = DateTime(now.year, now.month, 1);
+    final startOfWeek = today.subtract(Duration(days: today.weekday - 1));
+    final endOfWeek = startOfWeek.add(const Duration(days: 7));
+
+    int totalCases = cases.length;
+    int monthlyIncrease = 0;
+    int dueThisWeek = 0;
+    int urgentCases = 0;
+
+    // Process each case
+    for (var case_ in cases) {
+      if (case_['courtDate'] != null) {
+        try {
+          final courtDate = DateTime.parse(case_['courtDate']);
+          final courtDateOnly = DateTime(
+            courtDate.year,
+            courtDate.month,
+            courtDate.day,
+          );
+
+          // Calculate status
+          final status = _calculateStatus(courtDate);
+
+          // Count urgent cases
+          if (status == 'urgent') {
+            urgentCases++;
+          }
+
+          // Count cases due this week
+          if (courtDateOnly.isAfter(
+                startOfWeek.subtract(const Duration(days: 1)),
+              ) &&
+              courtDateOnly.isBefore(endOfWeek.add(const Duration(days: 1)))) {
+            dueThisWeek++;
+          }
+
+          // Count monthly increase (cases with court date this month)
+          if (courtDateOnly.isAfter(
+                firstDayOfMonth.subtract(const Duration(days: 1)),
+              ) &&
+              courtDateOnly.isBefore(DateTime(now.year, now.month + 1, 1))) {
+            monthlyIncrease++;
+          }
+        } catch (e) {
+          // Skip cases with invalid dates
+          continue;
+        }
+      }
+    }
+
+    return StatsData(
+      totalCases: totalCases,
+      monthlyIncrease: monthlyIncrease,
+      dueThisWeek: dueThisWeek,
+      urgentCases: urgentCases,
+    );
   }
 
   @override
@@ -153,13 +225,9 @@ class StatsSectionState extends State<StatsSection> {
   Widget _buildLoadingState() {
     return Row(
       children: [
-        Expanded(
-          child: _buildLoadingCard(),
-        ),
+        Expanded(child: _buildLoadingCard()),
         const SizedBox(width: 16),
-        Expanded(
-          child: _buildLoadingCard(),
-        ),
+        Expanded(child: _buildLoadingCard()),
       ],
     );
   }
@@ -179,37 +247,27 @@ class StatsSectionState extends State<StatsSection> {
           ),
         ],
       ),
-      child: const Center(
-        child: CircularProgressIndicator(),
-      ),
+      child: const Center(child: CircularProgressIndicator()),
     );
   }
 
   Widget _buildErrorState() {
-          return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.add_card,
-                size: 48,
-                color: Colors.grey[400],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'No stats available',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey[600],
-                ),
-              ),
-            ],
-          ),
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.add_card, size: 48, color: Colors.grey[400]),
+            const SizedBox(height: 12),
+            Text(
+              'No stats available',
+              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+            ),
+          ],
         ),
-      );
-
+      ),
+    );
   }
 
   Widget _buildStatsSection() {
@@ -278,10 +336,7 @@ class _StatCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: color.withOpacity(0.2),
-          width: 1,
-        ),
+        border: Border.all(color: color.withOpacity(0.2), width: 1),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
@@ -299,11 +354,7 @@ class _StatCard extends StatelessWidget {
               color: color.withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(
-              icon,
-              color: color,
-              size: 24,
-            ),
+            child: Icon(icon, color: color, size: 24),
           ),
           const SizedBox(height: 12),
           Text(
@@ -324,16 +375,9 @@ class _StatCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            trend,
-            style: TextStyle(
-              fontSize: 11,
-              color: Colors.grey[500],
-            ),
-          ),
+          Text(trend, style: TextStyle(fontSize: 11, color: Colors.grey[500])),
         ],
       ),
     );
   }
 }
-

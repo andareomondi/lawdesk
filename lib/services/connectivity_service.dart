@@ -20,22 +20,23 @@ class ConnectivityService {
 
   Future<void> initialize() async {
     // Check initial connectivity
-    final result = await _connectivity.checkConnectivity();
-    _updateConnectionStatus(result as ConnectivityResult);
+    final results = await _connectivity.checkConnectivity();
+    _updateConnectionStatus(results);
 
     // Listen to connectivity changes
     _connectivity.onConnectivityChanged.listen((
       List<ConnectivityResult> results,
     ) {
-      if (results.isNotEmpty) {
-        _updateConnectionStatus(results.first);
-      }
+      _updateConnectionStatus(results);
     });
   }
 
-  void _updateConnectionStatus(ConnectivityResult result) {
+  void _updateConnectionStatus(List<ConnectivityResult> results) {
     final wasConnected = _isConnected;
-    _isConnected = result != ConnectivityResult.none;
+    // User is connected if any result is not "none"
+    _isConnected =
+        results.isNotEmpty &&
+        results.any((result) => result != ConnectivityResult.none);
 
     if (wasConnected != _isConnected) {
       _connectionStatusController.add(_isConnected);

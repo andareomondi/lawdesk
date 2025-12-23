@@ -61,12 +61,11 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     _setupShimmerAnimation();
-    _loadUserData();
-    _checkCurrentPatch();
-    _checkForShorebirdUpdates();
 
-    connectivityService.initialize();
+    // Check initial connectivity state
+    _isOfflineMode = !connectivityService.isConnected;
 
+    // Listen to connectivity changes
     connectivityService.connectionStream.listen((isConnected) {
       if (mounted) {
         setState(() {

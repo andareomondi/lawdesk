@@ -20,6 +20,7 @@ class OfflineStorageService {
       final jsonString = jsonEncode(cases);
       await prefs.setString(_casesCacheKey, jsonString);
       await _updateLastSyncTime();
+      print('Successfully cached ${cases.length} cases');
     } catch (e) {
       print('Error caching cases: $e');
     }

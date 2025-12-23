@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:lawdesk/widgets/cases/details.dart';
 import 'package:lawdesk/widgets/delightful_toast.dart';
 
+
 class CasesListWidget extends StatefulWidget {
   final VoidCallback? onCaseChanged;
   const CasesListWidget({Key? key, this.onCaseChanged}) : super(key: key);
