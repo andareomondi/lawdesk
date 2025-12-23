@@ -14,6 +14,7 @@ import 'package:lawdesk/widgets/dashboard/statCard.dart';
 import 'package:liquid_pull_to_refresh/liquid_pull_to_refresh.dart';
 import 'package:lawdesk/widgets/delightful_toast.dart';
 import 'package:lawdesk/widgets/cases/client_modal.dart';
+import 'package:lawdesk/widgets/dashboard/dashboard_drawer.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -27,8 +28,8 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   final _updater = ShorebirdUpdater();
 
   final GlobalKey<CasesListWidgetState> _casesListKey = GlobalKey();
-final GlobalKey<StatsSectionState> _statsKey = GlobalKey<StatsSectionState>();
-  
+  final GlobalKey<StatsSectionState> _statsKey = GlobalKey<StatsSectionState>();
+
   // User data variables
   String _userName = '';
   String _userEmail = '';
@@ -36,7 +37,7 @@ final GlobalKey<StatsSectionState> _statsKey = GlobalKey<StatsSectionState>();
   bool _isLoading = true;
   bool _isUpdated = false;
   bool _hasCheckedProfile = false;
-  
+
   // Shorebird update variables
   bool _isCheckingForUpdate = false;
   bool _isDownloadingUpdate = false;
@@ -48,7 +49,7 @@ final GlobalKey<StatsSectionState> _statsKey = GlobalKey<StatsSectionState>();
   // Animation controller for shimmer effect
   late AnimationController _shimmerController;
   late Animation<double> _shimmerAnimation;
-late AnimationController _fabController;
+  late AnimationController _fabController;
   late Animation<double> _expandAnimation;
 
   @override
@@ -59,7 +60,7 @@ late AnimationController _fabController;
     _checkCurrentPatch();
     _checkForShorebirdUpdates();
 
-_fabController = AnimationController(
+    _fabController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 250),
     );
@@ -75,14 +76,10 @@ _fabController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     )..repeat();
-    
-    _shimmerAnimation = Tween<double>(
-      begin: -2,
-      end: 2,
-    ).animate(CurvedAnimation(
-      parent: _shimmerController,
-      curve: Curves.easeInOutSine,
-    ));
+
+    _shimmerAnimation = Tween<double>(begin: -2, end: 2).animate(
+      CurvedAnimation(parent: _shimmerController, curve: Curves.easeInOutSine),
+    );
   }
 
   @override
@@ -113,7 +110,7 @@ _fabController = AnimationController(
 
     try {
       final status = await _updater.checkForUpdate();
-      
+
       setState(() {
         _isCheckingForUpdate = false;
       });
@@ -138,15 +135,15 @@ _fabController = AnimationController(
   Future<void> _refreshDashboard() async {
     setState(() {
       _isLoading = true;
-        });
-    
+    });
+
     try {
       await _loadUserData();
       await _checkForShorebirdUpdates();
 
       _casesListKey.currentState?.loadCases();
       _statsKey.currentState?.loadStats();
-      
+
       if (mounted) {
         HapticFeedback.mediumImpact();
         AppToast.showSuccess(
@@ -173,7 +170,7 @@ _fabController = AnimationController(
 
     try {
       await _updater.update();
-      
+
       setState(() {
         _isDownloadingUpdate = false;
       });
@@ -243,7 +240,12 @@ _fabController = AnimationController(
                 child: ElevatedButton(
                   onPressed: () {
                     Navigator.of(context).pop();
-                    AppToast.showSuccess(context: context, title: "Hurray!", message: "Please close and reopen the app to complete the update");
+                    AppToast.showSuccess(
+                      context: context,
+                      title: "Hurray!",
+                      message:
+                          "Please close and reopen the app to complete the update",
+                    );
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF10B981),
@@ -256,10 +258,7 @@ _fabController = AnimationController(
                   ),
                   child: const Text(
                     'Got It',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                   ),
                 ),
               ),
@@ -333,10 +332,7 @@ _fabController = AnimationController(
                   ),
                   child: const Text(
                     'OK',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                   ),
                 ),
               ),
@@ -350,7 +346,7 @@ _fabController = AnimationController(
   Future<void> _loadUserData() async {
     try {
       final user = _supabase.auth.currentUser;
-      
+
       if (user != null) {
         setState(() {
           _userEmail = user.email ?? '';
@@ -370,7 +366,7 @@ _fabController = AnimationController(
             _isUpdated = response['is_updated'] == true;
             _isLoading = false;
           });
-          
+
           if (!_isUpdated && !_hasCheckedProfile) {
             _hasCheckedProfile = true;
             Future.delayed(const Duration(milliseconds: 500), () {
@@ -450,9 +446,7 @@ _fabController = AnimationController(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
-                          side: const BorderSide(
-                            color: Color(0xFFE5E7EB),
-                          ),
+                          side: const BorderSide(color: Color(0xFFE5E7EB)),
                         ),
                       ),
                       child: const Text(
@@ -472,7 +466,9 @@ _fabController = AnimationController(
                         Navigator.of(context).pop();
                         final result = await Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => const ProfileUpdateScreen()),
+                          MaterialPageRoute(
+                            builder: (context) => const ProfileUpdateScreen(),
+                          ),
                         );
                         if (result == true) {
                           _hasCheckedProfile = false;
@@ -506,8 +502,8 @@ _fabController = AnimationController(
     );
   }
 
-void _toggleFab() {
-  HapticFeedback.lightImpact();
+  void _toggleFab() {
+    HapticFeedback.lightImpact();
     setState(() {
       _isFabExpanded = !_isFabExpanded;
       if (_isFabExpanded) {
@@ -526,7 +522,8 @@ void _toggleFab() {
       });
     }
   }
-@override
+
+  @override
   Widget build(BuildContext context) {
     // We use PopScope to close the FAB if the user presses the back button
     return PopScope(
@@ -537,8 +534,8 @@ void _toggleFab() {
         }
       },
       child: Scaffold(
-      extendBody: true,
-      resizeToAvoidBottomInset: false,
+        extendBody: true,
+        resizeToAvoidBottomInset: false,
         appBar: AppBar(
           backgroundColor: const Color(0xFF1E3A8A),
           foregroundColor: Colors.white,
@@ -548,21 +545,26 @@ void _toggleFab() {
             style: TextStyle(fontWeight: FontWeight.w600),
           ),
           actions: [
-          // TODO: Replace this with a drawer which should be wrapped in a builer widget.
-            IconButton(
-              icon: const Icon(Icons.account_circle_outlined),
-              onPressed: () async {
-                final result = await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const ProfileScreen()),
+            // TODO: Replace this with a drawer which should be wrapped in a builer widget.
+            Builder(
+              builder: (context) {
+                return IconButton(
+                  icon: const Icon(Icons.menu),
+                  onPressed: () {
+                    Scaffold.of(context).openDrawer();
+                  },
                 );
-                if (result == true) {
-                  _hasCheckedProfile = false;
-                  _loadUserData();
-                }
               },
             ),
           ],
+        ),
+        drawer: DashboardDrawer(
+          userName: _userName,
+          userEmail: _userEmail,
+          onProfileUpdate: () {
+            _hasCheckedProfile = false;
+            _loadUserData();
+          },
         ),
         backgroundColor: const Color(0xFFF8FAFC),
         // STACK allows us to place the overlay on top of the content
@@ -581,15 +583,20 @@ void _toggleFab() {
               showChildOpacityTransition: false,
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 100), // Extra bottom padding for FAB
+                padding: const EdgeInsets.fromLTRB(
+                  16,
+                  16,
+                  16,
+                  100,
+                ), // Extra bottom padding for FAB
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _isLoading 
+                    _isLoading
                         ? _buildShimmerWelcomeCard()
                         : _buildWelcomeSection(),
                     const SizedBox(height: 24),
-                    _isLoading 
+                    _isLoading
                         ? _buildShimmerStatsCards()
                         : StatsSection(key: _statsKey),
                     const SizedBox(height: 24),
@@ -600,7 +607,7 @@ void _toggleFab() {
               ),
             ),
 
-if (_isFabExpanded)
+            if (_isFabExpanded)
               Positioned.fill(
                 child: GestureDetector(
                   onTap: _closeFab,
@@ -608,7 +615,9 @@ if (_isFabExpanded)
                     animation: _expandAnimation,
                     builder: (context, child) {
                       return Container(
-                        color: Colors.black.withOpacity(_expandAnimation.value * 0.6),
+                        color: Colors.black.withOpacity(
+                          _expandAnimation.value * 0.6,
+                        ),
                         // Optional: Add backdrop blur for a premium feel
                         child: BackdropFilter(
                           filter: dart_ui.ImageFilter.blur(
@@ -625,7 +634,11 @@ if (_isFabExpanded)
 
             Positioned(
               right: 16,
-              bottom: 16 + MediaQuery.of(context).viewPadding.bottom, // Respect safe area
+              bottom:
+                  16 +
+                  MediaQuery.of(
+                    context,
+                  ).viewPadding.bottom, // Respect safe area
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.end,
@@ -639,7 +652,12 @@ if (_isFabExpanded)
                     onPressed: () {
                       _closeFab();
 
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => const CalendarPage()));
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const CalendarPage(),
+                        ),
+                      );
                     },
                   ),
                   const SizedBox(height: 16),
@@ -651,8 +669,13 @@ if (_isFabExpanded)
                     delay: 1,
                     onPressed: () {
                       _closeFab();
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => const AllDocumentsPage()));
-                  },
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AllDocumentsPage(),
+                        ),
+                      );
+                    },
                   ),
                   const SizedBox(height: 16),
                   _buildFabMenuItem(
@@ -662,9 +685,12 @@ if (_isFabExpanded)
                     delay: 2,
                     onPressed: () {
                       _closeFab();
-                      AddClientModal.show(context, onClientAdded: () {
-                        _loadUserData();
-                        });
+                      AddClientModal.show(
+                        context,
+                        onClientAdded: () {
+                          _loadUserData();
+                        },
+                      );
                     },
                   ),
                   const SizedBox(height: 16),
@@ -675,14 +701,17 @@ if (_isFabExpanded)
                     delay: 3,
                     onPressed: () {
                       _closeFab();
-                      AddCaseModal.show(context, onCaseAdded: () {
-                        _casesListKey.currentState?.loadCases();
-                        _statsKey.currentState?.loadStats();
-                        });
+                      AddCaseModal.show(
+                        context,
+                        onCaseAdded: () {
+                          _casesListKey.currentState?.loadCases();
+                          _statsKey.currentState?.loadStats();
+                        },
+                      );
                     },
                   ),
                   const SizedBox(height: 24),
-                  
+
                   // Main Toggle Button
                   FloatingActionButton.extended(
                     heroTag: 'main_fab',
@@ -691,19 +720,28 @@ if (_isFabExpanded)
                     elevation: 6,
                     label: AnimatedSwitcher(
                       duration: const Duration(milliseconds: 200),
-                      transitionBuilder: (Widget child, Animation<double> animation) {
-                        return FadeTransition(opacity: animation, child: child);
-                      },
+                      transitionBuilder:
+                          (Widget child, Animation<double> animation) {
+                            return FadeTransition(
+                              opacity: animation,
+                              child: child,
+                            );
+                          },
                       child: Text(
                         _isFabExpanded ? 'Close' : 'Quick Actions',
                         key: ValueKey<bool>(_isFabExpanded),
-                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: Colors.white),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                     icon: AnimatedRotation(
                       turns: _isFabExpanded ? 0.5 : 0,
                       duration: const Duration(milliseconds: 200),
-                      child: Icon(color: Colors.white,
+                      child: Icon(
+                        color: Colors.white,
                         _isFabExpanded ? Icons.close : Icons.apps,
                         key: ValueKey<bool>(_isFabExpanded),
                       ),
@@ -711,18 +749,14 @@ if (_isFabExpanded)
                   ),
                 ],
               ),
-            ),  
-
+            ),
           ],
-
         ),
-
       ),
     );
   }
 
-
-Widget _buildFabMenuItem({
+  Widget _buildFabMenuItem({
     required String label,
     required IconData icon,
     required Color color,
@@ -730,9 +764,9 @@ Widget _buildFabMenuItem({
     required int delay,
   }) {
     // We calculate a staggered animation interval for each item
-    final intervalStart = 0.1 * delay; 
-    final intervalEnd = 0.6 + (0.1 * delay); 
-    
+    final intervalStart = 0.1 * delay;
+    final intervalEnd = 0.6 + (0.1 * delay);
+
     final animation = CurvedAnimation(
       parent: _fabController,
       curve: Interval(
@@ -784,22 +818,21 @@ Widget _buildFabMenuItem({
               elevation: 4,
               child: Icon(icon, color: Colors.white, size: 20),
             ),
-            const SizedBox(width: 4), // Tiny adjustment to align center of mini FAB with main FAB
+            const SizedBox(
+              width: 4,
+            ), // Tiny adjustment to align center of mini FAB with main FAB
           ],
         ),
       ),
     );
   }
 
-
   Widget _buildShimmerStatsCards() {
     return Row(
       children: List.generate(3, (index) {
         return Expanded(
           child: Padding(
-            padding: EdgeInsets.only(
-              right: index < 2 ? 12 : 0,
-            ),
+            padding: EdgeInsets.only(right: index < 2 ? 12 : 0),
             child: AnimatedBuilder(
               animation: _shimmerAnimation,
               builder: (context, child) {
@@ -830,7 +863,7 @@ Widget _buildFabMenuItem({
       }),
     );
   }
-  
+
   Widget _buildWelcomeSection() {
     return InkWell(
       onTap: () async {
@@ -868,14 +901,13 @@ Widget _buildFabMenuItem({
                 children: [
                   const Text(
                     'Welcome back,',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14,
-                    ),
+                    style: TextStyle(color: Colors.white70, fontSize: 14),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    _userName.isNotEmpty ? _userName.toUpperCase() : 'LAWDESK USER',
+                    _userName.isNotEmpty
+                        ? _userName.toUpperCase()
+                        : 'LAWDESK USER',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 24,
@@ -887,7 +919,8 @@ Widget _buildFabMenuItem({
                     children: [
                       Expanded(
                         child: Text(
-                          _userProfile != null && _userProfile!['lsk_number'] != null
+                          _userProfile != null &&
+                                  _userProfile!['lsk_number'] != null
                               ? 'LSK No: ${_userProfile!['lsk_number']}'
                               : 'Tap to update profile',
                           style: TextStyle(
@@ -901,120 +934,114 @@ Widget _buildFabMenuItem({
                 ],
               ),
             ),
-            const Icon(
-              Icons.gavel,
-              size: 60,
-              color: Colors.white24,
-            ),
+            const Icon(Icons.gavel, size: 60, color: Colors.white24),
           ],
         ),
       ),
     );
   }
 
-Widget _buildUpcomingDatesSection(BuildContext context) {
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          const Text(
-            'Upcoming Court Dates',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF1F2937),
+  Widget _buildUpcomingDatesSection(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Upcoming Court Dates',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1F2937),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        const CasesPage(), // This navigates to the full cases page
+                  ),
+                );
+              },
+              child: const Text(
+                'View All',
+                style: TextStyle(color: Color(0xFF1E3A8A)),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        _isLoading
+            ? _buildShimmerCasesList() // Show shimmer during loading
+            : CasesListWidget(
+                key: _casesListKey,
+                onCaseChanged: () {
+                  _statsKey.currentState?.loadStats();
+                },
+              ),
+      ],
+    );
+  }
+
+  Widget _buildShimmerWelcomeCard() {
+    return AnimatedBuilder(
+      animation: _shimmerAnimation,
+      builder: (context, child) {
+        return Container(
+          height: 120,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                const Color(0xFFE5E7EB),
+                const Color(0xFFF3F4F6),
+                const Color(0xFFE5E7EB),
+              ],
+              stops: [0.0, _shimmerAnimation.value.clamp(0.0, 1.0), 1.0],
             ),
           ),
-          TextButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const CasesPage(), // This navigates to the full cases page
+        );
+      },
+    );
+  }
+
+  Widget _buildShimmerCasesList() {
+    return Column(
+      children: List.generate(2, (index) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: AnimatedBuilder(
+            animation: _shimmerAnimation,
+            builder: (context, child) {
+              return Container(
+                height: 100,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      const Color(0xFFE5E7EB),
+                      const Color(0xFFF3F4F6),
+                      const Color(0xFFE5E7EB),
+                    ],
+                    stops: [
+                      0.0,
+                      (_shimmerAnimation.value + index * 0.3).clamp(0.0, 1.0),
+                      1.0,
+                    ],
+                  ),
                 ),
               );
             },
-            child: const Text(
-              'View All',
-              style: TextStyle(color: Color(0xFF1E3A8A)),
-            ),
           ),
-        ],
-      ),
-      const SizedBox(height: 12),
-      _isLoading
-          ? _buildShimmerCasesList() // Show shimmer during loading
-          : CasesListWidget(
-              key: _casesListKey, 
-              onCaseChanged: () {
-                _statsKey.currentState?.loadStats();
-              },
-            ),
-    ],
-  );
-}
-Widget _buildShimmerWelcomeCard() {
-  return AnimatedBuilder(
-    animation: _shimmerAnimation,
-    builder: (context, child) {
-      return Container(
-        height: 120,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              const Color(0xFFE5E7EB),
-              const Color(0xFFF3F4F6),
-              const Color(0xFFE5E7EB),
-            ],
-            stops: [
-              0.0,
-              _shimmerAnimation.value.clamp(0.0, 1.0),
-              1.0,
-            ],
-          ),
-        ),
-      );
-    },
-  );
-}
-Widget _buildShimmerCasesList() {
-  return Column(
-    children: List.generate(2, (index) {
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: AnimatedBuilder(
-          animation: _shimmerAnimation,
-          builder: (context, child) {
-            return Container(
-              height: 100,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    const Color(0xFFE5E7EB),
-                    const Color(0xFFF3F4F6),
-                    const Color(0xFFE5E7EB),
-                  ],
-                  stops: [
-                    0.0,
-                    (_shimmerAnimation.value + index * 0.3).clamp(0.0, 1.0),
-                    1.0,
-                  ],
-                ),
-              ),
-            );
-          },
-        ),
-      );
-    }),
-  );
-}
-
+        );
+      }),
+    );
+  }
 }
