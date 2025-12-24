@@ -615,22 +615,24 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
             'Dashboard',
             style: TextStyle(fontWeight: FontWeight.w600),
           ),
-            actions: [
-    // Move the menu icon to actions (right side)
-    Builder(
-      builder: (context) {
-        return IconButton(
-          icon: const Icon(Icons.menu),
-          onPressed: () {
-            Scaffold.of(context).openEndDrawer(); // Use openEndDrawer instead
-          },
-        );
-      },
-    ),
-  ],
+          actions: [
+            // Move the menu icon to actions (right side)
+            Builder(
+              builder: (context) {
+                return IconButton(
+                  icon: const Icon(Icons.menu),
+                  onPressed: () {
+                    Scaffold.of(
+                      context,
+                    ).openEndDrawer(); // Use openEndDrawer instead
+                  },
+                );
+              },
+            ),
+          ],
           // Add connection status indicator in AppBar
         ),
-        EndDrawer: DashboardDrawer(
+        endDrawer: DashboardDrawer(
           userName: _userName,
           userEmail: _userEmail,
           onProfileUpdate: () {

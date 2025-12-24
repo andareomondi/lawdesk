@@ -3,6 +3,9 @@ import 'package:intl/intl.dart';
 import 'package:lawdesk/screens/documents/upload.dart';
 import 'package:lawdesk/config/supabase_config.dart';
 import 'package:lawdesk/widgets/delightful_toast.dart';
+import 'package:lawdesk/services/connectivity_service.dart';
+import 'package:lawdesk/services/offline_storage_service.dart';
+import 'package:lawdesk/utils/offline_action_helper.dart';
 
 class CaseDetailsPage extends StatefulWidget {
   final String caseId;
@@ -25,7 +28,7 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
   bool _isLoadingDocuments = false;
   bool _isLoadingNotes = false;
   bool _isLoadingEvents = false;
-
+  bool _isOfflineMode = false;
   // Controllers for editing
   final _nameController = TextEditingController();
   final _numberController = TextEditingController();
@@ -85,25 +88,109 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
     setState(() => _isLoading = true);
 
     try {
-      final response = await _supabase
-          .from('cases')
-          .select()
-          .eq('id', widget.caseId)
-          .single();
+      // Check if online
+      if (connectivityService.isConnected) {
+        final response = await _supabase
+            .from('cases')
+            .select()
+            .eq('id', widget.caseId)
+            .single();
 
-      setState(() {
-        _caseData = response;
-        _initializeControllers();
-        _isLoading = false;
-      });
+        setState(() {
+          _caseData = response;
+          _initializeControllers();
+          _isLoading = false;
+          _isOfflineMode = false;
+        });
+
+        // Cache individual case data
+        final cachedCases = await offlineStorage.getCachedCases();
+        if (cachedCases != null) {
+          // Update the specific case in cache
+          final casesList = List<Map<String, dynamic>>.from(cachedCases);
+          final index = casesList.indexWhere(
+            (c) => c['id'].toString() == widget.caseId,
+          );
+
+          if (index != -1) {
+            casesList[index] = response;
+          } else {
+            casesList.add(response);
+          }
+
+          await offlineStorage.cacheCases(casesList);
+        }
+      } else {
+        // Load from cache when offline
+        final cachedCases = await offlineStorage.getCachedCases();
+
+        if (cachedCases != null) {
+          final caseData = cachedCases.firstWhere(
+            (c) => c['id'].toString() == widget.caseId,
+            orElse: () => {},
+          );
+
+          if (caseData.isNotEmpty) {
+            setState(() {
+              _caseData = caseData;
+              _initializeControllers();
+              _isLoading = false;
+              _isOfflineMode = true;
+            });
+          } else {
+            // Case not found in cache
+            setState(() {
+              _caseData = null;
+              _isLoading = false;
+              _isOfflineMode = true;
+            });
+          }
+        } else {
+          setState(() {
+            _caseData = null;
+            _isLoading = false;
+            _isOfflineMode = true;
+          });
+        }
+      }
     } catch (e) {
-      setState(() => _isLoading = false);
-      if (mounted) {
-        AppToast.showError(
-          context: context,
-          title: 'Error',
-          message: 'Failed to load case details. Please try again later.',
+      print('Error loading case details: $e');
+
+      // Try to load from cache on error
+      final cachedCases = await offlineStorage.getCachedCases();
+
+      if (cachedCases != null) {
+        final caseData = cachedCases.firstWhere(
+          (c) => c['id'].toString() == widget.caseId,
+          orElse: () => {},
         );
+
+        if (caseData.isNotEmpty && mounted) {
+          setState(() {
+            _caseData = caseData;
+            _initializeControllers();
+            _isLoading = false;
+            _isOfflineMode = true;
+          });
+        } else {
+          setState(() => _isLoading = false);
+          if (mounted) {
+            AppToast.showError(
+              context: context,
+              title: 'Error',
+              message: 'Failed to load case details. Please try again later.',
+            );
+          }
+        }
+      } else {
+        setState(() => _isLoading = false);
+        if (mounted) {
+          AppToast.showError(
+            context: context,
+            title: 'Error',
+            message: 'Failed to load case details. Please try again later.',
+          );
+        }
       }
     }
   }
@@ -460,8 +547,23 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
   }
 
   Future<void> _saveChanges() async {
+    if (!OfflineActionHelper.canPerformAction(
+      context,
+      actionName: 'save changes',
+    )) {
+      return;
+    }
+
     if (_nameController.text.trim().isEmpty) {
-      AppToast.showError( 
+      AppToast.showError(
+        context: context,
+        title: 'Validation Error',
+        message: 'Case name cannot be empty',
+      );
+      return;
+    }
+    if (_nameController.text.trim().isEmpty) {
+      AppToast.showError(
         context: context,
         title: 'Validation Error',
         message: 'Case name cannot be empty',
@@ -517,6 +619,12 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
   }
 
   Future<void> _deleteCase() async {
+    if (!OfflineActionHelper.canPerformAction(
+      context,
+      actionName: 'delete case',
+    )) {
+      return;
+    }
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -637,7 +745,7 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
                   ],
                 ),
                 const SizedBox(height: 24),
-                
+
                 // Note Name
                 const Text(
                   'Note Title',
@@ -662,12 +770,15 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Color(0xFF10B981), width: 2),
+                      borderSide: const BorderSide(
+                        color: Color(0xFF10B981),
+                        width: 2,
+                      ),
                     ),
                   ),
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Note Type
                 const Text(
                   'Note Type',
@@ -689,20 +800,22 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
                       value: _selectedNoteType,
                       isExpanded: true,
                       items: ['Quick Note', 'Longer Note', 'Case Update']
-                          .map((type) => DropdownMenuItem(
-                                value: type,
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      _getNoteIcon(type),
-                                      size: 20,
-                                      color: _getNoteColor(type),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Text(type),
-                                  ],
-                                ),
-                              ))
+                          .map(
+                            (type) => DropdownMenuItem(
+                              value: type,
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    _getNoteIcon(type),
+                                    size: 20,
+                                    color: _getNoteColor(type),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(type),
+                                ],
+                              ),
+                            ),
+                          )
                           .toList(),
                       onChanged: (value) {
                         setModalState(() {
@@ -713,7 +826,7 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Description
                 const Text(
                   'Description (Optional)',
@@ -739,12 +852,15 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Color(0xFF10B981), width: 2),
+                      borderSide: const BorderSide(
+                        color: Color(0xFF10B981),
+                        width: 2,
+                      ),
                     ),
                   ),
                 ),
                 const SizedBox(height: 24),
-                
+
                 // Save Button
                 SizedBox(
                   width: double.infinity,
@@ -779,6 +895,12 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
   }
 
   Future<void> _saveNote() async {
+    if (!OfflineActionHelper.canPerformAction(
+      context,
+      actionName: 'save note',
+    )) {
+      return;
+    }
     if (_noteNameController.text.trim().isEmpty) {
       AppToast.showError(
         context: context,
@@ -820,6 +942,12 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
   }
 
   Future<void> _deleteNote(int noteId, String noteName) async {
+    if (!OfflineActionHelper.canPerformAction(
+      context,
+      actionName: 'delete note',
+    )) {
+      return;
+    }
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -889,7 +1017,7 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
           );
         }
       }
-      
+
       final agenda = event['agenda'];
       if (_agendaOptions.contains(agenda)) {
         _selectedAgendaType = agenda;
@@ -941,7 +1069,7 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
                   ],
                 ),
                 const SizedBox(height: 24),
-                
+
                 // Date Picker
                 const Text(
                   'Event Date',
@@ -984,11 +1112,17 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.calendar_today, size: 20, color: Color(0xFF6B7280)),
+                        const Icon(
+                          Icons.calendar_today,
+                          size: 20,
+                          color: Color(0xFF6B7280),
+                        ),
                         const SizedBox(width: 12),
                         Text(
                           _eventSelectedDate != null
-                              ? _formatCourtDate(_eventSelectedDate!.toIso8601String())
+                              ? _formatCourtDate(
+                                  _eventSelectedDate!.toIso8601String(),
+                                )
                               : 'Select date',
                           style: TextStyle(
                             fontSize: 14,
@@ -1002,7 +1136,7 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Time Picker
                 const Text(
                   'Event Time',
@@ -1043,7 +1177,11 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.access_time, size: 20, color: Color(0xFF6B7280)),
+                        const Icon(
+                          Icons.access_time,
+                          size: 20,
+                          color: Color(0xFF6B7280),
+                        ),
                         const SizedBox(width: 12),
                         Text(
                           _eventSelectedTime != null
@@ -1061,7 +1199,7 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Agenda Type
                 const Text(
                   'Agenda',
@@ -1083,20 +1221,22 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
                       value: _selectedAgendaType,
                       isExpanded: true,
                       items: _agendaOptions
-                          .map((type) => DropdownMenuItem(
-                                value: type,
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      _getAgendaIcon(type),
-                                      size: 20,
-                                      color: _getAgendaColor(type),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Text(type),
-                                  ],
-                                ),
-                              ))
+                          .map(
+                            (type) => DropdownMenuItem(
+                              value: type,
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    _getAgendaIcon(type),
+                                    size: 20,
+                                    color: _getAgendaColor(type),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(type),
+                                ],
+                              ),
+                            ),
+                          )
                           .toList(),
                       onChanged: (value) {
                         setModalState(() {
@@ -1110,7 +1250,7 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
                     ),
                   ),
                 ),
-                
+
                 // Custom Agenda Input
                 if (_isCustomAgenda) ...[
                   const SizedBox(height: 16),
@@ -1137,13 +1277,16 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFF10B981), width: 2),
+                        borderSide: const BorderSide(
+                          color: Color(0xFF10B981),
+                          width: 2,
+                        ),
                       ),
                     ),
                   ),
                 ],
                 const SizedBox(height: 24),
-                
+
                 // Save Button
                 SizedBox(
                   width: double.infinity,
@@ -1181,137 +1324,161 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
     );
   }
 
-Future<void> _saveEvent() async {
-  if (_eventSelectedDate == null) {
-    AppToast.showError(context: context, 
-      title: 'Validation Error',
-      message: 'Please select an event date',
-    );
-
-    return;
-  }
-
-  if (_isCustomAgenda && _eventAgendaController.text.trim().isEmpty) {
-    AppToast.showError(context: context, 
-      title: 'Validation Error',
-      message: 'Please enter custom agenda',
-    );
-    return;
-  }
-
-  try {
-    // Get current user's profile ID
-    final userId = _supabase.auth.currentUser?.id;
-    if (userId == null) {
-      throw Exception('User not authenticated');
+  Future<void> _saveEvent() async {
+    if (!OfflineActionHelper.canPerformAction(
+      context,
+      actionName: 'save event',
+    )) {
+      return;
     }
-
-    String? timeString;
-    if (_eventSelectedTime != null) {
-      timeString =
-          '${_eventSelectedTime!.hour.toString().padLeft(2, '0')}:'
-          '${_eventSelectedTime!.minute.toString().padLeft(2, '0')}:00';
-    }
-
-    final agendaValue = _isCustomAgenda 
-        ? _eventAgendaController.text.trim() 
-        : _selectedAgendaType;
-
-    await _supabase.from('events').insert({
-      'date': _eventSelectedDate!.toIso8601String(),
-      'time': timeString,
-      'agenda': agendaValue,
-      'case': int.parse(widget.caseId),
-      'profile': userId, // Add profile UUID here
-    });
-
-    await _loadEvents();
-
-    if (mounted) {
-      //app toast success
-      AppToast.showSuccess(
-        context: context,
-        title: 'Success',
-        message: 'Event added successfully',
-      );
-    }
-  } catch (e) {
-    if (mounted) {
+    if (_eventSelectedDate == null) {
       AppToast.showError(
         context: context,
-        title: 'Error',
-        message: 'Failed to add event. Please try again later.',
+        title: 'Validation Error',
+        message: 'Please select an event date',
       );
-    }
-  }
-}
 
-// Replace your _updateEvent method with this:
-Future<void> _updateEvent() async {
-  if (_eventSelectedDate == null) {
-    AppToast.showError(
-      context: context,
-      title: 'Validation Error',
-      message: 'Please select an event date',
-    );
-    return;
-  }
-
-  if (_isCustomAgenda && _eventAgendaController.text.trim().isEmpty) {
-    AppToast.showError(
-      context: context,
-      title: 'Validation Error',
-      message: 'Please enter custom agenda',
-    );
-    return;
-  }
-
-  try {
-    // Get current user's profile ID
-    final userId = _supabase.auth.currentUser?.id;
-    if (userId == null) {
-      throw Exception('User not authenticated');
+      return;
     }
 
-    String? timeString;
-    if (_eventSelectedTime != null) {
-      timeString =
-          '${_eventSelectedTime!.hour.toString().padLeft(2, '0')}:'
-          '${_eventSelectedTime!.minute.toString().padLeft(2, '0')}:00';
-    }
-
-    final agendaValue = _isCustomAgenda 
-        ? _eventAgendaController.text.trim() 
-        : _selectedAgendaType;
-
-    await _supabase.from('events').update({
-      'date': _eventSelectedDate!.toIso8601String(),
-      'time': timeString,
-      'agenda': agendaValue,
-      'profile': userId, // Add profile UUID here too
-    }).eq('id', _editingEventId!);
-
-    await _loadEvents();
-
-    if (mounted) {
-      // app toast success
-      AppToast.showSuccess(
-        context: context,
-        title: 'Success',
-        message: 'Event updated successfully',
-      );
-    }
-  } catch (e) {
-    if (mounted) {
+    if (_isCustomAgenda && _eventAgendaController.text.trim().isEmpty) {
       AppToast.showError(
         context: context,
-        title: 'Error',
-        message: 'Failed to update event. Please try again later.',
+        title: 'Validation Error',
+        message: 'Please enter custom agenda',
       );
+      return;
+    }
+
+    try {
+      // Get current user's profile ID
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) {
+        throw Exception('User not authenticated');
+      }
+
+      String? timeString;
+      if (_eventSelectedTime != null) {
+        timeString =
+            '${_eventSelectedTime!.hour.toString().padLeft(2, '0')}:'
+            '${_eventSelectedTime!.minute.toString().padLeft(2, '0')}:00';
+      }
+
+      final agendaValue = _isCustomAgenda
+          ? _eventAgendaController.text.trim()
+          : _selectedAgendaType;
+
+      await _supabase.from('events').insert({
+        'date': _eventSelectedDate!.toIso8601String(),
+        'time': timeString,
+        'agenda': agendaValue,
+        'case': int.parse(widget.caseId),
+        'profile': userId, // Add profile UUID here
+      });
+
+      await _loadEvents();
+
+      if (mounted) {
+        //app toast success
+        AppToast.showSuccess(
+          context: context,
+          title: 'Success',
+          message: 'Event added successfully',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        AppToast.showError(
+          context: context,
+          title: 'Error',
+          message: 'Failed to add event. Please try again later.',
+        );
+      }
     }
   }
-}
+
+  // Replace your _updateEvent method with this:
+  Future<void> _updateEvent() async {
+    if (!OfflineActionHelper.canPerformAction(
+      context,
+      actionName: 'update event',
+    )) {
+      return;
+    }
+    if (_eventSelectedDate == null) {
+      AppToast.showError(
+        context: context,
+        title: 'Validation Error',
+        message: 'Please select an event date',
+      );
+      return;
+    }
+
+    if (_isCustomAgenda && _eventAgendaController.text.trim().isEmpty) {
+      AppToast.showError(
+        context: context,
+        title: 'Validation Error',
+        message: 'Please enter custom agenda',
+      );
+      return;
+    }
+
+    try {
+      // Get current user's profile ID
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) {
+        throw Exception('User not authenticated');
+      }
+
+      String? timeString;
+      if (_eventSelectedTime != null) {
+        timeString =
+            '${_eventSelectedTime!.hour.toString().padLeft(2, '0')}:'
+            '${_eventSelectedTime!.minute.toString().padLeft(2, '0')}:00';
+      }
+
+      final agendaValue = _isCustomAgenda
+          ? _eventAgendaController.text.trim()
+          : _selectedAgendaType;
+
+      await _supabase
+          .from('events')
+          .update({
+            'date': _eventSelectedDate!.toIso8601String(),
+            'time': timeString,
+            'agenda': agendaValue,
+            'profile': userId, // Add profile UUID here too
+          })
+          .eq('id', _editingEventId!);
+
+      await _loadEvents();
+
+      if (mounted) {
+        // app toast success
+        AppToast.showSuccess(
+          context: context,
+          title: 'Success',
+          message: 'Event updated successfully',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        AppToast.showError(
+          context: context,
+          title: 'Error',
+          message: 'Failed to update event. Please try again later.',
+        );
+      }
+    }
+  }
+
   Future<void> _deleteEvent(int eventId, String agenda) async {
+    if (!OfflineActionHelper.canPerformAction(
+      context,
+      actionName: 'delete event',
+    )) {
+      return;
+    }
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -1408,57 +1575,57 @@ Future<void> _updateEvent() async {
                 ),
               )
             : _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _caseData == null
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              Icons.error_outline,
-                              size: 64,
-                              color: Color(0xFF6B7280),
-                            ),
-                            const SizedBox(height: 16),
-                            const Text(
-                              'Case not found',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF1F2937),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'This case may have been deleted',
-                              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                            ),
-                            const SizedBox(height: 24),
-                            ElevatedButton(
-                              onPressed: () => Navigator.pop(context),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF10B981),
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 24,
-                                  vertical: 12,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                              ),
-                              child: const Text('Go Back'),
-                            ),
-                          ],
-                        ),
-                      )
-                    : TabBarView(
-                        children: [
-                          _buildDetailsTab(),
-                          _buildEventsTab(),
-                          _buildNotesTab(),
-                        ],
+            ? const Center(child: CircularProgressIndicator())
+            : _caseData == null
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      size: 64,
+                      color: Color(0xFF6B7280),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Case not found',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1F2937),
                       ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'This case may have been deleted',
+                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF10B981),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Text('Go Back'),
+                    ),
+                  ],
+                ),
+              )
+            : TabBarView(
+                children: [
+                  _buildDetailsTab(),
+                  _buildEventsTab(),
+                  _buildNotesTab(),
+                ],
+              ),
       ),
     );
   }
@@ -1466,32 +1633,89 @@ Future<void> _updateEvent() async {
   Widget _buildDetailsTab() {
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _isEditing
-            ? _saveChanges
-            : () {
-                setState(() {
-                  _isEditing = true;
-                  _initializeControllers();
-                });
-              },
-        backgroundColor: const Color(0xFF10B981),
-        child: Icon(
-          _isEditing ? Icons.save : Icons.edit,
-          color: Colors.white,
-        ),
-      ),
+      floatingActionButton: _isOfflineMode
+          ? null // Hide FAB when offline
+          : FloatingActionButton(
+              onPressed: _isEditing
+                  ? _saveChanges
+                  : () {
+                      setState(() {
+                        _isEditing = true;
+                        _initializeControllers();
+                      });
+                    },
+              backgroundColor: const Color(0xFF10B981),
+              child: Icon(
+                _isEditing ? Icons.save : Icons.edit,
+                color: Colors.white,
+              ),
+            ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Add offline indicator at the top
+            if (_isOfflineMode)
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF3C7),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: const Color(0xFFF59E0B).withOpacity(0.3),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF59E0B).withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Icon(
+                        Icons.cloud_off_rounded,
+                        color: Color(0xFFF59E0B),
+                        size: 18,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Viewing Offline',
+                            style: TextStyle(
+                              color: Color(0xFF92400E),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Text(
+                            'Connect to internet to edit',
+                            style: TextStyle(
+                              color: Color(0xFFB45309),
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
             _buildStatusCard(),
             const SizedBox(height: 16),
             _buildInfoCard(),
             const SizedBox(height: 16),
             _buildCourtDetailsCard(),
-            
+
             if (_caseData!['description'] != null &&
                 _caseData!['description'].toString().trim().isNotEmpty &&
                 !_isEditing) ...[
@@ -1504,7 +1728,8 @@ Future<void> _updateEvent() async {
               _buildDocumentsSection(),
             ],
 
-            if (!_isEditing) ...[
+            // Only show delete button when online
+            if (!_isEditing && !_isOfflineMode) ...[
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
@@ -1556,51 +1781,115 @@ Future<void> _updateEvent() async {
   Widget _buildEventsTab() {
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddEventModal(),
-        backgroundColor: const Color(0xFF10B981),
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
-      body: _isLoadingEvents
-          ? const Center(child: CircularProgressIndicator())
-          : _events.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.event_outlined,
-                        size: 64,
-                        color: Colors.grey[400],
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'No events yet',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey[700],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Add your first event to get started',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _events.length,
-                  itemBuilder: (context, index) {
-                    final event = _events[index];
-                    return _buildEventCard(event);
-                  },
+      floatingActionButton: _isOfflineMode
+          ? null // Hide FAB when offline
+          : FloatingActionButton(
+              onPressed: () => _showAddEventModal(),
+              backgroundColor: const Color(0xFF10B981),
+              child: const Icon(Icons.add, color: Colors.white),
+            ),
+      body: Column(
+        children: [
+          // Add offline indicator
+          if (_isOfflineMode)
+            Container(
+              margin: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF3C7),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: const Color(0xFFF59E0B).withOpacity(0.3),
+                  width: 1,
                 ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF59E0B).withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Icon(
+                      Icons.cloud_off_rounded,
+                      color: Color(0xFFF59E0B),
+                      size: 18,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Viewing Offline',
+                          style: TextStyle(
+                            color: Color(0xFF92400E),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          'Connect to internet to add/edit events',
+                          style: TextStyle(
+                            color: Color(0xFFB45309),
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          // Rest of events tab content
+          Expanded(
+            child: _isLoadingEvents
+                ? const Center(child: CircularProgressIndicator())
+                : _events.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.event_outlined,
+                          size: 64,
+                          color: Colors.grey[400],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No events yet',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Add your first event to get started',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _events.length,
+                    itemBuilder: (context, index) {
+                      final event = _events[index];
+                      return _buildEventCard(event);
+                    },
+                  ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1629,7 +1918,9 @@ Future<void> _updateEvent() async {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: agendaColor.withOpacity(0.1),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(10),
+              ),
             ),
             child: Row(
               children: [
@@ -1699,18 +1990,24 @@ Future<void> _updateEvent() async {
                     ],
                   ),
                 ),
-                IconButton(
-                  onPressed: () => _showAddEventModal(event: event),
-                  icon: const Icon(Icons.edit_outlined),
-                  color: agendaColor,
-                  iconSize: 20,
-                ),
-                IconButton(
-                  onPressed: () => _deleteEvent(event['id'], event['agenda'] ?? 'this event'),
-                  icon: const Icon(Icons.delete_outline),
-                  color: Colors.red[400],
-                  iconSize: 20,
-                ),
+                // Only show buttons when online
+                if (!_isOfflineMode) ...[
+                  IconButton(
+                    onPressed: () => _showAddEventModal(event: event),
+                    icon: const Icon(Icons.edit_outlined),
+                    color: agendaColor,
+                    iconSize: 20,
+                  ),
+                  IconButton(
+                    onPressed: () => _deleteEvent(
+                      event['id'],
+                      event['agenda'] ?? 'this event',
+                    ),
+                    icon: const Icon(Icons.delete_outline),
+                    color: Colors.red[400],
+                    iconSize: 20,
+                  ),
+                ],
               ],
             ),
           ),
@@ -1722,58 +2019,123 @@ Future<void> _updateEvent() async {
   Widget _buildNotesTab() {
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showAddNoteModal,
-        backgroundColor: const Color(0xFF10B981),
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
-      body: _isLoadingNotes
-          ? const Center(child: CircularProgressIndicator())
-          : _notes.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.note_outlined,
-                        size: 64,
-                        color: Colors.grey[400],
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'No notes yet',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey[700],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Add your first note to get started',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _notes.length,
-                  itemBuilder: (context, index) {
-                    final note = _notes[index];
-                    return _buildNoteCard(note);
-                  },
+      floatingActionButton: _isOfflineMode
+          ? null // Hide FAB when offline
+          : FloatingActionButton(
+              onPressed: _showAddNoteModal,
+              backgroundColor: const Color(0xFF10B981),
+              child: const Icon(Icons.add, color: Colors.white),
+            ),
+      body: Column(
+        children: [
+          // Add offline indicator
+          if (_isOfflineMode)
+            Container(
+              margin: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF3C7),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: const Color(0xFFF59E0B).withOpacity(0.3),
+                  width: 1,
                 ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF59E0B).withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Icon(
+                      Icons.cloud_off_rounded,
+                      color: Color(0xFFF59E0B),
+                      size: 18,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Viewing Offline',
+                          style: TextStyle(
+                            color: Color(0xFF92400E),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          'Connect to internet to add/delete notes',
+                          style: TextStyle(
+                            color: Color(0xFFB45309),
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          // Rest of notes tab content
+          Expanded(
+            child: _isLoadingNotes
+                ? const Center(child: CircularProgressIndicator())
+                : _notes.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.note_outlined,
+                          size: 64,
+                          color: Colors.grey[400],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No notes yet',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Add your first note to get started',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _notes.length,
+                    itemBuilder: (context, index) {
+                      final note = _notes[index];
+                      return _buildNoteCard(note);
+                    },
+                  ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildNoteCard(Map<String, dynamic> note) {
     final noteColor = _getNoteColor(note['type']);
     final noteIcon = _getNoteIcon(note['type']);
-    final hasDescription = note['description'] != null && 
+    final hasDescription =
+        note['description'] != null &&
         note['description'].toString().trim().isNotEmpty;
 
     return Container(
@@ -1797,7 +2159,9 @@ Future<void> _updateEvent() async {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: noteColor.withOpacity(0.1),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(10),
+              ),
             ),
             child: Row(
               children: [
@@ -1834,15 +2198,18 @@ Future<void> _updateEvent() async {
                     ],
                   ),
                 ),
-                IconButton(
-                  onPressed: () => _deleteNote(note['id'], note['note'] ?? 'this note'),
-                  icon: const Icon(Icons.delete_outline),
-                  color: Colors.red[400],
-                ),
+                // Only show delete button when online
+                if (!_isOfflineMode)
+                  IconButton(
+                    onPressed: () =>
+                        _deleteNote(note['id'], note['note'] ?? 'this note'),
+                    icon: const Icon(Icons.delete_outline),
+                    color: Colors.red[400],
+                  ),
               ],
             ),
           ),
-          
+
           if (hasDescription)
             Padding(
               padding: const EdgeInsets.all(16),
@@ -1855,24 +2222,17 @@ Future<void> _updateEvent() async {
                 ),
               ),
             ),
-          
+
           if (note['created_at'] != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
               child: Row(
                 children: [
-                  Icon(
-                    Icons.access_time,
-                    size: 14,
-                    color: Colors.grey[600],
-                  ),
+                  Icon(Icons.access_time, size: 14, color: Colors.grey[600]),
                   const SizedBox(width: 4),
                   Text(
                     _formatDate(note['created_at']),
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                    ),
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                   ),
                 ],
               ),
