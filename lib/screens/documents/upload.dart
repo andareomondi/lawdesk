@@ -3,6 +3,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:io';
 import 'package:lawdesk/widgets/delightful_toast.dart';
+import 'package:lawdesk/services/connectivity_service.dart';
+import 'package:lawdesk/services/offline_storage_service.dart';
+import 'package:lawdesk/widgets/offline_indicator.dart';
+import 'package:lawdesk/widgets/offline_indicator.dart';
 
 class CaseDocumentsPage extends StatefulWidget {
   final int caseId;
@@ -20,10 +24,11 @@ class CaseDocumentsPage extends StatefulWidget {
 
 class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
   final _supabase = Supabase.instance.client;
-  
+  bool _isOfflineMode = false;
+
   // FIXED: Consistent bucket name throughout
   static const String BUCKET_NAME = 'case_documents';
-  
+
   List<Map<String, dynamic>> _documents = [];
   bool _isLoading = true;
   bool _isUploading = false;
@@ -42,31 +47,107 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
   @override
   void initState() {
     super.initState();
+    _isOfflineMode = !connectivityService.isConnected;
+
+    // Listen to connectivity changes
+    connectivityService.connectionStream.listen((isConnected) {
+      if (mounted) {
+        setState(() {
+          _isOfflineMode = !isConnected;
+        });
+
+        if (isConnected) {
+          // Refresh when coming back online
+          _loadDocuments();
+        }
+      }
+    });
     _loadDocuments();
   }
 
   Future<void> _loadDocuments() async {
     setState(() => _isLoading = true);
-    try {
-      final response = await _supabase
-          .from('documents')
-          .select()
-          .eq('case_id', widget.caseId)
-          .order('created_at', ascending: false);
 
-      setState(() {
-        _documents = List<Map<String, dynamic>>.from(response);
-        _isLoading = false;
-      });
+    try {
+      // Check if online
+      if (connectivityService.isConnected) {
+        final response = await _supabase
+            .from('documents')
+            .select()
+            .eq('case_id', widget.caseId)
+            .order('created_at', ascending: false);
+
+        if (mounted) {
+          setState(() {
+            _documents = List<Map<String, dynamic>>.from(response);
+            _isLoading = false;
+          });
+
+          // Cache documents
+          await offlineStorage.cacheDocuments(_documents);
+        }
+      } else {
+        // Load from cache when offline
+        final cachedDocs = await offlineStorage.getCachedDocuments();
+
+        if (cachedDocs != null) {
+          // Filter for this specific case
+          final caseDocuments = cachedDocs
+              .where((doc) => doc['case_id'] == widget.caseId)
+              .toList();
+
+          if (mounted) {
+            setState(() {
+              _documents = List<Map<String, dynamic>>.from(caseDocuments);
+              _isLoading = false;
+            });
+          }
+        } else {
+          setState(() {
+            _documents = [];
+            _isLoading = false;
+          });
+        }
+      }
     } catch (e) {
-      setState(() => _isLoading = false);
-      if (mounted) {
-       AppToast.showError(context: context, title: "Error occurred", message: "Failed to load documents: ${e.toString()}"); 
+      print('Error loading documents: $e');
+
+      // Try cache on error
+      final cachedDocs = await offlineStorage.getCachedDocuments();
+
+      if (cachedDocs != null) {
+        final caseDocuments = cachedDocs
+            .where((doc) => doc['case_id'] == widget.caseId)
+            .toList();
+
+        if (mounted) {
+          setState(() {
+            _documents = List<Map<String, dynamic>>.from(caseDocuments);
+            _isLoading = false;
+          });
+        }
+      } else {
+        setState(() => _isLoading = false);
+        if (mounted) {
+          AppToast.showError(
+            context: context,
+            title: "Error occurred",
+            message: "Failed to load documents",
+          );
+        }
       }
     }
   }
 
   Future<void> _pickAndUploadFile() async {
+    if (_isOfflineMode) {
+      AppToast.showWarning(
+        context: context,
+        title: "Offline",
+        message: "Cannot upload documents while offline",
+      );
+      return;
+    }
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
@@ -78,7 +159,11 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
       }
     } catch (e) {
       if (mounted) {
-        AppToast.showError(context: context, title: "Error occurred", message: "Failed to pick the document: ${e.toString()}");
+        AppToast.showError(
+          context: context,
+          title: "Error occurred",
+          message: "Failed to pick the document: ${e.toString()}",
+        );
       }
     }
   }
@@ -137,17 +222,14 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
 
       // Upload to Supabase Storage
       final fileBytes = await File(file.path!).readAsBytes();
-      
+
       // FIXED: Added proper upload options
       final uploadResponse = await _supabase.storage
           .from(BUCKET_NAME)
           .uploadBinary(
-            filePath, 
+            filePath,
             fileBytes,
-            fileOptions: FileOptions(
-              cacheControl: '3600',
-              upsert: false,
-            ),
+            fileOptions: FileOptions(cacheControl: '3600', upsert: false),
           );
 
       print('Upload response: $uploadResponse'); // Debug logging
@@ -178,12 +260,20 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
       await _loadDocuments();
 
       if (mounted) {
-        AppToast.showSuccess(context: context, title: "Upload Successful", message: "Document uploaded successfully.");
+        AppToast.showSuccess(
+          context: context,
+          title: "Upload Successful",
+          message: "Document uploaded successfully.",
+        );
       }
     } catch (e) {
       print('Upload error: $e'); // Debug logging
       if (mounted) {
-        AppToast.showError(context: context, title: "Error occurred", message: "Failed to upload: ${e.toString()}");
+        AppToast.showError(
+          context: context,
+          title: "Error occurred",
+          message: "Failed to upload: ${e.toString()}",
+        );
       }
     } finally {
       setState(() => _isUploading = false);
@@ -191,12 +281,18 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
   }
 
   Future<void> _deleteDocument(Map<String, dynamic> doc) async {
+    if (_isOfflineMode) {
+      AppToast.showWarning(
+        context: context,
+        title: "Offline",
+        message: "Cannot delete documents while offline",
+      );
+      return;
+    }
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text(
           'Delete Document',
           style: TextStyle(
@@ -212,9 +308,7 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('Delete'),
           ),
         ],
@@ -224,9 +318,7 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
     if (confirm == true) {
       try {
         // FIXED: Use consistent bucket name
-        await _supabase.storage
-            .from(BUCKET_NAME)
-            .remove([doc['file_path']]);
+        await _supabase.storage.from(BUCKET_NAME).remove([doc['file_path']]);
 
         // Delete from database
         await _supabase.from('documents').delete().eq('id', doc['id']);
@@ -234,20 +326,40 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
         await _loadDocuments();
 
         if (mounted) {
-          AppToast.showSuccess(context: context, title: "Deletion Successful", message: "Document deleted successfully.");
+          AppToast.showSuccess(
+            context: context,
+            title: "Deletion Successful",
+            message: "Document deleted successfully.",
+          );
         }
       } catch (e) {
         print('Delete error: $e'); // Debug logging
         if (mounted) {
-          AppToast.showError(context: context, title: "Error occurred", message: "Failed to delete: ${e.toString()}");
+          AppToast.showError(
+            context: context,
+            title: "Error occurred",
+            message: "Failed to delete: ${e.toString()}",
+          );
         }
       }
     }
   }
 
   Future<void> _downloadDocument(Map<String, dynamic> doc) async {
+    if (_isOfflineMode) {
+      AppToast.showWarning(
+        context: context,
+        title: "Offline",
+        message: "Cannot download documents while offline",
+      );
+      return;
+    }
     try {
-      AppToast.showSuccess(context: context, title: "Download Started", message: "Downloading document...");
+      AppToast.showSuccess(
+        context: context,
+        title: "Download Started",
+        message: "Downloading document...",
+      );
 
       // FIXED: Use consistent bucket name
       final response = await _supabase.storage
@@ -257,12 +369,21 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
       // In a real app, you'd save this to the device
       // For now, just show success
       if (mounted) {
-        AppToast.showSuccess(context: context, title: "Download Successful", message: "Document downloaded successfully (${response.length} bytes).");
+        AppToast.showSuccess(
+          context: context,
+          title: "Download Successful",
+          message:
+              "Document downloaded successfully (${response.length} bytes).",
+        );
       }
     } catch (e) {
       print('Download error: $e'); // Debug logging
       if (mounted) {
-        AppToast.showError(context: context, title: "Error occurred", message: "Failed to download: ${e.toString()}");
+        AppToast.showError(
+          context: context,
+          title: "Error occurred",
+          message: "Failed to download: ${e.toString()}",
+        );
       }
     }
   }
@@ -337,48 +458,54 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
           children: [
             const Text(
               'Documents',
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 20,
-              ),
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 20),
             ),
             Text(
               widget.caseName,
-              style: const TextStyle(
-                fontSize: 12,
-                color: Colors.white70,
-              ),
+              style: const TextStyle(fontSize: 12, color: Colors.white70),
             ),
           ],
         ),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _loadDocuments,
+            onPressed: _isOfflineMode ? null : _loadDocuments,
           ),
         ],
       ),
       backgroundColor: const Color(0xFFF8FAFC),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _documents.isEmpty
-              ? _buildEmptyState()
-              : _buildDocumentsList(),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _isUploading ? null : _pickAndUploadFile,
-        backgroundColor: const Color(0xFF1E3A8A),
-        icon: _isUploading
-            ? const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 2,
-                ),
-              )
-            : const Icon(Icons.add, color: Colors.white),
-        label: Text(_isUploading ? 'Uploading...' : 'Upload Document', style: const TextStyle(color: Colors.white,),),
+      body: Column(
+        children: [
+          if (_isOfflineMode) const OfflineDataIndicator(),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _documents.isEmpty
+                ? _buildEmptyState()
+                : _buildDocumentsList(),
+          ),
+        ],
       ),
+      floatingActionButton: _isOfflineMode
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: _isUploading ? null : _pickAndUploadFile,
+              backgroundColor: const Color(0xFF1E3A8A),
+              icon: _isUploading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : const Icon(Icons.add, color: Colors.white),
+              label: Text(
+                _isUploading ? 'Uploading...' : 'Upload Document',
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
     );
   }
 
@@ -411,15 +538,12 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
           const SizedBox(height: 8),
           const Text(
             'Upload your first document to get started',
-            style: TextStyle(
-              fontSize: 14,
-              color: Color(0xFF6B7280),
-            ),
+            style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
           ),
           const SizedBox(height: 32),
           ElevatedButton.icon(
             onPressed: _pickAndUploadFile,
-            icon: const Icon(Icons.upload_file, color: Colors.white,),
+            icon: const Icon(Icons.upload_file, color: Colors.white),
             label: const Text('Upload Document'),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF1E3A8A),
@@ -477,7 +601,10 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
                     ),
                     const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: _getDocumentColor(entry.key).withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
@@ -535,10 +662,7 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
               children: [
                 const Text(
                   'Total Documents',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: Colors.white70, fontSize: 14),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -552,19 +676,12 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
                 const SizedBox(height: 8),
                 Text(
                   'Total size: ${_formatFileSize(totalSize)}',
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 13,
-                  ),
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
                 ),
               ],
             ),
           ),
-          const Icon(
-            Icons.folder_outlined,
-            size: 80,
-            color: Colors.white24,
-          ),
+          const Icon(Icons.folder_outlined, size: 80, color: Colors.white24),
         ],
       ),
     );
@@ -576,9 +693,7 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: const Color(0xFFE5E7EB),
-        ),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
