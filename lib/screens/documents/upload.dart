@@ -7,6 +7,7 @@ import 'package:lawdesk/services/connectivity_service.dart';
 import 'package:lawdesk/services/offline_storage_service.dart';
 import 'package:lawdesk/widgets/offline_indicator.dart';
 import 'package:lawdesk/services/document_preview_service.dart';
+import 'package:lawdesk/services/camera_service.dart';
 
 class CaseDocumentsPage extends StatefulWidget {
   final int caseId;
@@ -140,18 +141,68 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
   }
 
   Future<void> _pickAndUploadFile() async {
-    if (_isOfflineMode) {
-      AppToast.showWarning(
-        context: context,
-        title: "Offline",
-        message: "Cannot upload documents while offline",
-      );
-      return;
+    try {
+      // Show source options (camera, gallery, or file)
+      final imageFile = await CameraService.showImageSourceOptions(context);
+
+      if (imageFile != null) {
+        // User selected camera or gallery - handle image upload
+        await _showDocumentTypeDialogForImage(imageFile);
+      } else {
+        // User might have selected 'file' option or cancelled
+        // Check if they want to pick a file
+        final shouldPickFile = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: const Text(
+              'Upload File',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1F2937),
+              ),
+            ),
+            content: const Text(
+              'Would you like to upload a document file (PDF, Word, etc.)?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1E3A8A),
+                ),
+                child: const Text('Choose File'),
+              ),
+            ],
+          ),
+        );
+
+        if (shouldPickFile == true && mounted) {
+          _pickDocumentFile();
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        AppToast.showError(
+          context: context,
+          title: "Error occurred",
+          message: "Failed to process document: ${e.toString()}",
+        );
+      }
     }
+  }
+
+  Future<void> _pickDocumentFile() async {
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'],
+        allowedExtensions: ['pdf', 'doc', 'docx'],
       );
 
       if (result != null && result.files.single.path != null) {
@@ -162,9 +213,126 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
         AppToast.showError(
           context: context,
           title: "Error occurred",
-          message: "Failed to pick the document: ${e.toString()}",
+          message: "Failed to pick document: ${e.toString()}",
         );
       }
+    }
+  }
+
+  // Add this new method for handling image uploads from camera/gallery:
+  Future<void> _showDocumentTypeDialogForImage(File imageFile) async {
+    String? selectedType = await showDialog<String>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text(
+            'Select Document Type',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1F2937),
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: _documentTypes.map((type) {
+              return ListTile(
+                title: Text(type),
+                leading: Icon(
+                  _getDocumentIcon(type),
+                  color: const Color(0xFF1E3A8A),
+                ),
+                onTap: () => Navigator.pop(context, type),
+              );
+            }).toList(),
+          ),
+        );
+      },
+    );
+
+    if (selectedType != null) {
+      await _uploadImageFile(imageFile, selectedType);
+    }
+  }
+
+  // Add this new method for uploading images:
+  Future<void> _uploadImageFile(File imageFile, String documentType) async {
+    setState(() => _isUploading = true);
+
+    try {
+      final user = _supabase.auth.currentUser;
+      if (user == null) throw Exception('No user logged in');
+
+      // Get file details
+      final fileSize = await imageFile.length();
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final fileName = CameraService.generateFileName('jpg');
+      final filePath = 'case_${widget.caseId}_${timestamp}_$fileName';
+
+      print('Uploading image to path: $filePath');
+
+      // Upload to Supabase Storage
+      final fileBytes = await imageFile.readAsBytes();
+
+      final uploadResponse = await _supabase.storage
+          .from(BUCKET_NAME)
+          .uploadBinary(
+            filePath,
+            fileBytes,
+            fileOptions: FileOptions(
+              cacheControl: '3600',
+              upsert: false,
+              contentType: 'image/jpeg', // Set proper content type
+            ),
+          );
+
+      print('Upload response: $uploadResponse');
+
+      // Get public URL for the uploaded file
+      final publicUrl = _supabase.storage
+          .from(BUCKET_NAME)
+          .getPublicUrl(filePath);
+
+      print('Public URL: $publicUrl');
+
+      // Insert record into documents table
+      final insertResponse = await _supabase.from('documents').insert({
+        'case_id': widget.caseId,
+        'uploaded_by': user.id,
+        'file_name': fileName,
+        'file_path': filePath,
+        'file_size': fileSize,
+        'mime_type': 'jpg',
+        'document_type': documentType,
+        'bucket_name': BUCKET_NAME,
+        'public_url': publicUrl,
+      }).select();
+
+      print('Insert response: $insertResponse');
+
+      // Reload documents
+      await _loadDocuments();
+
+      if (mounted) {
+        AppToast.showSuccess(
+          context: context,
+          title: "Upload Successful",
+          message: "Photo uploaded successfully.",
+        );
+      }
+    } catch (e) {
+      print('Upload error: $e');
+      if (mounted) {
+        AppToast.showError(
+          context: context,
+          title: "Error occurred",
+          message: "Failed to upload: ${e.toString()}",
+        );
+      }
+    } finally {
+      setState(() => _isUploading = false);
     }
   }
 
