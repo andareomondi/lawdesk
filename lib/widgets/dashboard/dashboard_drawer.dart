@@ -38,6 +38,7 @@ class DashboardDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Drawer(
+    width: MediaQuery.of(context).size.width * 0.75,
       child: Container(
         color: Colors.white,
         child: Column(
