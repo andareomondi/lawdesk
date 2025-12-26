@@ -11,6 +11,7 @@ class OfflineStorageService {
   static const String _casesCacheKey = 'cached_cases';
   static const String _profileCacheKey = 'cached_profile';
   static const String _statsCacheKey = 'cached_stats';
+  static const String _documentsCacheKey = 'cached_documents';
   static const String _lastSyncKey = 'last_sync_time';
 
   // Save cases to local storage
@@ -36,6 +37,33 @@ class OfflineStorageService {
       }
     } catch (e) {
       print('Error getting cached cases: $e');
+    }
+    return null;
+  }
+
+  // Save documents to local storage
+  Future<void> cacheDocuments(List<dynamic> documents) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonString = jsonEncode(documents);
+      await prefs.setString(_documentsCacheKey, jsonString);
+      await _updateLastSyncTime();
+      print('Successfully cached ${documents.length} documents');
+    } catch (e) {
+      print('Error caching documents: $e');
+    }
+  }
+
+  // Get cached documents
+  Future<List<dynamic>?> getCachedDocuments() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonString = prefs.getString(_documentsCacheKey);
+      if (jsonString != null) {
+        return jsonDecode(jsonString) as List<dynamic>;
+      }
+    } catch (e) {
+      print('Error getting cached documents: $e');
     }
     return null;
   }
@@ -117,6 +145,7 @@ class OfflineStorageService {
     await prefs.remove(_casesCacheKey);
     await prefs.remove(_profileCacheKey);
     await prefs.remove(_statsCacheKey);
+    await prefs.remove(_documentsCacheKey);
     await prefs.remove(_lastSyncKey);
   }
 }
