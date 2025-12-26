@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:lawdesk/screens/documents/upload.dart';
 import 'package:lawdesk/widgets/delightful_toast.dart';
+import 'package:lawdesk/services/connectivity_service.dart';
+import 'package:lawdesk/services/offline_storage_service.dart';
+import 'package:lawdesk/widgets/offline_indicator.dart';
 
 class AllDocumentsPage extends StatefulWidget {
   const AllDocumentsPage({Key? key}) : super(key: key);
@@ -10,7 +13,8 @@ class AllDocumentsPage extends StatefulWidget {
   State<AllDocumentsPage> createState() => _AllDocumentsPageState();
 }
 
-class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerProviderStateMixin {
+class _AllDocumentsPageState extends State<AllDocumentsPage>
+    with SingleTickerProviderStateMixin {
   final _supabase = Supabase.instance.client;
   List<Map<String, dynamic>> _documents = [];
   Map<int, Map<String, dynamic>> _casesMap = {};
@@ -20,6 +24,7 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerPr
 
   late AnimationController _shimmerController;
   late Animation<double> _shimmerAnimation;
+  bool _isOfflineMode = false;
 
   final List<String> _documentTypes = [
     'All',
@@ -36,6 +41,20 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerPr
   void initState() {
     super.initState();
     _setupShimmerAnimation();
+
+    connectivityService.connectionStream.listen((isConnected) {
+      if (mounted) {
+        setState(() {
+          _isOfflineMode = !isConnected;
+        });
+
+        if (isConnected) {
+          // Refresh when coming back online
+          _loadAllDocuments();
+        }
+      }
+    });
+
     _loadAllDocuments();
   }
 
@@ -44,14 +63,10 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerPr
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     )..repeat();
-    
-    _shimmerAnimation = Tween<double>(
-      begin: -2,
-      end: 2,
-    ).animate(CurvedAnimation(
-      parent: _shimmerController,
-      curve: Curves.easeInOutSine,
-    ));
+
+    _shimmerAnimation = Tween<double>(begin: -2, end: 2).animate(
+      CurvedAnimation(parent: _shimmerController, curve: Curves.easeInOutSine),
+    );
   }
 
   @override
@@ -62,50 +77,107 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerPr
 
   Future<void> _loadAllDocuments() async {
     setState(() => _isLoading = true);
-    
+
     try {
       final user = _supabase.auth.currentUser;
       if (user == null) throw Exception('No user logged in');
 
-      final casesResponse = await _supabase
-          .from('cases')
-          .select()
-          .eq('user', user.id);
+      // Check if online
+      if (connectivityService.isConnected) {
+        // Load from server
+        final casesResponse = await _supabase
+            .from('cases')
+            .select()
+            .eq('user', user.id);
 
-      _casesMap = {};
-      for (var caseData in casesResponse) {
-        _casesMap[caseData['id']] = caseData;
-      }
+        _casesMap = {};
+        for (var caseData in casesResponse) {
+          _casesMap[caseData['id']] = caseData;
+        }
 
-      final caseIds = _casesMap.keys.toList();
+        final caseIds = _casesMap.keys.toList();
 
-      if (caseIds.isEmpty) {
+        if (caseIds.isEmpty) {
+          if (mounted) {
+            setState(() {
+              _documents = [];
+              _isLoading = false;
+            });
+          }
+
+          // Cache empty state
+          await offlineStorage.cacheDocuments([]);
+          return;
+        }
+
+        final documentsResponse = await _supabase
+            .from('documents')
+            .select()
+            .inFilter('case_id', caseIds)
+            .order('created_at', ascending: false);
+
         if (mounted) {
+          setState(() {
+            _documents = List<Map<String, dynamic>>.from(documentsResponse);
+            _isLoading = false;
+          });
+
+          // Cache documents and cases map
+          await offlineStorage.cacheDocuments(_documents);
+          await offlineStorage.cacheCases(casesResponse);
+        }
+      } else {
+        // Load from cache when offline
+        final cachedDocs = await offlineStorage.getCachedDocuments();
+        final cachedCases = await offlineStorage.getCachedCases();
+
+        if (cachedCases != null) {
+          _casesMap = {};
+          for (var caseData in cachedCases) {
+            _casesMap[caseData['id']] = caseData;
+          }
+        }
+
+        if (cachedDocs != null && mounted) {
+          setState(() {
+            _documents = List<Map<String, dynamic>>.from(cachedDocs);
+            _isLoading = false;
+          });
+        } else {
           setState(() {
             _documents = [];
             _isLoading = false;
           });
         }
-        return;
-      }
-
-      final documentsResponse = await _supabase
-          .from('documents')
-          .select()
-          .inFilter('case_id', caseIds)
-          .order('created_at', ascending: false);
-
-
-      if (mounted) {
-        setState(() {
-          _documents = List<Map<String, dynamic>>.from(documentsResponse);
-          _isLoading = false;
-        });
       }
     } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-        AppToast.showError( context: context, title: 'Error', message: 'Failed to load documents' );
+      print('Error loading documents: $e');
+
+      // Try cache on error
+      final cachedDocs = await offlineStorage.getCachedDocuments();
+      final cachedCases = await offlineStorage.getCachedCases();
+
+      if (cachedCases != null) {
+        _casesMap = {};
+        for (var caseData in cachedCases) {
+          _casesMap[caseData['id']] = caseData;
+        }
+      }
+
+      if (cachedDocs != null && mounted) {
+        setState(() {
+          _documents = List<Map<String, dynamic>>.from(cachedDocs);
+          _isLoading = false;
+        });
+      } else {
+        if (mounted) {
+          setState(() => _isLoading = false);
+          AppToast.showError(
+            context: context,
+            title: 'Error',
+            message: 'Failed to load documents',
+          );
+        }
       }
     }
   }
@@ -115,14 +187,16 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerPr
 
     if (_selectedFilter != 'All') {
       filtered = filtered.where((doc) {
-        return doc['document_type']?.toLowerCase() == _selectedFilter.toLowerCase();
+        return doc['document_type']?.toLowerCase() ==
+            _selectedFilter.toLowerCase();
       }).toList();
     }
 
     if (_searchQuery.isNotEmpty) {
       filtered = filtered.where((doc) {
         final fileName = doc['file_name']?.toString().toLowerCase() ?? '';
-        final caseName = _casesMap[doc['case_id']]?['name']?.toString().toLowerCase() ?? '';
+        final caseName =
+            _casesMap[doc['case_id']]?['name']?.toString().toLowerCase() ?? '';
         final query = _searchQuery.toLowerCase();
         return fileName.contains(query) || caseName.contains(query);
       }).toList();
@@ -213,22 +287,31 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerPr
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => CaseDocumentsPage(
-          caseId: caseId,
-          caseName: caseName,
-        ),
+        builder: (context) =>
+            CaseDocumentsPage(caseId: caseId, caseName: caseName),
       ),
     ).then((_) => _loadAllDocuments());
   }
 
   Future<void> _deleteDocument(Map<String, dynamic> doc) async {
+    if (_isOfflineMode) {
+      AppToast.showWarning(
+        context: context,
+        title: "Offline",
+        message: "Cannot delete documents while offline",
+      );
+      return;
+    }
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text(
           'Delete Document',
-          style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1F2937)),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF1F2937),
+          ),
         ),
         content: Text('Are you sure you want to delete "${doc['file_name']}"?'),
         actions: [
@@ -247,16 +330,26 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerPr
 
     if (confirm == true) {
       try {
-        await _supabase.storage.from('case_documents').remove([doc['file_path']]);
+        await _supabase.storage.from('case_documents').remove([
+          doc['file_path'],
+        ]);
         await _supabase.from('documents').delete().eq('id', doc['id']);
         await _loadAllDocuments();
 
         if (mounted) {
-          AppToast.showSuccess(context: context, title: "Deletion succesful", message: "Document deleted successfully");
+          AppToast.showSuccess(
+            context: context,
+            title: "Deletion succesful",
+            message: "Document deleted successfully",
+          );
         }
       } catch (e) {
         if (mounted) {
-          AppToast.showError(context: context, title: "Error", message: "Failed to delete document");
+          AppToast.showError(
+            context: context,
+            title: "Error",
+            message: "Failed to delete document",
+          );
         }
       }
     }
@@ -277,19 +370,26 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerPr
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _loadAllDocuments,
+            onPressed: _isOfflineMode ? null : _loadAllDocuments,
           ),
         ],
       ),
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 400),
-        switchInCurve: Curves.easeOut,
-        switchOutCurve: Curves.easeIn,
-        child: _isLoading
-            ? _buildShimmerLoading()
-            : _documents.isEmpty
-                ? _buildEmptyState()
-                : _buildContent(),
+      body: Column(
+        children: [
+          if (_isOfflineMode) const OfflineDataIndicator(),
+          Expanded(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 400),
+              switchInCurve: Curves.easeOut,
+              switchOutCurve: Curves.easeIn,
+              child: _isLoading
+                  ? _buildShimmerLoading()
+                  : _documents.isEmpty
+                  ? _buildEmptyState()
+                  : _buildContent(),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -400,7 +500,10 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerPr
                             ],
                             stops: [
                               0.0,
-                              (_shimmerAnimation.value + index * 0.15).clamp(0.0, 1.0),
+                              (_shimmerAnimation.value + index * 0.15).clamp(
+                                0.0,
+                                1.0,
+                              ),
                               1.0,
                             ],
                           ),
@@ -446,7 +549,8 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerPr
                                   ],
                                   stops: [
                                     0.0,
-                                    (_shimmerAnimation.value + index * 0.2).clamp(0.0, 1.0),
+                                    (_shimmerAnimation.value + index * 0.2)
+                                        .clamp(0.0, 1.0),
                                     1.0,
                                   ],
                                 ),
@@ -473,7 +577,10 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerPr
                                         ],
                                         stops: [
                                           0.0,
-                                          (_shimmerAnimation.value + index * 0.2 + 0.1).clamp(0.0, 1.0),
+                                          (_shimmerAnimation.value +
+                                                  index * 0.2 +
+                                                  0.1)
+                                              .clamp(0.0, 1.0),
                                           1.0,
                                         ],
                                       ),
@@ -495,7 +602,10 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerPr
                                         ],
                                         stops: [
                                           0.0,
-                                          (_shimmerAnimation.value + index * 0.2 + 0.2).clamp(0.0, 1.0),
+                                          (_shimmerAnimation.value +
+                                                  index * 0.2 +
+                                                  0.2)
+                                              .clamp(0.0, 1.0),
                                           1.0,
                                         ],
                                       ),
@@ -560,7 +670,9 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerPr
               backgroundColor: const Color(0xFF1E3A8A),
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           ),
         ],
@@ -663,7 +775,10 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerPr
             borderRadius: BorderRadius.circular(12),
             borderSide: const BorderSide(color: Color(0xFF1E3A8A), width: 2),
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 12,
+          ),
         ),
       ),
     );
@@ -679,7 +794,7 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerPr
         itemBuilder: (context, index) {
           final type = _documentTypes[index];
           final isSelected = _selectedFilter == type;
-          
+
           return Padding(
             padding: const EdgeInsets.only(right: 8),
             child: FilterChip(
@@ -690,13 +805,19 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerPr
               selectedColor: const Color(0xFF1E3A8A).withOpacity(0.2),
               checkmarkColor: const Color(0xFF1E3A8A),
               labelStyle: TextStyle(
-                color: isSelected ? const Color(0xFF1E3A8A) : const Color(0xFF6B7280),
+                color: isSelected
+                    ? const Color(0xFF1E3A8A)
+                    : const Color(0xFF6B7280),
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               ),
               side: BorderSide(
-                color: isSelected ? const Color(0xFF1E3A8A) : const Color(0xFFE5E7EB),
+                color: isSelected
+                    ? const Color(0xFF1E3A8A)
+                    : const Color(0xFFE5E7EB),
               ),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
             ),
           );
         },
@@ -706,7 +827,7 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerPr
 
   Widget _buildDocumentsList() {
     final groupedDocs = _groupDocumentsByCase();
-    
+
     if (groupedDocs.isEmpty) {
       return Center(
         child: Column(
@@ -746,14 +867,21 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerPr
             InkWell(
               onTap: () => _navigateToCaseDocuments(caseId, caseName),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFF1E3A8A).withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.folder, color: Color(0xFF1E3A8A), size: 20),
+                    const Icon(
+                      Icons.folder,
+                      color: Color(0xFF1E3A8A),
+                      size: 20,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -766,7 +894,10 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerPr
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFF1E3A8A).withOpacity(0.2),
                         borderRadius: BorderRadius.circular(12),
@@ -781,7 +912,11 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerPr
                       ),
                     ),
                     const SizedBox(width: 8),
-                    const Icon(Icons.arrow_forward_ios, size: 14, color: Color(0xFF1E3A8A)),
+                    const Icon(
+                      Icons.arrow_forward_ios,
+                      size: 14,
+                      color: Color(0xFF1E3A8A),
+                    ),
                   ],
                 ),
               ),
@@ -870,7 +1005,9 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerPr
         ),
         trailing: PopupMenuButton<String>(
           icon: const Icon(Icons.more_vert, color: Color(0xFF6B7280)),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           onSelected: (value) {
             if (value == 'view') {
               _navigateToCaseDocuments(doc['case_id'], caseName);
