@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:lawdesk/widgets/document_preview_modal.dart';
 import 'package:lawdesk/widgets/delightful_toast.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:lawdesk/services/connectivity_service.dart';
 
 class DocumentPreviewService {
   static final _supabase = Supabase.instance.client;
@@ -28,6 +29,18 @@ class DocumentPreviewService {
     String bucketName,
     String filePath,
   ) async {
+    // Check if online
+    if (!connectivityService.isConnected) {
+      if (context.mounted) {
+        AppToast.showWarning(
+          context: context,
+          title: "Offline",
+          message: "Cannot preview documents while offline",
+        );
+      }
+      return null;
+    }
+
     try {
       // Show loading
       AppToast.showInfo(
@@ -37,9 +50,7 @@ class DocumentPreviewService {
       );
 
       // Download from Supabase Storage
-      final bytes = await _supabase.storage
-          .from(bucketName)
-          .download(filePath);
+      final bytes = await _supabase.storage.from(bucketName).download(filePath);
 
       // Get temporary directory
       final tempDir = await getTemporaryDirectory();
@@ -75,7 +86,8 @@ class DocumentPreviewService {
       AppToast.showWarning(
         context: context,
         title: "Preview Not Available",
-        message: "This file type cannot be previewed. Only PDF and images are supported.",
+        message:
+            "This file type cannot be previewed. Only PDF and images are supported.",
       );
       return;
     }
@@ -90,10 +102,8 @@ class DocumentPreviewService {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => DocumentPreviewModal(
-        file: file,
-        fileName: fileName,
-      ),
+      builder: (context) =>
+          DocumentPreviewModal(file: file, fileName: fileName),
     );
 
     // Clean up temporary file after modal closes
@@ -106,3 +116,4 @@ class DocumentPreviewService {
     }
   }
 }
+
