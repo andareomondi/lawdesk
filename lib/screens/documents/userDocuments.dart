@@ -80,7 +80,6 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerPr
       final caseIds = _casesMap.keys.toList();
 
       if (caseIds.isEmpty) {
-        await Future.delayed(const Duration(milliseconds: 300));
         if (mounted) {
           setState(() {
             _documents = [];
@@ -96,7 +95,6 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerPr
           .inFilter('case_id', caseIds)
           .order('created_at', ascending: false);
 
-      await Future.delayed(const Duration(milliseconds: 300));
 
       if (mounted) {
         setState(() {
@@ -105,7 +103,6 @@ class _AllDocumentsPageState extends State<AllDocumentsPage> with SingleTickerPr
         });
       }
     } catch (e) {
-      await Future.delayed(const Duration(milliseconds: 300));
       if (mounted) {
         setState(() => _isLoading = false);
         AppToast.showError( context: context, title: 'Error', message: 'Failed to load documents' );

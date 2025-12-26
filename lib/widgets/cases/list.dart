@@ -190,8 +190,6 @@ class CasesListWidgetState extends State<CasesListWidget>
 
     final cases = await _fetchCases();
 
-    // Add small delay for smooth transition
-    await Future.delayed(const Duration(milliseconds: 300));
 
     if (mounted) {
       setState(() {
@@ -218,7 +216,6 @@ class CasesListWidgetState extends State<CasesListWidget>
             .order('courtDate', ascending: true)
             .limit(5);
 
-        await Future.delayed(const Duration(milliseconds: 300));
 
         if (response is List) {
           final cases = List<Map<String, dynamic>>.from(response);
