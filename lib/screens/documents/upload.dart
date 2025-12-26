@@ -668,7 +668,7 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
                         strokeWidth: 2,
                       ),
                     )
-                  : const Icon(Icons.add, color: Colors.white),
+                  : const Icon(Icons.add_a_photo, color: Colors.white),
               label: Text(
                 _isUploading ? 'Uploading...' : 'Upload Document',
                 style: const TextStyle(color: Colors.white),
@@ -689,7 +689,7 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
               shape: BoxShape.circle,
             ),
             child: const Icon(
-              Icons.folder_open_outlined,
+              Icons.camera_alt_outlined,
               size: 80,
               color: Color(0xFF1E3A8A),
             ),
@@ -704,23 +704,52 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Upload your first document to get started',
-            style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 32),
+            child: Text(
+              'Take a photo or upload a file to get started',
+              style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
+              textAlign: TextAlign.center,
+            ),
           ),
           const SizedBox(height: 32),
-          ElevatedButton.icon(
-            onPressed: _pickAndUploadFile,
-            icon: const Icon(Icons.upload_file, color: Colors.white),
-            label: const Text('Upload Document'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1E3A8A),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ElevatedButton.icon(
+                onPressed: _pickAndUploadFile,
+                icon: const Icon(Icons.camera_alt, color: Colors.white),
+                label: const Text('Take Photo'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1E3A8A),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 16,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
               ),
-            ),
+              const SizedBox(width: 12),
+              OutlinedButton.icon(
+                onPressed: _pickDocumentFile,
+                icon: const Icon(Icons.upload_file),
+                label: const Text('Upload File'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF1E3A8A),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 16,
+                  ),
+                  side: const BorderSide(color: Color(0xFF1E3A8A)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
