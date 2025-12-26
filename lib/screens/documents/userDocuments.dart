@@ -5,6 +5,7 @@ import 'package:lawdesk/widgets/delightful_toast.dart';
 import 'package:lawdesk/services/connectivity_service.dart';
 import 'package:lawdesk/services/offline_storage_service.dart';
 import 'package:lawdesk/widgets/offline_indicator.dart';
+import 'package:lawdesk/services/document_preview_service.dart';
 
 class AllDocumentsPage extends StatefulWidget {
   const AllDocumentsPage({Key? key}) : super(key: key);
@@ -931,112 +932,164 @@ class _AllDocumentsPageState extends State<AllDocumentsPage>
   }
 
   Widget _buildDocumentCard(Map<String, dynamic> doc, String caseName) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(16),
-        leading: Container(
-          width: 50,
-          height: 50,
-          decoration: BoxDecoration(
-            color: _getDocumentColor(doc['document_type']).withOpacity(0.1),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Center(
-            child: Text(
-              _getFileExtension(doc['file_name']),
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: _getDocumentColor(doc['document_type']),
-              ),
+    return InkWell(
+      onTap: () {
+        // Show preview when tapping on the card
+        DocumentPreviewService.showPreview(
+          context,
+          fileName: doc['file_name'],
+          bucketName: 'case_documents',
+          filePath: doc['file_path'],
+        );
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: ListTile(
+          contentPadding: const EdgeInsets.all(16),
+          leading: Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: _getDocumentColor(doc['document_type']).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Center(
+              child: DocumentPreviewService.isPreviewable(doc['file_name'])
+                  ? Icon(
+                      Icons.visibility_outlined,
+                      color: _getDocumentColor(doc['document_type']),
+                      size: 24,
+                    )
+                  : Text(
+                      _getFileExtension(doc['file_name']),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: _getDocumentColor(doc['document_type']),
+                      ),
+                    ),
             ),
           ),
-        ),
-        title: Text(
-          doc['file_name'],
-          style: const TextStyle(
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF1F2937),
+          title: Text(
+            doc['file_name'],
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1F2937),
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Icon(
-                  _getDocumentIcon(doc['document_type']),
-                  size: 14,
-                  color: _getDocumentColor(doc['document_type']),
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  doc['document_type'] ?? 'Other',
-                  style: TextStyle(
-                    fontSize: 12,
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Icon(
+                    _getDocumentIcon(doc['document_type']),
+                    size: 14,
                     color: _getDocumentColor(doc['document_type']),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    doc['document_type'] ?? 'Other',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: _getDocumentColor(doc['document_type']),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 2),
+              Text(
+                '${_formatFileSize(doc['file_size'] ?? 0)} • ${_formatDate(doc['created_at'])}',
+                style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+              ),
+              if (DocumentPreviewService.isPreviewable(doc['file_name'])) ...[
+                const SizedBox(height: 4),
+                const Text(
+                  'Tap to preview',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFF1E3A8A),
                     fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
-            ),
-            const SizedBox(height: 2),
-            Text(
-              '${_formatFileSize(doc['file_size'] ?? 0)} • ${_formatDate(doc['created_at'])}',
-              style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
-            ),
-          ],
-        ),
-        trailing: PopupMenuButton<String>(
-          icon: const Icon(Icons.more_vert, color: Color(0xFF6B7280)),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            ],
           ),
-          onSelected: (value) {
-            if (value == 'view') {
-              _navigateToCaseDocuments(doc['case_id'], caseName);
-            } else if (value == 'delete') {
-              _deleteDocument(doc);
-            }
-          },
-          itemBuilder: (context) => [
-            const PopupMenuItem(
-              value: 'view',
-              child: Row(
-                children: [
-                  Icon(Icons.folder_open, size: 20, color: Color(0xFF6B7280)),
-                  SizedBox(width: 12),
-                  Text('View in Case'),
-                ],
-              ),
+          trailing: PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, color: Color(0xFF6B7280)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
             ),
-            const PopupMenuItem(
-              value: 'delete',
-              child: Row(
-                children: [
-                  Icon(Icons.delete, size: 20, color: Colors.red),
-                  SizedBox(width: 12),
-                  Text('Delete', style: TextStyle(color: Colors.red)),
-                ],
+            onSelected: (value) {
+              if (value == 'preview' &&
+                  DocumentPreviewService.isPreviewable(doc['file_name'])) {
+                DocumentPreviewService.showPreview(
+                  context,
+                  fileName: doc['file_name'],
+                  bucketName: 'case_documents',
+                  filePath: doc['file_path'],
+                );
+              } else if (value == 'view') {
+                _navigateToCaseDocuments(doc['case_id'], caseName);
+              } else if (value == 'delete') {
+                _deleteDocument(doc);
+              }
+            },
+            itemBuilder: (context) => [
+              if (DocumentPreviewService.isPreviewable(doc['file_name']))
+                const PopupMenuItem(
+                  value: 'preview',
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.visibility,
+                        size: 20,
+                        color: Color(0xFF6B7280),
+                      ),
+                      SizedBox(width: 12),
+                      Text('Preview'),
+                    ],
+                  ),
+                ),
+              const PopupMenuItem(
+                value: 'view',
+                child: Row(
+                  children: [
+                    Icon(Icons.folder_open, size: 20, color: Color(0xFF6B7280)),
+                    SizedBox(width: 12),
+                    Text('View in Case'),
+                  ],
+                ),
               ),
-            ),
-          ],
+              const PopupMenuItem(
+                value: 'delete',
+                child: Row(
+                  children: [
+                    Icon(Icons.delete, size: 20, color: Colors.red),
+                    SizedBox(width: 12),
+                    Text('Delete', style: TextStyle(color: Colors.red)),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
