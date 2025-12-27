@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:lawdesk/screens/cases/all_cases_list.dart'; // CHANGED IMPORT
-import 'package:lawdesk/widgets/cases/modal.dart';
 
 class CasesPage extends StatefulWidget {
   const CasesPage({Key? key}) : super(key: key);
@@ -55,19 +54,6 @@ class _CasesPageState extends State<CasesPage> {
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF1F2937),
-                        ),
-                      ),
-                      TextButton.icon(
-                        onPressed: () {
-                          AddCaseModal.show(
-                            context,
-                            onCaseAdded: _refreshCases,
-                          );
-                        },
-                        icon: const Icon(Icons.add_circle_outline, size: 18),
-                        label: const Text('Add Case'),
-                        style: TextButton.styleFrom(
-                          foregroundColor: const Color(0xFF1E3A8A),
                         ),
                       ),
                     ],
