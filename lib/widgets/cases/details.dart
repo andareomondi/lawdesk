@@ -2580,6 +2580,7 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
 
           if (_isEditing) ...[
             _buildTextField(
+              enabled: false,
               label: 'Case Name',
               controller: _nameController,
               icon: Icons.folder_outlined,
@@ -2756,6 +2757,7 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
   }
 
   Widget _buildTextField({
+    bool enabled = true,
     required String label,
     required TextEditingController controller,
     required IconData icon,
@@ -2774,6 +2776,7 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
         ),
         const SizedBox(height: 6),
         TextField(
+          enabled: enabled,
           controller: controller,
           maxLines: maxLines,
           decoration: InputDecoration(
@@ -2783,6 +2786,11 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
               borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
             ),
             enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+            ),
+            disabledBorder: OutlineInputBorder(
+              // Added for disabled state
               borderRadius: BorderRadius.circular(8),
               borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
             ),
