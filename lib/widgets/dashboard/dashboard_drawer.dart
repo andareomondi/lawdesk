@@ -262,19 +262,6 @@ class DashboardDrawer extends StatelessWidget {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEF4444).withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.logout,
-                  color: Color(0xFFEF4444),
-                  size: 48,
-                ),
-              ),
-              const SizedBox(height: 20),
               const Text(
                 'Logout',
                 style: TextStyle(
