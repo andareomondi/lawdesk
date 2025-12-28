@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:lawdesk/screens/profile/profile.dart';
 import 'package:lawdesk/screens/cases/casepage.dart';
 import 'package:lawdesk/screens/documents/userDocuments.dart';
 import 'package:lawdesk/screens/calender/calender.dart';
 import 'package:lawdesk/widgets/delightful_toast.dart';
+import 'package:lawdesk/providers/auth_provider.dart';
 
 class DashboardDrawer extends StatelessWidget {
   final String userName;
@@ -19,8 +19,9 @@ class DashboardDrawer extends StatelessWidget {
   });
 
   Future<void> _handleLogout(BuildContext context) async {
+    final authProvider = AuthProvider();
     try {
-      await Supabase.instance.client.auth.signOut();
+      await authProvider.signOut();
       if (context.mounted) {
         Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
       }
@@ -38,7 +39,7 @@ class DashboardDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Drawer(
-    width: MediaQuery.of(context).size.width * 0.75,
+      width: MediaQuery.of(context).size.width * 0.75,
       child: Container(
         color: Colors.white,
         child: Column(
@@ -77,7 +78,9 @@ class DashboardDrawer extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    userName.isNotEmpty ? userName.toUpperCase() : 'LAWDESK USER',
+                    userName.isNotEmpty
+                        ? userName.toUpperCase()
+                        : 'LAWDESK USER',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 20,
@@ -201,10 +204,7 @@ class DashboardDrawer extends StatelessWidget {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 border: Border(
-                  top: BorderSide(
-                    color: Colors.grey.shade200,
-                    width: 1,
-                  ),
+                  top: BorderSide(color: Colors.grey.shade200, width: 1),
                 ),
               ),
               child: _buildDrawerItem(
@@ -245,9 +245,7 @@ class DashboardDrawer extends StatelessWidget {
         ),
       ),
       onTap: onTap,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
     );
   }

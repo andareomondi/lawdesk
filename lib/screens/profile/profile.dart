@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../../config/supabase_config.dart';
 import '../../providers/auth_provider.dart';
 import 'update_profile.dart';
-import 'package:lawdesk/screens/auth/login_screen.dart';
 import 'package:lawdesk/widgets/delightful_toast.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -13,7 +12,8 @@ class ProfileScreen extends StatefulWidget {
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderStateMixin {
+class _ProfileScreenState extends State<ProfileScreen>
+    with SingleTickerProviderStateMixin {
   final _supabase = SupabaseConfig.client;
 
   String _fullName = '';
@@ -40,14 +40,10 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     )..repeat();
-    
-    _shimmerAnimation = Tween<double>(
-      begin: -2,
-      end: 2,
-    ).animate(CurvedAnimation(
-      parent: _shimmerController,
-      curve: Curves.easeInOutSine,
-    ));
+
+    _shimmerAnimation = Tween<double>(begin: -2, end: 2).animate(
+      CurvedAnimation(parent: _shimmerController, curve: Curves.easeInOutSine),
+    );
   }
 
   @override
@@ -58,7 +54,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
 
   Future<void> _loadUserProfile() async {
     setState(() => _isLoading = true);
-    
+
     try {
       final user = _supabase.auth.currentUser;
 
@@ -90,7 +86,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
           }
         } catch (e) {
           await Future.delayed(const Duration(milliseconds: 300));
-          
+
           if (mounted) {
             setState(() {
               _fullName = user.userMetadata?['full_name'] ?? '';
@@ -102,7 +98,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
       }
     } catch (e) {
       await Future.delayed(const Duration(milliseconds: 300));
-      
+
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -123,70 +119,123 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
 
   String _getMonthName(int month) {
     const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ];
     return months[month - 1];
   }
 
-  Future<void> _handleLogout() async {
-    final confirm = await showDialog<bool>(
+  Future<void> _handleLogout(BuildContext context) {
+    showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
           ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFEF4444),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            child: const Text('Logout'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      final authProvider = context.read<AuthProvider>();
-
-      try {
-        await authProvider.signOut();
-        
-        if (mounted) {
-          AppToast.showSuccess(context: context, title: "Operation sucessfull", message: "Logged out successfully");
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const LoginPage()),
-          );
-        }
-      } catch (e) {
-        if (mounted) {
-          showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: const Text('Error'),
-              content: const Text('Error occurred during logging out'),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              actions: [
-                ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
-                  child: const Text('Close'),
+          contentPadding: const EdgeInsets.all(24),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEF4444).withOpacity(0.1),
+                  shape: BoxShape.circle,
                 ),
-              ],
-            ),
-          );
-        }
-      }
-    }
+                child: const Icon(
+                  Icons.logout,
+                  color: Color(0xFFEF4444),
+                  size: 48,
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Logout',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1F2937),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Are you sure you want to logout from your account?',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF6B7280),
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () {
+                        Navigator.of(dialogContext).pop();
+                      },
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          side: const BorderSide(color: Color(0xFFE5E7EB)),
+                        ),
+                      ),
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(
+                          color: Color(0xFF6B7280),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(dialogContext).pop();
+                        _handleLogout(context);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFEF4444),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Text(
+                        'Logout',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   void _navigateToEditProfile() async {
@@ -305,7 +354,10 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                     icon: const Icon(Icons.edit_outlined, size: 20),
                     label: const Text(
                       'Edit Profile',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF1E3A8A),
@@ -327,12 +379,18 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                     icon: const Icon(Icons.logout, size: 20),
                     label: const Text(
                       'Logout',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: const Color(0xFFEF4444),
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      side: const BorderSide(color: Color(0xFFEF4444), width: 2),
+                      side: const BorderSide(
+                        color: Color(0xFFEF4444),
+                        width: 2,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -477,7 +535,8 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                               ],
                               stops: [
                                 0.0,
-                                (_shimmerAnimation.value + sectionIndex * 0.1).clamp(0.0, 1.0),
+                                (_shimmerAnimation.value + sectionIndex * 0.1)
+                                    .clamp(0.0, 1.0),
                                 1.0,
                               ],
                             ),
@@ -515,7 +574,9 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                                           width: 44,
                                           height: 44,
                                           decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.circular(10),
+                                            borderRadius: BorderRadius.circular(
+                                              10,
+                                            ),
                                             gradient: LinearGradient(
                                               begin: Alignment.topLeft,
                                               end: Alignment.bottomRight,
@@ -526,7 +587,10 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                                               ],
                                               stops: [
                                                 0.0,
-                                                (_shimmerAnimation.value + sectionIndex * 0.1 + rowIndex * 0.05).clamp(0.0, 1.0),
+                                                (_shimmerAnimation.value +
+                                                        sectionIndex * 0.1 +
+                                                        rowIndex * 0.05)
+                                                    .clamp(0.0, 1.0),
                                                 1.0,
                                               ],
                                             ),
@@ -537,7 +601,8 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                                     const SizedBox(width: 16),
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           AnimatedBuilder(
                                             animation: _shimmerAnimation,
@@ -546,7 +611,8 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                                                 height: 12,
                                                 width: 80,
                                                 decoration: BoxDecoration(
-                                                  borderRadius: BorderRadius.circular(4),
+                                                  borderRadius:
+                                                      BorderRadius.circular(4),
                                                   gradient: LinearGradient(
                                                     begin: Alignment.topLeft,
                                                     end: Alignment.bottomRight,
@@ -557,7 +623,12 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                                                     ],
                                                     stops: [
                                                       0.0,
-                                                      (_shimmerAnimation.value + sectionIndex * 0.1 + rowIndex * 0.05 + 0.1).clamp(0.0, 1.0),
+                                                      (_shimmerAnimation.value +
+                                                              sectionIndex *
+                                                                  0.1 +
+                                                              rowIndex * 0.05 +
+                                                              0.1)
+                                                          .clamp(0.0, 1.0),
                                                       1.0,
                                                     ],
                                                   ),
@@ -573,7 +644,8 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                                                 height: 16,
                                                 width: double.infinity,
                                                 decoration: BoxDecoration(
-                                                  borderRadius: BorderRadius.circular(4),
+                                                  borderRadius:
+                                                      BorderRadius.circular(4),
                                                   gradient: LinearGradient(
                                                     begin: Alignment.topLeft,
                                                     end: Alignment.bottomRight,
@@ -584,7 +656,12 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                                                     ],
                                                     stops: [
                                                       0.0,
-                                                      (_shimmerAnimation.value + sectionIndex * 0.1 + rowIndex * 0.05 + 0.2).clamp(0.0, 1.0),
+                                                      (_shimmerAnimation.value +
+                                                              sectionIndex *
+                                                                  0.1 +
+                                                              rowIndex * 0.05 +
+                                                              0.2)
+                                                          .clamp(0.0, 1.0),
                                                       1.0,
                                                     ],
                                                   ),
@@ -644,8 +721,15 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
             child: Center(
               child: Text(
                 _fullName.isNotEmpty
-                    ? _fullName.split(' ').map((e) => e[0]).take(2).join().toUpperCase()
-                    : _email.isNotEmpty ? _email[0].toUpperCase() : 'A',
+                    ? _fullName
+                          .split(' ')
+                          .map((e) => e[0])
+                          .take(2)
+                          .join()
+                          .toUpperCase()
+                    : _email.isNotEmpty
+                    ? _email[0].toUpperCase()
+                    : 'A',
                 style: const TextStyle(
                   fontSize: 40,
                   fontWeight: FontWeight.bold,
@@ -666,7 +750,10 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
           const SizedBox(height: 4),
           Text(
             _username.isNotEmpty ? '@$_username' : _email,
-            style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 16),
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.9),
+              fontSize: 16,
+            ),
           ),
           if (_lskNumber.isNotEmpty) ...[
             const SizedBox(height: 12),
@@ -763,7 +850,9 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                 value,
                 style: TextStyle(
                   fontSize: isSmall ? 14 : 16,
-                  color: isEmpty ? const Color(0xFF9CA3AF) : const Color(0xFF1F2937),
+                  color: isEmpty
+                      ? const Color(0xFF9CA3AF)
+                      : const Color(0xFF1F2937),
                   fontWeight: isEmpty ? FontWeight.normal : FontWeight.w600,
                   fontStyle: isEmpty ? FontStyle.italic : FontStyle.normal,
                 ),
