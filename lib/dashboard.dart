@@ -17,7 +17,6 @@ import 'package:lawdesk/widgets/cases/client_modal.dart';
 import 'package:lawdesk/widgets/dashboard/dashboard_drawer.dart';
 import 'package:lawdesk/services/connectivity_service.dart';
 import 'package:lawdesk/services/offline_storage_service.dart';
-import 'package:lawdesk/widgets/offline_banner.dart';
 import 'package:lawdesk/widgets/offline_indicator.dart';
 import 'package:lawdesk/utils/offline_action_helper.dart';
 

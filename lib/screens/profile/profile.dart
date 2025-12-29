@@ -72,9 +72,6 @@ class _ProfileScreenState extends State<ProfileScreen>
               .eq('id', user.id)
               .single();
 
-          // Add delay for smooth transition
-          await Future.delayed(const Duration(milliseconds: 300));
-
           if (mounted) {
             setState(() {
               _fullName = profile['full_name'] ?? '';
@@ -85,7 +82,6 @@ class _ProfileScreenState extends State<ProfileScreen>
             });
           }
         } catch (e) {
-          await Future.delayed(const Duration(milliseconds: 300));
 
           if (mounted) {
             setState(() {
@@ -97,7 +93,6 @@ class _ProfileScreenState extends State<ProfileScreen>
         }
       }
     } catch (e) {
-      await Future.delayed(const Duration(milliseconds: 300));
 
       if (mounted) {
         setState(() {
