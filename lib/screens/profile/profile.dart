@@ -174,7 +174,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             title: "Operation sucessfull",
             message: "Logged out successfully",
           );
-          Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+          Navigator.pop(context);
         }
       } catch (e) {
         if (mounted) {

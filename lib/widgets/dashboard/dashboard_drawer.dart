@@ -23,7 +23,7 @@ class DashboardDrawer extends StatelessWidget {
     try {
       await authProvider.signOut();
       if (context.mounted) {
-        Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+        Navigator.pop(context);
       }
     } catch (e) {
       if (context.mounted) {
