@@ -3,6 +3,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:lawdesk/widgets/cases/details.dart';
 import 'package:lawdesk/widgets/delightful_toast.dart';
+import 'package:lawdesk/services/connectivity_service.dart';
+import 'package:lawdesk/services/offline_storage_service.dart';
+import 'package:lawdesk/widgets/offline_indicator.dart';
 
 class CalendarPage extends StatefulWidget {
   const CalendarPage({Key? key}) : super(key: key);
@@ -13,7 +16,7 @@ class CalendarPage extends StatefulWidget {
 
 class _CalendarPageState extends State<CalendarPage> {
   final _supabase = Supabase.instance.client;
-  
+
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   Map<DateTime, List<Map<String, dynamic>>> _casesMap = {};
@@ -21,7 +24,8 @@ class _CalendarPageState extends State<CalendarPage> {
   List<Map<String, dynamic>> _allCases = [];
   List<Map<String, dynamic>> _allEvents = [];
   bool _isLoading = true;
-  
+  bool _isOfflineMode = false;
+
   // View mode: 'month' or 'list'
   String _viewMode = 'month';
 
@@ -29,46 +33,100 @@ class _CalendarPageState extends State<CalendarPage> {
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
+
+    _isOfflineMode = !connectivityService.isConnected;
+
+    // Listen to connectivity changes
+    connectivityService.connectionStream.listen((isConnected) {
+      if (mounted) {
+        setState(() {
+          _isOfflineMode = !isConnected;
+        });
+
+        if (isConnected) {
+          _loadData();
+        }
+      }
+    });
+
     _loadData();
   }
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
-    
+
     try {
       final user = _supabase.auth.currentUser;
       if (user == null) throw Exception('No user logged in');
 
-      // Load cases
-      final casesResponse = await _supabase
-          .from('cases')
-          .select()
-          .eq('user', user.id)
-          .order('courtDate', ascending: true);
+      // Check if online
+      if (connectivityService.isConnected) {
+        // Load cases from server
+        final casesResponse = await _supabase
+            .from('cases')
+            .select()
+            .eq('user', user.id)
+            .order('courtDate', ascending: true);
 
-      if (casesResponse is List) {
-        _allCases = List<Map<String, dynamic>>.from(casesResponse);
+        if (casesResponse is List) {
+          _allCases = List<Map<String, dynamic>>.from(casesResponse);
+          // Cache cases
+          await offlineStorage.cacheCases(_allCases);
+        }
+
+        // Load events for user's cases
+        final userCasesIds = _allCases.map((c) => c['id']).toList();
+
+        if (userCasesIds.isNotEmpty) {
+          final eventsResponse = await _supabase
+              .from('events')
+              .select('*, cases!inner(user)')
+              .inFilter('case', userCasesIds)
+              .order('date', ascending: true);
+
+          if (eventsResponse is List) {
+            _allEvents = List<Map<String, dynamic>>.from(eventsResponse);
+            // Cache events
+            await offlineStorage.cacheEvents(_allEvents);
+          }
+        }
+
+        _organizeDataByDate();
+        setState(() => _isLoading = false);
+      } else {
+        // Load from cache when offline
+        final cachedCases = await offlineStorage.getCachedCases();
+        final cachedEvents = await offlineStorage.getCachedEvents();
+
+        if (cachedCases != null) {
+          _allCases = List<Map<String, dynamic>>.from(cachedCases);
+        }
+
+        if (cachedEvents != null) {
+          _allEvents = List<Map<String, dynamic>>.from(cachedEvents);
+        }
+
+        _organizeDataByDate();
+        setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      print('Error loading calendar data: $e');
+
+      // Try cache on error
+      final cachedCases = await offlineStorage.getCachedCases();
+      final cachedEvents = await offlineStorage.getCachedEvents();
+
+      if (cachedCases != null) {
+        _allCases = List<Map<String, dynamic>>.from(cachedCases);
       }
 
-      // Load events for user's cases
-      final userCasesIds = _allCases.map((c) => c['id']).toList();
-      
-      if (userCasesIds.isNotEmpty) {
-        final eventsResponse = await _supabase
-            .from('events')
-            .select('*, cases!inner(user)')
-            .inFilter('case', userCasesIds)
-            .order('date', ascending: true);
-
-        if (eventsResponse is List) {
-          _allEvents = List<Map<String, dynamic>>.from(eventsResponse);
-        }
+      if (cachedEvents != null) {
+        _allEvents = List<Map<String, dynamic>>.from(cachedEvents);
       }
 
       _organizeDataByDate();
       setState(() => _isLoading = false);
-    } catch (e) {
-      setState(() => _isLoading = false);
+
       if (mounted) {
         AppToast.showError(
           context: context,
@@ -82,14 +140,18 @@ class _CalendarPageState extends State<CalendarPage> {
   void _organizeDataByDate() {
     _casesMap.clear();
     _eventsMap.clear();
-    
+
     // Organize cases by court date
     for (var case_ in _allCases) {
       if (case_['courtDate'] != null) {
         try {
           final courtDate = DateTime.parse(case_['courtDate']);
-          final dateKey = DateTime(courtDate.year, courtDate.month, courtDate.day);
-          
+          final dateKey = DateTime(
+            courtDate.year,
+            courtDate.month,
+            courtDate.day,
+          );
+
           if (!_casesMap.containsKey(dateKey)) {
             _casesMap[dateKey] = [];
           }
@@ -105,8 +167,12 @@ class _CalendarPageState extends State<CalendarPage> {
       if (event['date'] != null) {
         try {
           final eventDate = DateTime.parse(event['date']);
-          final dateKey = DateTime(eventDate.year, eventDate.month, eventDate.day);
-          
+          final dateKey = DateTime(
+            eventDate.year,
+            eventDate.month,
+            eventDate.day,
+          );
+
           if (!_eventsMap.containsKey(dateKey)) {
             _eventsMap[dateKey] = [];
           }
@@ -136,9 +202,13 @@ class _CalendarPageState extends State<CalendarPage> {
   String _getStatus(DateTime courtDate) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final courtDateOnly = DateTime(courtDate.year, courtDate.month, courtDate.day);
+    final courtDateOnly = DateTime(
+      courtDate.year,
+      courtDate.month,
+      courtDate.day,
+    );
     final daysDifference = courtDateOnly.difference(today).inDays;
-    
+
     if (daysDifference < 0) {
       return 'expired';
     } else if (daysDifference <= 2) {
@@ -215,17 +285,17 @@ class _CalendarPageState extends State<CalendarPage> {
 
   String _formatTime(dynamic time) {
     if (time == null || time.toString().isEmpty) return '';
-    
+
     try {
       final timeParts = time.toString().split(':');
       if (timeParts.length >= 2) {
         final hour = int.parse(timeParts[0]);
         final minute = int.parse(timeParts[1]);
-        
+
         final period = hour >= 12 ? 'PM' : 'AM';
         final hour12 = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
         final minuteStr = minute.toString().padLeft(2, '0');
-        
+
         return '$hour12:$minuteStr $period';
       }
       return '';
@@ -237,9 +307,7 @@ class _CalendarPageState extends State<CalendarPage> {
   void _navigateToCaseDetails(String caseId) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => CaseDetailsPage(caseId: caseId),
-      ),
+      MaterialPageRoute(builder: (context) => CaseDetailsPage(caseId: caseId)),
     ).then((_) => _loadData());
   }
 
@@ -253,14 +321,13 @@ class _CalendarPageState extends State<CalendarPage> {
         elevation: 0,
         title: const Text(
           'Calendar',
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 20,
-          ),
+          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 20),
         ),
         actions: [
           IconButton(
-            icon: Icon(_viewMode == 'month' ? Icons.list : Icons.calendar_month),
+            icon: Icon(
+              _viewMode == 'month' ? Icons.list : Icons.calendar_month,
+            ),
             onPressed: () {
               setState(() {
                 _viewMode = _viewMode == 'month' ? 'list' : 'month';
@@ -268,19 +335,16 @@ class _CalendarPageState extends State<CalendarPage> {
             },
             tooltip: _viewMode == 'month' ? 'List View' : 'Calendar View',
           ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadData,
-          ),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadData),
         ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : (_allCases.isEmpty && _allEvents.isEmpty)
-              ? _buildEmptyState()
-              : _viewMode == 'month'
-                  ? _buildCalendarView()
-                  : _buildListView(),
+          ? _buildEmptyState()
+          : _viewMode == 'month'
+          ? _buildCalendarView()
+          : _buildListView(),
     );
   }
 
@@ -313,10 +377,7 @@ class _CalendarPageState extends State<CalendarPage> {
           const SizedBox(height: 8),
           const Text(
             'Add cases and events to see them here',
-            style: TextStyle(
-              fontSize: 14,
-              color: Color(0xFF6B7280),
-            ),
+            style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
             textAlign: TextAlign.center,
           ),
         ],
@@ -327,12 +388,11 @@ class _CalendarPageState extends State<CalendarPage> {
   Widget _buildCalendarView() {
     return Column(
       children: [
+        if (_isOfflineMode) const OfflineDataIndicator(),
         _buildCalendarHeader(),
         _buildCalendarGrid(),
         const SizedBox(height: 16),
-        Expanded(
-          child: _buildSelectedDayItems(),
-        ),
+        Expanded(child: _buildSelectedDayItems()),
       ],
     );
   }
@@ -342,12 +402,7 @@ class _CalendarPageState extends State<CalendarPage> {
       padding: const EdgeInsets.all(16),
       decoration: const BoxDecoration(
         color: Colors.white,
-        border: Border(
-          bottom: BorderSide(
-            color: Color(0xFFE5E7EB),
-            width: 1,
-          ),
-        ),
+        border: Border(bottom: BorderSide(color: Color(0xFFE5E7EB), width: 1)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -382,7 +437,11 @@ class _CalendarPageState extends State<CalendarPage> {
   }
 
   Widget _buildCalendarGrid() {
-    final daysInMonth = DateTime(_focusedDay.year, _focusedDay.month + 1, 0).day;
+    final daysInMonth = DateTime(
+      _focusedDay.year,
+      _focusedDay.month + 1,
+      0,
+    ).day;
     final firstDayOfMonth = DateTime(_focusedDay.year, _focusedDay.month, 1);
     final firstWeekday = firstDayOfMonth.weekday % 7;
 
@@ -394,42 +453,50 @@ class _CalendarPageState extends State<CalendarPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: ['S', 'M', 'T', 'W', 'T', 'F', 'S']
-                .map((day) => Expanded(
-                      child: Center(
-                        child: Text(
-                          day,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF6B7280),
-                            fontSize: 12,
-                          ),
+                .map(
+                  (day) => Expanded(
+                    child: Center(
+                      child: Text(
+                        day,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF6B7280),
+                          fontSize: 12,
                         ),
                       ),
-                    ))
+                    ),
+                  ),
+                )
                 .toList(),
           ),
           const SizedBox(height: 8),
-          
+
           ...List.generate(6, (weekIndex) {
             return Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: List.generate(7, (dayIndex) {
                 final dayNumber = weekIndex * 7 + dayIndex - firstWeekday + 1;
-                
+
                 if (dayNumber < 1 || dayNumber > daysInMonth) {
                   return const Expanded(child: SizedBox(height: 50));
                 }
-                
-                final date = DateTime(_focusedDay.year, _focusedDay.month, dayNumber);
-                final isSelected = _selectedDay != null &&
+
+                final date = DateTime(
+                  _focusedDay.year,
+                  _focusedDay.month,
+                  dayNumber,
+                );
+                final isSelected =
+                    _selectedDay != null &&
                     date.year == _selectedDay!.year &&
                     date.month == _selectedDay!.month &&
                     date.day == _selectedDay!.day;
-                final isToday = date.year == DateTime.now().year &&
+                final isToday =
+                    date.year == DateTime.now().year &&
                     date.month == DateTime.now().month &&
                     date.day == DateTime.now().day;
                 final hasItems = _hasItemsOnDay(date);
-                
+
                 return Expanded(
                   child: GestureDetector(
                     onTap: () {
@@ -444,8 +511,8 @@ class _CalendarPageState extends State<CalendarPage> {
                         color: isSelected
                             ? const Color(0xFF1E3A8A)
                             : isToday
-                                ? const Color(0xFF1E3A8A).withOpacity(0.1)
-                                : Colors.transparent,
+                            ? const Color(0xFF1E3A8A).withOpacity(0.1)
+                            : Colors.transparent,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
                           color: isToday && !isSelected
@@ -463,8 +530,8 @@ class _CalendarPageState extends State<CalendarPage> {
                                 color: isSelected
                                     ? Colors.white
                                     : isToday
-                                        ? const Color(0xFF1E3A8A)
-                                        : const Color(0xFF1F2937),
+                                    ? const Color(0xFF1E3A8A)
+                                    : const Color(0xFF1F2937),
                                 fontWeight: isSelected || isToday
                                     ? FontWeight.bold
                                     : FontWeight.normal,
@@ -507,10 +574,7 @@ class _CalendarPageState extends State<CalendarPage> {
       return const Center(
         child: Text(
           'Select a day to view schedule',
-          style: TextStyle(
-            color: Color(0xFF6B7280),
-            fontSize: 14,
-          ),
+          style: TextStyle(color: Color(0xFF6B7280), fontSize: 14),
         ),
       );
     }
@@ -531,10 +595,7 @@ class _CalendarPageState extends State<CalendarPage> {
             const SizedBox(height: 12),
             Text(
               'Nothing scheduled on ${DateFormat('MMMM d, yyyy').format(_selectedDay!)}',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[600],
-              ),
+              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
             ),
           ],
         ),
@@ -586,7 +647,11 @@ class _CalendarPageState extends State<CalendarPage> {
                   padding: EdgeInsets.only(bottom: 8),
                   child: Row(
                     children: [
-                      Icon(Icons.event_note, size: 18, color: Color(0xFF1E3A8A)),
+                      Icon(
+                        Icons.event_note,
+                        size: 18,
+                        color: Color(0xFF1E3A8A),
+                      ),
                       SizedBox(width: 8),
                       Text(
                         'Events',
@@ -610,14 +675,14 @@ class _CalendarPageState extends State<CalendarPage> {
 
   Widget _buildListView() {
     final groupedData = <String, Map<String, List<Map<String, dynamic>>>>{};
-    
+
     // Group cases by month
     for (var case_ in _allCases) {
       if (case_['courtDate'] != null) {
         try {
           final courtDate = DateTime.parse(case_['courtDate']);
           final monthKey = DateFormat('MMMM yyyy').format(courtDate);
-          
+
           groupedData.putIfAbsent(monthKey, () => {'cases': [], 'events': []});
           groupedData[monthKey]!['cases']!.add(case_);
         } catch (e) {
@@ -632,7 +697,7 @@ class _CalendarPageState extends State<CalendarPage> {
         try {
           final eventDate = DateTime.parse(event['date']);
           final monthKey = DateFormat('MMMM yyyy').format(eventDate);
-          
+
           groupedData.putIfAbsent(monthKey, () => {'cases': [], 'events': []});
           groupedData[monthKey]!['events']!.add(event);
         } catch (e) {
@@ -643,8 +708,14 @@ class _CalendarPageState extends State<CalendarPage> {
 
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: groupedData.length,
+      itemCount: groupedData.length + (_isOfflineMode ? 1 : 0),
       itemBuilder: (context, index) {
+        if (_isOfflineMode && index == 0) {
+          return const Padding(
+            padding: EdgeInsets.only(bottom: 16),
+            child: OfflineDataIndicator(),
+          );
+        }
         final monthKey = groupedData.keys.elementAt(index);
         final cases = groupedData[monthKey]!['cases']!;
         final events = groupedData[monthKey]!['events']!;
@@ -710,10 +781,7 @@ class _CalendarPageState extends State<CalendarPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: statusColor.withOpacity(0.3),
-          width: 2,
-        ),
+        border: Border.all(color: statusColor.withOpacity(0.3), width: 2),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
@@ -772,18 +840,16 @@ class _CalendarPageState extends State<CalendarPage> {
                     decoration: BoxDecoration(
                       color: statusColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: statusColor.withOpacity(0.3),
-                      ),
+                      border: Border.all(color: statusColor.withOpacity(0.3)),
                     ),
                     child: Text(
                       status == 'urgent'
                           ? 'URGENT'
                           : status == 'upcoming'
-                              ? 'Upcoming'
-                              : status == 'expired'
-                                  ? 'Expired'
-                                  : 'Scheduled',
+                          ? 'Upcoming'
+                          : status == 'expired'
+                          ? 'Expired'
+                          : 'Scheduled',
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
@@ -797,11 +863,7 @@ class _CalendarPageState extends State<CalendarPage> {
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Icon(
-                    Icons.access_time,
-                    size: 16,
-                    color: statusColor,
-                  ),
+                  Icon(Icons.access_time, size: 16, color: statusColor),
                   const SizedBox(width: 6),
                   Text(
                     time.isNotEmpty ? time : 'Time not set',
@@ -858,10 +920,7 @@ class _CalendarPageState extends State<CalendarPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: agendaColor.withOpacity(0.3),
-          width: 2,
-        ),
+        border: Border.all(color: agendaColor.withOpacity(0.3), width: 2),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
@@ -871,7 +930,7 @@ class _CalendarPageState extends State<CalendarPage> {
         ],
       ),
       child: InkWell(
-        onTap: relatedCase.isNotEmpty 
+        onTap: relatedCase.isNotEmpty
             ? () => _navigateToCaseDetails(relatedCase['id'].toString())
             : null,
         borderRadius: BorderRadius.circular(12),
@@ -922,11 +981,7 @@ class _CalendarPageState extends State<CalendarPage> {
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    Icon(
-                      Icons.access_time,
-                      size: 16,
-                      color: agendaColor,
-                    ),
+                    Icon(Icons.access_time, size: 16, color: agendaColor),
                     const SizedBox(width: 6),
                     Text(
                       time,

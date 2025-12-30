@@ -12,7 +12,35 @@ class OfflineStorageService {
   static const String _profileCacheKey = 'cached_profile';
   static const String _statsCacheKey = 'cached_stats';
   static const String _documentsCacheKey = 'cached_documents';
+  static const String _eventsCacheKey = 'cached_events';
   static const String _lastSyncKey = 'last_sync_time';
+
+  // Save events to local storage
+  Future<void> cacheEvents(List<dynamic> events) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonString = jsonEncode(events);
+      await prefs.setString(_eventsCacheKey, jsonString);
+      await _updateLastSyncTime();
+      print('Successfully cached ${events.length} events');
+    } catch (e) {
+      print('Error caching events: $e');
+    }
+  }
+
+  // Get cached events
+  Future<List<dynamic>?> getCachedEvents() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonString = prefs.getString(_eventsCacheKey);
+      if (jsonString != null) {
+        return jsonDecode(jsonString) as List<dynamic>;
+      }
+    } catch (e) {
+      print('Error getting cached events: $e');
+    }
+    return null;
+  }
 
   // Save cases to local storage
   Future<void> cacheCases(List<dynamic> cases) async {
@@ -146,6 +174,7 @@ class OfflineStorageService {
     await prefs.remove(_profileCacheKey);
     await prefs.remove(_statsCacheKey);
     await prefs.remove(_documentsCacheKey);
+    await prefs.remove(_eventsCacheKey);
     await prefs.remove(_lastSyncKey);
   }
 }
