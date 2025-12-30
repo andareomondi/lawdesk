@@ -10,7 +10,7 @@ plugins {
 
 android {
     namespace = "com.example.lawdesk"
-    compileSdk = 34 // Changed from flutter.compileSdkVersion
+    compileSdk = 36 // Changed from flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -26,8 +26,8 @@ android {
 
     defaultConfig {
         applicationId = "com.example.lawdesk"
-        minSdk = 21 // Changed from flutter.minSdkVersion
-        targetSdk = 34 // Changed from flutter.targetSdkVersion
+        minSdk = flutter.minSdkVersion // Changed from flutter.minSdkVersion
+        targetSdk = 36 // Changed from flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         
