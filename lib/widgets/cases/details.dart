@@ -1342,13 +1342,13 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
     )) {
       return;
     }
+
     if (_eventSelectedDate == null) {
       AppToast.showError(
         context: context,
         title: 'Validation Error',
         message: 'Please select an event date',
       );
-
       return;
     }
 
@@ -1362,7 +1362,6 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
     }
 
     try {
-      // Get current user's profile ID
       final userId = _supabase.auth.currentUser?.id;
       if (userId == null) {
         throw Exception('User not authenticated');
@@ -1379,18 +1378,33 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
           ? _eventAgendaController.text.trim()
           : _selectedAgendaType;
 
-      await _supabase.from('events').insert({
-        'date': _eventSelectedDate!.toIso8601String(),
-        'time': timeString,
-        'agenda': agendaValue,
-        'case': int.parse(widget.caseId),
-        'profile': userId, // Add profile UUID here
-      });
+      // Insert event and get the ID back
+      final response = await _supabase
+          .from('events')
+          .insert({
+            'date': _eventSelectedDate!.toIso8601String(),
+            'time': timeString,
+            'agenda': agendaValue,
+            'case': int.parse(widget.caseId),
+            'profile': userId,
+          })
+          .select()
+          .single();
+
+      final eventId = response['id'] as int;
+
+      // Schedule notifications for the event
+      await notificationService.scheduleEventNotifications(
+        eventId: eventId,
+        eventDate: _eventSelectedDate!,
+        eventAgenda: agendaValue,
+        caseName: _caseData!['name'] ?? 'Case',
+        eventTime: _eventSelectedTime,
+      );
 
       await _loadEvents();
 
       if (mounted) {
-        //app toast success
         AppToast.showSuccess(
           context: context,
           title: 'Success',
@@ -1408,7 +1422,6 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
     }
   }
 
-  // Replace your _updateEvent method with this:
   Future<void> _updateEvent() async {
     if (!OfflineActionHelper.canPerformAction(
       context,
@@ -1416,6 +1429,7 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
     )) {
       return;
     }
+
     if (_eventSelectedDate == null) {
       AppToast.showError(
         context: context,
@@ -1435,7 +1449,6 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
     }
 
     try {
-      // Get current user's profile ID
       final userId = _supabase.auth.currentUser?.id;
       if (userId == null) {
         throw Exception('User not authenticated');
@@ -1458,14 +1471,22 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
             'date': _eventSelectedDate!.toIso8601String(),
             'time': timeString,
             'agenda': agendaValue,
-            'profile': userId, // Add profile UUID here too
+            'profile': userId,
           })
           .eq('id', _editingEventId!);
+
+      // Reschedule notifications for the updated event
+      await notificationService.scheduleEventNotifications(
+        eventId: _editingEventId!,
+        eventDate: _eventSelectedDate!,
+        eventAgenda: agendaValue,
+        caseName: _caseData!['name'] ?? 'Case',
+        eventTime: _eventSelectedTime,
+      );
 
       await _loadEvents();
 
       if (mounted) {
-        // app toast success
         AppToast.showSuccess(
           context: context,
           title: 'Success',
@@ -1490,6 +1511,7 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
     )) {
       return;
     }
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -1514,12 +1536,14 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
     if (confirmed != true) return;
 
     try {
+      // Cancel notifications first
+      await notificationService.cancelNotificationsForEvent(eventId);
+
       await _supabase.from('events').delete().eq('id', eventId);
 
       await _loadEvents();
 
       if (mounted) {
-        // app toast success
         AppToast.showSuccess(
           context: context,
           title: 'Success',
