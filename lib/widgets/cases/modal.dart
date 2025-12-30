@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:lawdesk/widgets/delightful_toast.dart';
 import 'client_modal.dart'; // Import the client modal
+import 'package:lawdesk/services/notification_service.dart';
 
 class AddCaseModal extends StatefulWidget {
   final VoidCallback? onCaseAdded;
@@ -24,15 +25,15 @@ class AddCaseModal extends StatefulWidget {
 class _AddCaseModalState extends State<AddCaseModal> {
   final _formKey = GlobalKey<FormState>();
   final _supabase = Supabase.instance.client;
-  
+
   final _caseNumberController = TextEditingController();
   final _courtNameController = TextEditingController();
   final _descriptionController = TextEditingController();
-  
+
   String? _selectedClientId;
   List<Map<String, dynamic>> _clients = [];
   List<String> _courts = [];
-  
+
   DateTime? _selectedCourtDate;
   TimeOfDay? _selectedTime;
   bool _isLoading = false;
@@ -64,7 +65,7 @@ class _AddCaseModalState extends State<AddCaseModal> {
           .select('id, name')
           .eq('user', user.id)
           .order('name');
-      
+
       // Load all courts (shared across users)
       final courtsData = await _supabase
           .from('court')
@@ -107,7 +108,7 @@ class _AddCaseModalState extends State<AddCaseModal> {
         );
       },
     );
-    
+
     if (picked != null) {
       setState(() => _selectedCourtDate = picked);
     }
@@ -129,7 +130,7 @@ class _AddCaseModalState extends State<AddCaseModal> {
         );
       },
     );
-    
+
     if (picked != null) {
       setState(() => _selectedTime = picked);
     }
@@ -146,14 +147,17 @@ class _AddCaseModalState extends State<AddCaseModal> {
   }
 
   Future<void> _openAddClientModal() async {
-    await AddClientModal.show(context, onClientAdded: () {
-      _loadData(); // Reload clients after adding new one
-    });
+    await AddClientModal.show(
+      context,
+      onClientAdded: () {
+        _loadData(); // Reload clients after adding new one
+      },
+    );
   }
 
   Future<void> _submitCase() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     if (_selectedClientId == null) {
       AppToast.showError(
         context: context,
@@ -183,15 +187,12 @@ class _AddCaseModalState extends State<AddCaseModal> {
 
     setState(() => _isLoading = true);
 
-
     try {
       final user = _supabase.auth.currentUser;
-      
+
       if (user == null) throw Exception('No user logged in');
 
       final courtName = _courtNameController.text.trim();
-      print('$_selectedClientId, ${_caseNumberController.text.trim()}, $courtName, ${_descriptionController.text.trim()}, ${_selectedCourtDate!.toIso8601String().split('T')[0]}, $_selectedTime, ${user.id}');
-      
 
       // Format time as HH:mm:ss for the time column
       String? timeString;
@@ -201,15 +202,30 @@ class _AddCaseModalState extends State<AddCaseModal> {
         timeString = '$hour:$minute:00';
       }
 
-      await _supabase.from('cases').insert({
-        'name': _selectedClientId,
-        'number': _caseNumberController.text.trim(),
-        'court_name': courtName,
-        'description': _descriptionController.text.trim(),
-        'courtDate': _selectedCourtDate!.toIso8601String().split('T')[0],
-        'time': timeString,
-        'user': user.id,
-      });
+      // Insert the case and get the returned data (including the new case ID)
+      final response = await _supabase
+          .from('cases')
+          .insert({
+            'name': _selectedClientId,
+            'number': _caseNumberController.text.trim(),
+            'court_name': courtName,
+            'description': _descriptionController.text.trim(),
+            'courtDate': _selectedCourtDate!.toIso8601String().split('T')[0],
+            'time': timeString,
+            'user': user.id,
+          })
+          .select()
+          .single(); // Add .select().single() to get the created case back
+
+      final newCaseId = response['id'] as int;
+
+      // Schedule notifications for the new case
+      await notificationService.scheduleCourtDateNotifications(
+        caseId: newCaseId,
+        courtDate: _selectedCourtDate!,
+        caseName: _selectedClientId ?? 'New Case',
+        courtTime: _selectedTime,
+      );
 
       if (mounted) {
         Navigator.pop(context);
@@ -295,158 +311,198 @@ class _AddCaseModalState extends State<AddCaseModal> {
                       const SizedBox(height: 16),
 
                       // Client Dropdown
-
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Client',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: Color(0xFF374151),
-                            ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Client',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF374151),
+                                ),
+                              ),
+                              TextButton.icon(
+                                onPressed: _openAddClientModal,
+                                icon: const Icon(Icons.add, size: 16),
+                                label: const Text('Add Client'),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: const Color(0xFF1E3A8A),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                          TextButton.icon(
-                            onPressed: _openAddClientModal,
-                            icon: const Icon(Icons.add, size: 16),
-                            label: const Text('Add Client'),
-                            style: TextButton.styleFrom(
-                              foregroundColor: const Color(0xFF1E3A8A),
-                              padding: const EdgeInsets.symmetric(horizontal: 8),
-                            ),
+                          const SizedBox(height: 8),
+                          Autocomplete<String>(
+                            optionsBuilder:
+                                (TextEditingValue textEditingValue) {
+                                  final names = _clients
+                                      .map((c) => c['name'] as String)
+                                      .toList();
+                                  final input = textEditingValue.text
+                                      .toLowerCase();
+
+                                  // Filtered results
+                                  final filtered = input.isEmpty
+                                      ? names
+                                      : names
+                                            .where(
+                                              (name) => name
+                                                  .toLowerCase()
+                                                  .contains(input),
+                                            )
+                                            .toList();
+
+                                  // Add "not found" message if no match
+                                  if (filtered.isEmpty && input.isNotEmpty) {
+                                    return ['__not_found__'];
+                                  }
+
+                                  return filtered;
+                                },
+
+                            displayStringForOption: (option) {
+                              return option == '__not_found__' ? '' : option;
+                            },
+
+                            onSelected: (String selection) {
+                              if (selection == '__not_found__') return;
+
+                              setState(() {
+                                _selectedClientId = selection;
+                              });
+                            },
+
+                            fieldViewBuilder:
+                                (
+                                  context,
+                                  controller,
+                                  focusNode,
+                                  onFieldSubmitted,
+                                ) {
+                                  // DO NOT override controller.text — allows normal typing
+
+                                  return TextFormField(
+                                    controller: controller,
+                                    focusNode: focusNode,
+                                    decoration: InputDecoration(
+                                      labelText: 'Client',
+                                      hintText: _clients.isEmpty
+                                          ? 'No clients available - Add one first'
+                                          : 'Select or type client name',
+                                      prefixIcon: const Icon(
+                                        Icons.person,
+                                        color: Color(0xFF6B7280),
+                                      ),
+                                      suffixIcon: const Icon(
+                                        Icons.arrow_drop_down,
+                                        color: Color(0xFF6B7280),
+                                      ),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: const BorderSide(
+                                          color: Color(0xFFE5E7EB),
+                                        ),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: const BorderSide(
+                                          color: Color(0xFF1E3A8A),
+                                          width: 2,
+                                        ),
+                                      ),
+                                    ),
+
+                                    onChanged: (value) {
+                                      final names = _clients
+                                          .map((c) => c['name'] as String)
+                                          .toList();
+
+                                      if (names.contains(value)) {
+                                        setState(
+                                          () => _selectedClientId = value,
+                                        );
+                                      } else {
+                                        setState(
+                                          () => _selectedClientId = null,
+                                        );
+                                      }
+                                    },
+
+                                    validator: (value) {
+                                      final names = _clients
+                                          .map((c) => c['name'] as String)
+                                          .toList();
+
+                                      if (value == null ||
+                                          value.trim().isEmpty) {
+                                        return 'Please select a client';
+                                      }
+                                      if (!names.contains(value.trim())) {
+                                        return 'Client not registered — add the client first';
+                                      }
+                                      return null;
+                                    },
+                                  );
+                                },
+
+                            optionsViewBuilder: (context, onSelected, options) {
+                              return Align(
+                                alignment: Alignment.topLeft,
+                                child: Material(
+                                  elevation: 4,
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: ConstrainedBox(
+                                    constraints: const BoxConstraints(
+                                      maxHeight: 240,
+                                      minWidth: 300,
+                                    ),
+                                    child: Scrollbar(
+                                      thumbVisibility: true,
+                                      child: ListView.builder(
+                                        padding: EdgeInsets.zero,
+                                        itemCount: options.length,
+                                        itemBuilder: (context, index) {
+                                          final option = options.elementAt(
+                                            index,
+                                          );
+
+                                          // Special not-found tile
+                                          if (option == '__not_found__') {
+                                            return ListTile(
+                                              title: const Text(
+                                                'Client not registered. Please add the client first',
+                                                style: TextStyle(
+                                                  color: Colors.redAccent,
+                                                ),
+                                              ),
+                                              onTap: () {}, // disabled
+                                            );
+                                          }
+
+                                          return ListTile(
+                                            title: Text(option),
+                                            onTap: () => onSelected(option),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
-Autocomplete<String>(
-  optionsBuilder: (TextEditingValue textEditingValue) {
-    final names = _clients.map((c) => c['name'] as String).toList();
-    final input = textEditingValue.text.toLowerCase();
-
-    // Filtered results
-    final filtered = input.isEmpty
-        ? names
-        : names.where((name) => name.toLowerCase().contains(input)).toList();
-
-    // Add "not found" message if no match
-    if (filtered.isEmpty && input.isNotEmpty) {
-      return ['__not_found__'];
-    }
-
-    return filtered;
-  },
-
-  displayStringForOption: (option) {
-    return option == '__not_found__'
-        ? ''
-        : option;
-  },
-
-  onSelected: (String selection) {
-    if (selection == '__not_found__') return;
-
-    setState(() {
-      _selectedClientId = selection;
-    });
-  },
-
-  fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
-    // DO NOT override controller.text — allows normal typing
-
-    return TextFormField(
-      controller: controller,
-      focusNode: focusNode,
-      decoration: InputDecoration(
-        labelText: 'Client',
-        hintText: _clients.isEmpty
-            ? 'No clients available - Add one first'
-            : 'Select or type client name',
-        prefixIcon: const Icon(Icons.person, color: Color(0xFF6B7280)),
-        suffixIcon: const Icon(Icons.arrow_drop_down, color: Color(0xFF6B7280)),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF1E3A8A), width: 2),
-        ),
-      ),
-
-      onChanged: (value) {
-        final names = _clients.map((c) => c['name'] as String).toList();
-
-        if (names.contains(value)) {
-          setState(() => _selectedClientId = value);
-        } else {
-          setState(() => _selectedClientId = null);
-        }
-      },
-
-      validator: (value) {
-        final names = _clients.map((c) => c['name'] as String).toList();
-
-        if (value == null || value.trim().isEmpty) {
-          return 'Please select a client';
-        }
-        if (!names.contains(value.trim())) {
-          return 'Client not registered — add the client first';
-        }
-        return null;
-      },
-    );
-  },
-
-  optionsViewBuilder: (context, onSelected, options) {
-    return Align(
-      alignment: Alignment.topLeft,
-      child: Material(
-        elevation: 4,
-        borderRadius: BorderRadius.circular(12),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxHeight: 240, minWidth: 300),
-          child: Scrollbar(
-            thumbVisibility: true,
-            child: ListView.builder(
-              padding: EdgeInsets.zero,
-              itemCount: options.length,
-              itemBuilder: (context, index) {
-                final option = options.elementAt(index);
-
-                // Special not-found tile
-                if (option == '__not_found__') {
-                  return ListTile(
-                    title: const Text(
-                      'Client not registered. Please add the client first',
-                      style: TextStyle(color: Colors.redAccent),
-                    ),
-                    onTap: () {}, // disabled
-                  );
-                }
-
-                return ListTile(
-                  title: Text(option),
-                  onTap: () => onSelected(option),
-                );
-              },
-            ),
-          ),
-        ),
-      ),
-    );
-  },
-)
-
-
-                    ],
-                  ),
-
-
 
                       const SizedBox(height: 16),
 
@@ -456,17 +512,25 @@ Autocomplete<String>(
                         decoration: InputDecoration(
                           labelText: 'Case Number',
                           hintText: 'e.g., CR 123/2024',
-                          prefixIcon: const Icon(Icons.numbers, color: Color(0xFF6B7280)),
+                          prefixIcon: const Icon(
+                            Icons.numbers,
+                            color: Color(0xFF6B7280),
+                          ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                            borderSide: const BorderSide(
+                              color: Color(0xFFE5E7EB),
+                            ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFF1E3A8A), width: 2),
+                            borderSide: const BorderSide(
+                              color: Color(0xFF1E3A8A),
+                              width: 2,
+                            ),
                           ),
                         ),
                         validator: (value) {
@@ -493,39 +557,51 @@ Autocomplete<String>(
                         onSelected: (String selection) {
                           _courtNameController.text = selection;
                         },
-                        fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
-                          _courtNameController.text = controller.text;
-                          return TextFormField(
-                            controller: controller,
-                            focusNode: focusNode,
-                            decoration: InputDecoration(
-                              labelText: 'Court Name',
-                              hintText: 'Select or type court name',
-                              prefixIcon: const Icon(Icons.location_city, color: Color(0xFF6B7280)),
-                              suffixIcon: const Icon(Icons.arrow_drop_down, color: Color(0xFF6B7280)),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: Color(0xFF1E3A8A), width: 2),
-                              ),
-                            ),
-                            onChanged: (value) {
-                              _courtNameController.text = value;
+                        fieldViewBuilder:
+                            (context, controller, focusNode, onFieldSubmitted) {
+                              _courtNameController.text = controller.text;
+                              return TextFormField(
+                                controller: controller,
+                                focusNode: focusNode,
+                                decoration: InputDecoration(
+                                  labelText: 'Court Name',
+                                  hintText: 'Select or type court name',
+                                  prefixIcon: const Icon(
+                                    Icons.location_city,
+                                    color: Color(0xFF6B7280),
+                                  ),
+                                  suffixIcon: const Icon(
+                                    Icons.arrow_drop_down,
+                                    color: Color(0xFF6B7280),
+                                  ),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xFFE5E7EB),
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xFF1E3A8A),
+                                      width: 2,
+                                    ),
+                                  ),
+                                ),
+                                onChanged: (value) {
+                                  _courtNameController.text = value;
+                                },
+                                validator: (value) {
+                                  if (value == null || value.trim().isEmpty) {
+                                    return 'Please enter court name';
+                                  }
+                                  return null;
+                                },
+                              );
                             },
-                            validator: (value) {
-                              if (value == null || value.trim().isEmpty) {
-                                return 'Please enter court name';
-                              }
-                              return null;
-                            },
-                          );
-                        },
                         optionsViewBuilder: (context, onSelected, options) {
                           return Align(
                             alignment: Alignment.topLeft,
@@ -533,7 +609,9 @@ Autocomplete<String>(
                               elevation: 4,
                               borderRadius: BorderRadius.circular(12),
                               child: ConstrainedBox(
-                                constraints: const BoxConstraints(maxHeight: 200),
+                                constraints: const BoxConstraints(
+                                  maxHeight: 200,
+                                ),
                                 child: ListView.builder(
                                   padding: EdgeInsets.zero,
                                   shrinkWrap: true,
@@ -562,21 +640,26 @@ Autocomplete<String>(
                               child: Container(
                                 padding: const EdgeInsets.all(16),
                                 decoration: BoxDecoration(
-                                  border: Border.all(color: const Color(0xFFE5E7EB)),
+                                  border: Border.all(
+                                    color: const Color(0xFFE5E7EB),
+                                  ),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.calendar_today, 
-                                      color: Color(0xFF6B7280), size: 20),
+                                    const Icon(
+                                      Icons.calendar_today,
+                                      color: Color(0xFF6B7280),
+                                      size: 20,
+                                    ),
                                     const SizedBox(width: 12),
                                     Text(
                                       _formatDate(_selectedCourtDate),
                                       style: TextStyle(
                                         fontSize: 14,
-                                        color: _selectedCourtDate == null 
-                                          ? const Color(0xFF9CA3AF)
-                                          : const Color(0xFF1F2937),
+                                        color: _selectedCourtDate == null
+                                            ? const Color(0xFF9CA3AF)
+                                            : const Color(0xFF1F2937),
                                       ),
                                     ),
                                   ],
@@ -591,21 +674,26 @@ Autocomplete<String>(
                               child: Container(
                                 padding: const EdgeInsets.all(16),
                                 decoration: BoxDecoration(
-                                  border: Border.all(color: const Color(0xFFE5E7EB)),
+                                  border: Border.all(
+                                    color: const Color(0xFFE5E7EB),
+                                  ),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.access_time, 
-                                      color: Color(0xFF6B7280), size: 20),
+                                    const Icon(
+                                      Icons.access_time,
+                                      color: Color(0xFF6B7280),
+                                      size: 20,
+                                    ),
                                     const SizedBox(width: 12),
                                     Text(
                                       _formatTime(_selectedTime),
                                       style: TextStyle(
                                         fontSize: 14,
-                                        color: _selectedTime == null 
-                                          ? const Color(0xFF9CA3AF)
-                                          : const Color(0xFF1F2937),
+                                        color: _selectedTime == null
+                                            ? const Color(0xFF9CA3AF)
+                                            : const Color(0xFF1F2937),
                                       ),
                                     ),
                                   ],
@@ -624,18 +712,25 @@ Autocomplete<String>(
                         decoration: InputDecoration(
                           labelText: 'Description (Optional)',
                           hintText: 'Add any additional notes...',
-                          prefixIcon: const Icon(Icons.note_alt_outlined, 
-                            color: Color(0xFF6B7280)),
+                          prefixIcon: const Icon(
+                            Icons.note_alt_outlined,
+                            color: Color(0xFF6B7280),
+                          ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                            borderSide: const BorderSide(
+                              color: Color(0xFFE5E7EB),
+                            ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFF1E3A8A), width: 2),
+                            borderSide: const BorderSide(
+                              color: Color(0xFF1E3A8A),
+                              width: 2,
+                            ),
                           ),
                         ),
                       ),
@@ -660,7 +755,9 @@ Autocomplete<String>(
                                   width: 20,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white,
+                                    ),
                                   ),
                                 )
                               : const Text(
