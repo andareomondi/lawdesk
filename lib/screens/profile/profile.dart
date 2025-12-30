@@ -4,6 +4,9 @@ import '../../config/supabase_config.dart';
 import '../../providers/auth_provider.dart';
 import 'update_profile.dart';
 import 'package:lawdesk/widgets/delightful_toast.dart';
+import 'package:lawdesk/services/connectivity_service.dart';
+import 'package:lawdesk/services/offline_storage_service.dart';
+import 'package:lawdesk/widgets/offline_indicator.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -24,6 +27,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   String _userId = '';
   String _memberSince = '';
   bool _isLoading = true;
+  bool _isOfflineMode = false;
 
   late AnimationController _shimmerController;
   late Animation<double> _shimmerAnimation;
@@ -32,6 +36,20 @@ class _ProfileScreenState extends State<ProfileScreen>
   void initState() {
     super.initState();
     _setupShimmerAnimation();
+    _isOfflineMode = !connectivityService.isConnected;
+
+    // Listen to connectivity changes
+    connectivityService.connectionStream.listen((isConnected) {
+      if (mounted) {
+        setState(() {
+          _isOfflineMode = !isConnected;
+        });
+
+        if (isConnected) {
+          _loadUserProfile();
+        }
+      }
+    });
     _loadUserProfile();
   }
 
@@ -65,12 +83,38 @@ class _ProfileScreenState extends State<ProfileScreen>
           _memberSince = _formatDate(user.createdAt);
         });
 
+        // Check if offline
+        if (_isOfflineMode) {
+          final cachedProfile = await offlineStorage.getCachedProfile();
+          if (cachedProfile != null) {
+            if (mounted) {
+              setState(() {
+                _fullName = cachedProfile['full_name'] ?? '';
+                _username = cachedProfile['username'] ?? '';
+                _gender = cachedProfile['gender'] ?? '';
+                _lskNumber = cachedProfile['lsk_number'] ?? '';
+                _isLoading = false;
+              });
+            }
+          } else {
+            if (mounted) {
+              setState(() {
+                _isLoading = false;
+              });
+            }
+          }
+          return;
+        }
+
         try {
           final profile = await _supabase
               .from('profiles')
               .select()
               .eq('id', user.id)
               .single();
+
+          // Cache the profile data
+          await offlineStorage.cacheProfile(profile);
 
           if (mounted) {
             setState(() {
@@ -82,8 +126,17 @@ class _ProfileScreenState extends State<ProfileScreen>
             });
           }
         } catch (e) {
-
-          if (mounted) {
+          // Try to load from cache on error
+          final cachedProfile = await offlineStorage.getCachedProfile();
+          if (cachedProfile != null && mounted) {
+            setState(() {
+              _fullName = cachedProfile['full_name'] ?? '';
+              _username = cachedProfile['username'] ?? '';
+              _gender = cachedProfile['gender'] ?? '';
+              _lskNumber = cachedProfile['lsk_number'] ?? '';
+              _isLoading = false;
+            });
+          } else if (mounted) {
             setState(() {
               _fullName = user.userMetadata?['full_name'] ?? '';
               _username = user.userMetadata?['username'] ?? '';
@@ -93,7 +146,6 @@ class _ProfileScreenState extends State<ProfileScreen>
         }
       }
     } catch (e) {
-
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -244,6 +296,8 @@ class _ProfileScreenState extends State<ProfileScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (_isOfflineMode) const OfflineDataIndicator(),
+                if (_isOfflineMode) const SizedBox(height: 16),
                 _buildSectionTitle('Personal Information'),
                 const SizedBox(height: 12),
                 _buildInfoCard([
