@@ -37,6 +37,8 @@ dependencies:
   image_picker: ^1.2.1
   flutter_pdfview: ^1.4.3
   photo_view: ^0.15.0
+  timezone: ^0.10.1
+  flutter_local_notifications: ^19.5.0
 
 dev_dependencies:
   flutter_test:
