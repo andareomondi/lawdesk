@@ -16,6 +16,7 @@ class CalendarPage extends StatefulWidget {
 
 class _CalendarPageState extends State<CalendarPage> {
   final _supabase = Supabase.instance.client;
+  final ScrollController _scrollController = ScrollController();
 
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
@@ -50,6 +51,12 @@ class _CalendarPageState extends State<CalendarPage> {
     });
 
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadData() async {
@@ -386,14 +393,197 @@ class _CalendarPageState extends State<CalendarPage> {
   }
 
   Widget _buildCalendarView() {
-    return Column(
-      children: [
-        if (_isOfflineMode) const OfflineDataIndicator(),
-        _buildCalendarHeader(),
-        _buildCalendarGrid(),
-        const SizedBox(height: 16),
-        Expanded(child: _buildSelectedDayItems()),
+    return CustomScrollView(
+      controller: _scrollController,
+      slivers: [
+        // Show offline indicator when offline
+        if (_isOfflineMode)
+          const SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.all(16.0),
+              child: OfflineDataIndicator(),
+            ),
+          ),
+        // Collapsible Calendar Header
+        SliverAppBar(
+          expandedHeight: 420,
+          collapsedHeight: 80,
+          pinned: true,
+          backgroundColor: Colors.white,
+          automaticallyImplyLeading: false,
+          flexibleSpace: LayoutBuilder(
+            builder: (context, constraints) {
+              // Calculate if we're collapsed or expanded
+              final isCollapsed = constraints.maxHeight <= 100;
+
+              return FlexibleSpaceBar(
+                background: Column(
+                  children: [_buildCalendarHeader(), _buildCalendarGrid()],
+                ),
+                titlePadding: EdgeInsets.zero,
+                title: isCollapsed
+                    ? Container(
+                        height: 80,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          border: Border(
+                            bottom: BorderSide(
+                              color: Color(0xFFE5E7EB),
+                              width: 1,
+                            ),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            IconButton(
+                              icon: const Icon(
+                                Icons.chevron_left,
+                                color: Color(0xFF1F2937),
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _focusedDay = DateTime(
+                                    _focusedDay.year,
+                                    _focusedDay.month - 1,
+                                  );
+                                });
+                              },
+                            ),
+                            Text(
+                              DateFormat('MMMM yyyy').format(_focusedDay),
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF1F2937),
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(
+                                Icons.chevron_right,
+                                color: Color(0xFF1F2937),
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _focusedDay = DateTime(
+                                    _focusedDay.year,
+                                    _focusedDay.month + 1,
+                                  );
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                      )
+                    : null,
+              );
+            },
+          ),
+        ),
+        // Selected Day Items List
+        SliverToBoxAdapter(child: _buildSelectedDayItemsSliver()),
       ],
+    );
+  }
+
+  Widget _buildSelectedDayItemsSliver() {
+    if (_selectedDay == null) {
+      return const Padding(
+        padding: EdgeInsets.all(32.0),
+        child: Center(
+          child: Text(
+            'Select a day to view schedule',
+            style: TextStyle(color: Color(0xFF6B7280), fontSize: 14),
+          ),
+        ),
+      );
+    }
+
+    final cases = _getCasesForDay(_selectedDay!);
+    final events = _getEventsForDay(_selectedDay!);
+
+    if (cases.isEmpty && events.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.event_available_outlined,
+                size: 48,
+                color: Colors.grey[400],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Nothing scheduled on ${DateFormat('MMMM d, yyyy').format(_selectedDay!)}',
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            DateFormat('EEEE, MMMM d, yyyy').format(_selectedDay!),
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1F2937),
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (cases.isNotEmpty) ...[
+            const Padding(
+              padding: EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Icon(Icons.gavel, size: 18, color: Color(0xFF1E3A8A)),
+                  SizedBox(width: 8),
+                  Text(
+                    'Court Cases',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1E3A8A),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            ...cases.map((case_) => _buildCaseCard(case_)),
+            const SizedBox(height: 16),
+          ],
+          if (events.isNotEmpty) ...[
+            const Padding(
+              padding: EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Icon(Icons.event_note, size: 18, color: Color(0xFF1E3A8A)),
+                  SizedBox(width: 8),
+                  Text(
+                    'Events',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1E3A8A),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            ...events.map((event) => _buildEventCard(event)),
+          ],
+          const SizedBox(height: 80),
+        ],
+      ),
     );
   }
 
