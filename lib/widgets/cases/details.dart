@@ -6,6 +6,7 @@ import 'package:lawdesk/widgets/delightful_toast.dart';
 import 'package:lawdesk/services/connectivity_service.dart';
 import 'package:lawdesk/services/offline_storage_service.dart';
 import 'package:lawdesk/utils/offline_action_helper.dart';
+import 'package:lawdesk/services/notification_service.dart';
 
 class CaseDetailsPage extends StatefulWidget {
   final String caseId;
@@ -562,14 +563,6 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
       );
       return;
     }
-    if (_nameController.text.trim().isEmpty) {
-      AppToast.showError(
-        context: context,
-        title: 'Validation Error',
-        message: 'Case name cannot be empty',
-      );
-      return;
-    }
 
     setState(() => _isLoading = true);
 
@@ -592,6 +585,21 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
             'time': timeString,
           })
           .eq('id', widget.caseId);
+
+      // Schedule notifications if court date is set
+      if (_selectedDate != null) {
+        await notificationService.scheduleCourtDateNotifications(
+          caseId: int.parse(widget.caseId),
+          courtDate: _selectedDate!,
+          caseName: _nameController.text.trim(),
+          courtTime: _selectedTime,
+        );
+      } else {
+        // Cancel notifications if court date was removed
+        await notificationService.cancelNotificationsForCase(
+          int.parse(widget.caseId),
+        );
+      }
 
       await _loadCaseDetails();
 
@@ -651,6 +659,9 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
     setState(() => _isDeleting = true);
 
     try {
+      await notificationService.cancelNotificationsForCase(
+        int.parse(widget.caseId),
+      );
       await _supabase.from('cases').delete().eq('id', widget.caseId);
 
       if (mounted) {
