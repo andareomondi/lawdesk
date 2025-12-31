@@ -20,7 +20,7 @@ class NotificationService {
     try {
       // Initialize timezone
       tz.initializeTimeZones();
-      
+
       // Set local location to Kenya timezone
       final String timeZoneName = 'Africa/Nairobi';
       tz.setLocalLocation(tz.getLocation(timeZoneName));
@@ -65,7 +65,7 @@ class NotificationService {
   void _onNotificationTapped(NotificationResponse response) {
     // Handle notification tap - you can add navigation logic here
     print('Notification tapped: ${response.payload}');
-    
+
     // Example: Parse payload and navigate to specific case/event
     // if (response.payload != null) {
     //   if (response.payload!.startsWith('case_')) {
@@ -109,20 +109,21 @@ class NotificationService {
 
     const AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
-      'court_reminders',
-      'Court Date Reminders',
-      channelDescription: 'Notifications for upcoming court dates',
-      importance: Importance.high,
-      priority: Priority.high,
-      icon: '@mipmap/ic_launcher',
-      color: Color(0xFF1E3A8A), // Your app's primary color
-      enableLights: true,
-      enableVibration: true,
-      playSound: true,
-    );
+          'court_reminders',
+          'Court Date Reminders',
+          channelDescription: 'Notifications for upcoming court dates',
+          importance: Importance.high,
+          priority: Priority.high,
+          icon: '@mipmap/ic_launcher',
+          color: Color(0xFF1E3A8A), // Your app's primary color
+          enableLights: true,
+          enableVibration: true,
+          playSound: true,
+        );
 
-    const NotificationDetails notificationDetails =
-        NotificationDetails(android: androidDetails);
+    const NotificationDetails notificationDetails = NotificationDetails(
+      android: androidDetails,
+    );
 
     int scheduledCount = 0;
 
@@ -183,7 +184,7 @@ class NotificationService {
     // ========== 3. Schedule day of (2 hours before court time or 9 AM) ==========
     final dayOfHour = courtTime != null ? courtTime.hour : 9;
     final dayOfMinute = courtTime != null ? courtTime.minute : 0;
-    
+
     DateTime dayOf = DateTime(
       courtDate.year,
       courtDate.month,
@@ -217,14 +218,18 @@ class NotificationService {
       }
     }
 
-    print('✓ Court notifications scheduled: $caseName ($scheduledCount reminders)');
+    print(
+      '✓ Court notifications scheduled: $caseName ($scheduledCount reminders)',
+    );
   }
 
   /// Cancel all notifications for a specific case
   Future<void> cancelNotificationsForCase(int caseId) async {
     try {
       await _notifications.cancel(_getCourtNotificationId(caseId, 0)); // 7 days
-      await _notifications.cancel(_getCourtNotificationId(caseId, 1)); // 24 hours
+      await _notifications.cancel(
+        _getCourtNotificationId(caseId, 1),
+      ); // 24 hours
       await _notifications.cancel(_getCourtNotificationId(caseId, 2)); // Day of
       print('✓ Court notifications cancelled for case ID: $caseId');
     } catch (e) {
@@ -236,6 +241,27 @@ class NotificationService {
   /// Using prime numbers to avoid collision with event IDs
   int _getCourtNotificationId(int caseId, int type) {
     return (caseId * 3) + type;
+  }
+
+  Future<void> cancelAllNotificationsForCase({
+    required int caseId,
+    required List<int> eventIds,
+  }) async {
+    try {
+      // Cancel court date notifications
+      await cancelNotificationsForCase(caseId);
+
+      // Cancel all event notifications for this case
+      for (final eventId in eventIds) {
+        await cancelNotificationsForEvent(eventId);
+      }
+
+      print(
+        '✓ All notifications cancelled for case ID: $caseId and ${eventIds.length} events',
+      );
+    } catch (e) {
+      print('✗ Failed to cancel all case notifications: $e');
+    }
   }
 
   // ============================================================================
@@ -269,20 +295,21 @@ class NotificationService {
 
     const AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
-      'event_reminders',
-      'Event Reminders',
-      channelDescription: 'Notifications for upcoming case events',
-      importance: Importance.high,
-      priority: Priority.high,
-      icon: '@mipmap/ic_launcher',
-      color: Color(0xFF10B981), // Green for events
-      enableLights: true,
-      enableVibration: true,
-      playSound: true,
-    );
+          'event_reminders',
+          'Event Reminders',
+          channelDescription: 'Notifications for upcoming case events',
+          importance: Importance.high,
+          priority: Priority.high,
+          icon: '@mipmap/ic_launcher',
+          color: Color(0xFF10B981), // Green for events
+          enableLights: true,
+          enableVibration: true,
+          playSound: true,
+        );
 
-    const NotificationDetails notificationDetails =
-        NotificationDetails(android: androidDetails);
+    const NotificationDetails notificationDetails = NotificationDetails(
+      android: androidDetails,
+    );
 
     int scheduledCount = 0;
 
@@ -316,7 +343,7 @@ class NotificationService {
     // ========== 2. Schedule 2 hours before (or day of at 9 AM if no time) ==========
     final eventHour = eventTime != null ? eventTime.hour : 9;
     final eventMinute = eventTime != null ? eventTime.minute : 0;
-    
+
     DateTime reminderTime = DateTime(
       eventDate.year,
       eventDate.month,
@@ -350,14 +377,20 @@ class NotificationService {
       }
     }
 
-    print('✓ Event notifications scheduled: $eventAgenda ($scheduledCount reminders)');
+    print(
+      '✓ Event notifications scheduled: $eventAgenda ($scheduledCount reminders)',
+    );
   }
 
   /// Cancel all notifications for a specific event
   Future<void> cancelNotificationsForEvent(int eventId) async {
     try {
-      await _notifications.cancel(_getEventNotificationId(eventId, 0)); // 24 hours
-      await _notifications.cancel(_getEventNotificationId(eventId, 1)); // 2 hours before
+      await _notifications.cancel(
+        _getEventNotificationId(eventId, 0),
+      ); // 24 hours
+      await _notifications.cancel(
+        _getEventNotificationId(eventId, 1),
+      ); // 2 hours before
       print('✓ Event notifications cancelled for event ID: $eventId');
     } catch (e) {
       print('✗ Failed to cancel event notifications: $e');
@@ -402,14 +435,24 @@ class NotificationService {
   /// Format date for display in notifications
   String _formatDate(DateTime date) {
     final months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
-    
+
     final day = date.day;
     final month = months[date.month - 1];
     final year = date.year;
-    
+
     return '$day $month $year';
   }
 

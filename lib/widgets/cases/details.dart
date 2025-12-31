@@ -633,12 +633,13 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
     )) {
       return;
     }
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Case'),
         content: const Text(
-          'Are you sure you want to delete this case? This action cannot be undone.',
+          'Are you sure you want to delete this case? This action cannot be undone. All events and notifications associated with this case will also be deleted.',
         ),
         actions: [
           TextButton(
@@ -659,13 +660,28 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
     setState(() => _isDeleting = true);
 
     try {
-      await notificationService.cancelNotificationsForCase(
-        int.parse(widget.caseId),
+      // 1. Get all event IDs for this case BEFORE deleting
+      final eventsResponse = await _supabase
+          .from('events')
+          .select('id')
+          .eq('case', int.parse(widget.caseId));
+
+      final eventIds = List<int>.from(
+        eventsResponse.map((event) => event['id'] as int),
       );
+
+      print('Found ${eventIds.length} events to cancel notifications for');
+
+      // 2. Cancel all notifications (case + events) BEFORE deleting from database
+      await notificationService.cancelAllNotificationsForCase(
+        caseId: int.parse(widget.caseId),
+        eventIds: eventIds,
+      );
+
+      // 3. Delete the case from database (events will cascade delete automatically)
       await _supabase.from('cases').delete().eq('id', widget.caseId);
 
       if (mounted) {
-        //app toast success
         AppToast.showSuccess(
           context: context,
           title: 'Success',
@@ -690,7 +706,7 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
 
         AppToast.showError(
           context: context,
-          title: 'Error occured',
+          title: 'Error occurred',
           message: errorMessage,
         );
       }
@@ -1536,9 +1552,10 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
     if (confirmed != true) return;
 
     try {
-      // Cancel notifications first
+      // 1. Cancel notifications FIRST
       await notificationService.cancelNotificationsForEvent(eventId);
 
+      // 2. Delete from database
       await _supabase.from('events').delete().eq('id', eventId);
 
       await _loadEvents();
