@@ -126,12 +126,12 @@ class NotificationService {
 
     int scheduledCount = 0;
 
-    // ========== 1. Schedule 7 days before (at 9 AM) ==========
+    // ========== 1. Schedule 7 days before (at 7 AM) ==========
     final sevenDaysBefore = DateTime(
       courtDate.year,
       courtDate.month,
       courtDate.day,
-      9, // 9 AM
+      7, // 7 AM
       0,
     ).subtract(const Duration(days: 7));
 
@@ -153,12 +153,12 @@ class NotificationService {
       }
     }
 
-    // ========== 2. Schedule 24 hours before (at 9 AM) ==========
+    // ========== 2. Schedule 24 hours before (at 7 AM) ==========
     final oneDayBefore = DateTime(
       courtDate.year,
       courtDate.month,
       courtDate.day,
-      9, // 9 AM
+      7, // 9 AM
       0,
     ).subtract(const Duration(days: 1));
 
@@ -286,12 +286,12 @@ class NotificationService {
 
     int scheduledCount = 0;
 
-    // ========== 1. Schedule 24 hours before (at 9 AM) ==========
+    // ========== 1. Schedule 24 hours before (at 7 AM) ==========
     final oneDayBefore = DateTime(
       eventDate.year,
       eventDate.month,
       eventDate.day,
-      9, // 9 AM
+      7, // 7 AM
       0,
     ).subtract(const Duration(days: 1));
 
