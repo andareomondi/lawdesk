@@ -91,14 +91,25 @@ class NotificationService {
     }
 
     try {
-      final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
-      // Scheduled for 10 seconds later
-      final tz.TZDateTime scheduledDate = now.add(const Duration(seconds: 10));
+      // 1. Get current time
+      final DateTime now = DateTime.now();
+
+      // 2. Create a future date (10 seconds from now)
+      final DateTime futureDate = now.add(const Duration(seconds: 10));
+
+      // 3. FORCE parsing into TZDateTime as per the Stack Overflow solution
+      // This ensures the timezone matches exactly what the plugin expects
+      final tz.TZDateTime scheduledDate = tz.TZDateTime.parse(
+        tz.local,
+        futureDate.toString().replaceAll(
+          'Z',
+          '',
+        ), // remove Z if present to ensure local parse
+      );
 
       print('Current time: $now');
       print('Scheduling test notification for: $scheduledDate');
 
-      // PAY ATTENTION TO THE BRACKETS BELOW
       await _notifications.zonedSchedule(
         id,
         title,
@@ -113,18 +124,24 @@ class NotificationService {
             priority: Priority.high,
           ),
         ),
-        // These are OUTSIDE 'NotificationDetails', but INSIDE 'zonedSchedule'
+        // Note: androidScheduleMode replaces androidAllowWhileIdle in newer versions (v10+)
+        // If your version is older, swap this line back to: androidAllowWhileIdle: true,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+
       );
 
       print('✓ Test notification scheduled successfully');
 
-      // Verify it was scheduled
+      // Verify
       final pending = await _notifications.pendingNotificationRequests();
       print('Pending notifications count: ${pending.length}');
     } catch (e) {
       print('✗ Failed to schedule test notification: $e');
-      print('Stack trace: ${StackTrace.current}');
+      if (e.toString().contains("Must be a date in the future")) {
+        print(
+          "⚠ Error: The calculated date was in the past. Try increasing the duration.",
+        );
+      }
     }
   }
 
