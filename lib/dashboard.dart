@@ -120,8 +120,6 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     super.dispose();
   }
 
-
-
   Future<void> _checkCurrentPatch() async {
     try {
       final currentPatch = await _updater.readCurrentPatch();
@@ -674,16 +672,23 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
                     _buildUpcomingDatesSection(context),
                     const SizedBox(height: 80),
                     // button to trigger the instant notification for testing
-                    ElevatedButton(
-                      onPressed: () {
-                        NotificationService.showInstantNotification(
-                        id: 1,
-                          title: 'Test Notification',
-                          body: 'This is a test notification from LawDesk.',
-                        );
-                      },
-                      child: const Text('Test Notification'),
-                    ),
+                    // ElevatedButton(
+                    //   onPressed: () {
+                    //     notificationService.scheduleTestNotification(
+                    //       id: 0,
+                    //       title: "this is a scheduled",
+                    //       body: "notification for testing scheduled one",
+                    //
+                    //     );
+                    //     print('Test notification scheduled');
+                    //     // notificationService.showInstantNotification(
+                    //     //   id: 1,
+                    //     //   title: 'Test Notification',
+                    //     //   body: 'This is a test notification from LawDesk.',
+                    //     // );
+                    //   },
+                    //   child: const Text('Test Notification'),
+                    // ),
                   ],
                 ),
               ),

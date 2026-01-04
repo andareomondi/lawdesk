@@ -47,14 +47,13 @@ class NotificationService {
     }
   }
 
-
   // Show instant notification for testing
-  Future<void> _showInstantNotification({
+  Future<void> showInstantNotification({
     required int id,
     required String title,
     required String body,
   }) async {
-    await notificationPlugin.show(
+    await _notifications.show(
       id,
       title,
       body,
@@ -68,7 +67,35 @@ class NotificationService {
         ),
       ),
     );
-    })
+  }
+
+  // schedule notification for testing
+  Future<void> scheduleTestNotification({
+    required int id,
+    required String title,
+    required String body,
+  }) async {
+    tz.TZDateTime now = tz.TZDateTime.now(tz.local);
+    tz.TZDateTime scheduledDate = now.add(Duration(seconds: 3));
+    print('Scheduling test notification for: $scheduledDate');
+    await _notifications.zonedSchedule(
+      id,
+      title,
+      body,
+      scheduledDate,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'test_channel',
+          'Test Notifications',
+          channelDescription: 'Channel for test notifications',
+          importance: Importance.max,
+          priority: Priority.high,
+        ),
+      ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+    );
+    print('Test notificatin scheduled successfully');
+  }
 
   Future<void> _requestNotificationPermission() async {
     try {
