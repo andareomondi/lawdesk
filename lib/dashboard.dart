@@ -675,18 +675,18 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
                     ElevatedButton(
                       onPressed: () {
                         notificationService.cancelAllNotifications();
-                        notificationService.scheduleTestNotification(
-                          id: 345,
-                          title: "this is a scheduled",
-                          body: "notification for testing scheduled one",
-                          
-                        );
-                        print('Test notification scheduled');
-                        // notificationService.showInstantNotification(
-                        //   id: 1,
-                        //   title: 'Test Notification',
-                        //   body: 'This is a test notification from LawDesk.',
+                        // notificationService.scheduleTestNotification(
+                        //   id: 345,
+                        //   title: "this is a scheduled",
+                        //   body: "notification for testing scheduled one",
+                        //
                         // );
+                        print('Test notification scheduled');
+                        notificationService.showInstantNotification(
+                          id: 1,
+                          title: 'Test Notification',
+                          body: 'This is a test notification from LawDesk.',
+                        );
                       },
                       child: const Text('Test Notification'),
                     ),

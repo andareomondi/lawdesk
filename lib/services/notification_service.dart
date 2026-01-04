@@ -39,12 +39,22 @@ class NotificationService {
 
       // Request permission for Android 13+
       await _requestNotificationPermission();
+      await requestExactAlarmPermission();
 
       _isInitialized = true;
       print('✓ Notification service initialized successfully');
     } catch (e) {
       print('✗ Failed to initialize notification service: $e');
     }
+  }
+
+  Future<void> requestExactAlarmPermission() async {
+    print('Requesting exact alarm permission for Android');
+    await _notifications
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
+        ?.requestExactAlarmsPermission();
   }
 
   // Show instant notification for testing
@@ -81,13 +91,14 @@ class NotificationService {
     }
 
     try {
-      // Get current time in local timezone
       final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
-      final tz.TZDateTime scheduledDate = now.add(const Duration(seconds: 5));
-      
+      // Scheduled for 10 seconds later
+      final tz.TZDateTime scheduledDate = now.add(const Duration(seconds: 10));
+
       print('Current time: $now');
       print('Scheduling test notification for: $scheduledDate');
 
+      // PAY ATTENTION TO THE BRACKETS BELOW
       await _notifications.zonedSchedule(
         id,
         title,
@@ -102,11 +113,12 @@ class NotificationService {
             priority: Priority.high,
           ),
         ),
+        // These are OUTSIDE 'NotificationDetails', but INSIDE 'zonedSchedule'
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       );
-      
+
       print('✓ Test notification scheduled successfully');
-      
+
       // Verify it was scheduled
       final pending = await _notifications.pendingNotificationRequests();
       print('Pending notifications count: ${pending.length}');
@@ -127,7 +139,7 @@ class NotificationService {
           print('✗ Notification permission denied');
         }
       }
-      
+
       // Request schedule exact alarm permission for Android 12+
       if (await Permission.scheduleExactAlarm.isDenied) {
         final status = await Permission.scheduleExactAlarm.request();
