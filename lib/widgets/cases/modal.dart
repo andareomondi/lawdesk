@@ -227,6 +227,8 @@ class _AddCaseModalState extends State<AddCaseModal> {
         courtTime: _selectedTime,
       );
 
+
+
       if (mounted) {
         Navigator.pop(context);
         AppToast.showSuccess(

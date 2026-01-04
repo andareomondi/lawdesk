@@ -601,6 +601,7 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
         );
       }
 
+
       await _loadCaseDetails();
 
       setState(() {
