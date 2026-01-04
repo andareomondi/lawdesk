@@ -69,36 +69,56 @@ class NotificationService {
     );
   }
 
-  // schedule notification for testing
+  // schedule notification for testing - FIXED VERSION
   Future<void> scheduleTestNotification({
     required int id,
     required String title,
     required String body,
   }) async {
-    tz.TZDateTime now = tz.TZDateTime.now(tz.local);
-    tz.TZDateTime scheduledDate = now.add(Duration(seconds: 3));
-    print('Scheduling test notification for: $scheduledDate');
-    await _notifications.zonedSchedule(
-      id,
-      title,
-      body,
-      scheduledDate,
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'test_channel',
-          'Test Notifications',
-          channelDescription: 'Channel for test notifications',
-          importance: Importance.max,
-          priority: Priority.high,
+    if (!_isInitialized) {
+      print('✗ Notification service not initialized');
+      return;
+    }
+
+    try {
+      // Get current time in local timezone
+      final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
+      final tz.TZDateTime scheduledDate = now.add(const Duration(seconds: 5));
+      
+      print('Current time: $now');
+      print('Scheduling test notification for: $scheduledDate');
+
+      await _notifications.zonedSchedule(
+        id,
+        title,
+        body,
+        scheduledDate,
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'test_channel',
+            'Test Notifications',
+            channelDescription: 'Channel for test notifications',
+            importance: Importance.max,
+            priority: Priority.high,
+          ),
         ),
-      ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-    );
-    print('Test notificatin scheduled successfully');
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      );
+      
+      print('✓ Test notification scheduled successfully');
+      
+      // Verify it was scheduled
+      final pending = await _notifications.pendingNotificationRequests();
+      print('Pending notifications count: ${pending.length}');
+    } catch (e) {
+      print('✗ Failed to schedule test notification: $e');
+      print('Stack trace: ${StackTrace.current}');
+    }
   }
 
   Future<void> _requestNotificationPermission() async {
     try {
+      // Request notification permission
       if (await Permission.notification.isDenied) {
         final status = await Permission.notification.request();
         if (status.isGranted) {
@@ -107,36 +127,29 @@ class NotificationService {
           print('✗ Notification permission denied');
         }
       }
+      
+      // Request schedule exact alarm permission for Android 12+
+      if (await Permission.scheduleExactAlarm.isDenied) {
+        final status = await Permission.scheduleExactAlarm.request();
+        if (status.isGranted) {
+          print('✓ Schedule exact alarm permission granted');
+        } else {
+          print('✗ Schedule exact alarm permission denied');
+        }
+      }
     } catch (e) {
-      print('✗ Error requesting notification permission: $e');
+      print('✗ Error requesting permissions: $e');
     }
   }
 
   void _onNotificationTapped(NotificationResponse response) {
-    // Handle notification tap - you can add navigation logic here
     print('Notification tapped: ${response.payload}');
-
-    // Example: Parse payload and navigate to specific case/event
-    // if (response.payload != null) {
-    //   if (response.payload!.startsWith('case_')) {
-    //     final caseId = response.payload!.replaceFirst('case_', '');
-    //     // Navigate to case details
-    //   } else if (response.payload!.startsWith('event_')) {
-    //     final eventId = response.payload!.replaceFirst('event_', '');
-    //     // Navigate to event details
-    //   }
-    // }
   }
 
   // ============================================================================
   // COURT DATE NOTIFICATIONS
   // ============================================================================
 
-  /// Schedule notifications for a court date
-  /// Schedules 3 notifications:
-  /// 1. 7 days before at 9 AM
-  /// 2. 1 day before at 9 AM
-  /// 3. Day of, 2 hours before court time (or 9 AM if no time set)
   Future<void> scheduleCourtDateNotifications({
     required int caseId,
     required DateTime courtDate,
@@ -148,10 +161,8 @@ class NotificationService {
       return;
     }
 
-    // Cancel existing notifications for this case first
     await cancelNotificationsForCase(caseId);
 
-    // Don't schedule if date is in the past
     if (courtDate.isBefore(DateTime.now())) {
       print('⚠ Court date is in the past, skipping notification scheduling');
       return;
@@ -165,7 +176,7 @@ class NotificationService {
           importance: Importance.high,
           priority: Priority.high,
           icon: '@mipmap/ic_launcher',
-          color: Color(0xFF1E3A8A), // Your app's primary color
+          color: Color(0xFF1E3A8A),
           enableLights: true,
           enableVibration: true,
           playSound: true,
@@ -177,19 +188,19 @@ class NotificationService {
 
     int scheduledCount = 0;
 
-    // ========== 1. Schedule 7 days before (at 7 AM) ==========
+    // 7 days before at 7 AM
     final sevenDaysBefore = DateTime(
       courtDate.year,
       courtDate.month,
       courtDate.day,
-      7, // 7 AM
+      7,
       0,
     ).subtract(const Duration(days: 7));
 
     if (sevenDaysBefore.isAfter(DateTime.now())) {
       try {
         await _notifications.zonedSchedule(
-          _getCourtNotificationId(caseId, 0), // Unique ID
+          _getCourtNotificationId(caseId, 0),
           '⚖️ Court Date in 7 Days',
           '$caseName on ${_formatDate(courtDate)}',
           tz.TZDateTime.from(sevenDaysBefore, tz.local),
@@ -204,12 +215,12 @@ class NotificationService {
       }
     }
 
-    // ========== 2. Schedule 24 hours before (at 7 AM) ==========
+    // 24 hours before at 7 AM
     final oneDayBefore = DateTime(
       courtDate.year,
       courtDate.month,
       courtDate.day,
-      7, // 9 AM
+      7,
       0,
     ).subtract(const Duration(days: 1));
 
@@ -231,7 +242,7 @@ class NotificationService {
       }
     }
 
-    // ========== 3. Schedule day of (2 hours before court time or 9 AM) ==========
+    // Day of (2 hours before or 9 AM)
     final dayOfHour = courtTime != null ? courtTime.hour : 9;
     final dayOfMinute = courtTime != null ? courtTime.minute : 0;
 
@@ -243,7 +254,6 @@ class NotificationService {
       dayOfMinute,
     );
 
-    // If court time is set, schedule 2 hours before
     if (courtTime != null) {
       dayOf = dayOf.subtract(const Duration(hours: 2));
     }
@@ -273,22 +283,17 @@ class NotificationService {
     );
   }
 
-  /// Cancel all notifications for a specific case
   Future<void> cancelNotificationsForCase(int caseId) async {
     try {
-      await _notifications.cancel(_getCourtNotificationId(caseId, 0)); // 7 days
-      await _notifications.cancel(
-        _getCourtNotificationId(caseId, 1),
-      ); // 24 hours
-      await _notifications.cancel(_getCourtNotificationId(caseId, 2)); // Day of
+      await _notifications.cancel(_getCourtNotificationId(caseId, 0));
+      await _notifications.cancel(_getCourtNotificationId(caseId, 1));
+      await _notifications.cancel(_getCourtNotificationId(caseId, 2));
       print('✓ Court notifications cancelled for case ID: $caseId');
     } catch (e) {
       print('✗ Failed to cancel court notifications: $e');
     }
   }
 
-  /// Generate unique notification ID for court dates
-  /// Using prime numbers to avoid collision with event IDs
   int _getCourtNotificationId(int caseId, int type) {
     return (caseId * 3) + type;
   }
@@ -298,10 +303,8 @@ class NotificationService {
     required List<int> eventIds,
   }) async {
     try {
-      // Cancel court date notifications
       await cancelNotificationsForCase(caseId);
 
-      // Cancel all event notifications for this case
       for (final eventId in eventIds) {
         await cancelNotificationsForEvent(eventId);
       }
@@ -318,10 +321,6 @@ class NotificationService {
   // EVENT NOTIFICATIONS
   // ============================================================================
 
-  /// Schedule notifications for an event
-  /// Schedules 2 notifications:
-  /// 1. 24 hours before at 9 AM
-  /// 2. 2 hours before event time (or 9 AM if no time set)
   Future<void> scheduleEventNotifications({
     required int eventId,
     required DateTime eventDate,
@@ -334,10 +333,8 @@ class NotificationService {
       return;
     }
 
-    // Cancel existing notifications for this event first
     await cancelNotificationsForEvent(eventId);
 
-    // Don't schedule if date is in the past
     if (eventDate.isBefore(DateTime.now())) {
       print('⚠ Event date is in the past, skipping notification scheduling');
       return;
@@ -351,7 +348,7 @@ class NotificationService {
           importance: Importance.high,
           priority: Priority.high,
           icon: '@mipmap/ic_launcher',
-          color: Color(0xFF10B981), // Green for events
+          color: Color(0xFF10B981),
           enableLights: true,
           enableVibration: true,
           playSound: true,
@@ -363,12 +360,12 @@ class NotificationService {
 
     int scheduledCount = 0;
 
-    // ========== 1. Schedule 24 hours before (at 7 AM) ==========
+    // 24 hours before at 7 AM
     final oneDayBefore = DateTime(
       eventDate.year,
       eventDate.month,
       eventDate.day,
-      7, // 7 AM
+      7,
       0,
     ).subtract(const Duration(days: 1));
 
@@ -390,7 +387,7 @@ class NotificationService {
       }
     }
 
-    // ========== 2. Schedule 2 hours before (or day of at 9 AM if no time) ==========
+    // 2 hours before (or 9 AM if no time)
     final eventHour = eventTime != null ? eventTime.hour : 9;
     final eventMinute = eventTime != null ? eventTime.minute : 0;
 
@@ -402,7 +399,6 @@ class NotificationService {
       eventMinute,
     );
 
-    // If event time is set, notify 2 hours before
     if (eventTime != null) {
       reminderTime = reminderTime.subtract(const Duration(hours: 2));
     }
@@ -432,32 +428,24 @@ class NotificationService {
     );
   }
 
-  /// Cancel all notifications for a specific event
   Future<void> cancelNotificationsForEvent(int eventId) async {
     try {
-      await _notifications.cancel(
-        _getEventNotificationId(eventId, 0),
-      ); // 24 hours
-      await _notifications.cancel(
-        _getEventNotificationId(eventId, 1),
-      ); // 2 hours before
+      await _notifications.cancel(_getEventNotificationId(eventId, 0));
+      await _notifications.cancel(_getEventNotificationId(eventId, 1));
       print('✓ Event notifications cancelled for event ID: $eventId');
     } catch (e) {
       print('✗ Failed to cancel event notifications: $e');
     }
   }
 
-  /// Generate unique notification ID for events
-  /// Using different multiplier (prime number) to avoid collision with court dates
   int _getEventNotificationId(int eventId, int type) {
-    return (eventId * 7) + type + 100000; // Offset by 100000 to avoid collision
+    return (eventId * 7) + type + 100000;
   }
 
   // ============================================================================
   // UTILITY METHODS
   // ============================================================================
 
-  /// Cancel all notifications (court dates and events)
   Future<void> cancelAllNotifications() async {
     try {
       await _notifications.cancelAll();
@@ -467,7 +455,6 @@ class NotificationService {
     }
   }
 
-  /// Get list of pending notifications (for debugging)
   Future<List<PendingNotificationRequest>> getPendingNotifications() async {
     try {
       final pending = await _notifications.pendingNotificationRequests();
@@ -482,7 +469,6 @@ class NotificationService {
     }
   }
 
-  /// Format date for display in notifications
   String _formatDate(DateTime date) {
     final months = [
       'Jan',
@@ -506,7 +492,6 @@ class NotificationService {
     return '$day $month $year';
   }
 
-  /// Format time for display in notifications
   String _formatTime(TimeOfDay time) {
     final hour = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
     final minute = time.minute.toString().padLeft(2, '0');
@@ -514,17 +499,14 @@ class NotificationService {
     return '$hour:$minute $period';
   }
 
-  /// Check if notification permissions are granted
   Future<bool> hasNotificationPermission() async {
     final status = await Permission.notification.status;
     return status.isGranted;
   }
 
-  /// Open app settings for notification permissions
   Future<void> openNotificationSettings() async {
     await openAppSettings();
   }
 }
 
-// Global instance
 final notificationService = NotificationService();

@@ -670,25 +670,26 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
                         : StatsSection(key: _statsKey),
                     const SizedBox(height: 24),
                     _buildUpcomingDatesSection(context),
-                    const SizedBox(height: 80),
+                    // const SizedBox(height: 80),
                     // button to trigger the instant notification for testing
-                    // ElevatedButton(
-                    //   onPressed: () {
-                    //     notificationService.scheduleTestNotification(
-                    //       id: 0,
-                    //       title: "this is a scheduled",
-                    //       body: "notification for testing scheduled one",
-                    //
-                    //     );
-                    //     print('Test notification scheduled');
-                    //     // notificationService.showInstantNotification(
-                    //     //   id: 1,
-                    //     //   title: 'Test Notification',
-                    //     //   body: 'This is a test notification from LawDesk.',
-                    //     // );
-                    //   },
-                    //   child: const Text('Test Notification'),
-                    // ),
+                    ElevatedButton(
+                      onPressed: () {
+                        notificationService.cancelAllNotifications();
+                        notificationService.scheduleTestNotification(
+                          id: 345,
+                          title: "this is a scheduled",
+                          body: "notification for testing scheduled one",
+                          
+                        );
+                        print('Test notification scheduled');
+                        // notificationService.showInstantNotification(
+                        //   id: 1,
+                        //   title: 'Test Notification',
+                        //   body: 'This is a test notification from LawDesk.',
+                        // );
+                      },
+                      child: const Text('Test Notification'),
+                    ),
                   ],
                 ),
               ),
