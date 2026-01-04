@@ -47,6 +47,29 @@ class NotificationService {
     }
   }
 
+
+  // Show instant notification for testing
+  Future<void> _showInstantNotification({
+    required int id,
+    required String title,
+    required String body,
+  }) async {
+    await notificationPlugin.show(
+      id,
+      title,
+      body,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'instant_channel',
+          'Instant Notifications',
+          channelDescription: 'Channel for instant notifications',
+          importance: Importance.max,
+          priority: Priority.high,
+        ),
+      ),
+    );
+    })
+
   Future<void> _requestNotificationPermission() async {
     try {
       if (await Permission.notification.isDenied) {

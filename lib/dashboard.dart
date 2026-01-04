@@ -119,6 +119,8 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     super.dispose();
   }
 
+
+
   Future<void> _checkCurrentPatch() async {
     try {
       final currentPatch = await _updater.readCurrentPatch();
