@@ -19,6 +19,7 @@ import 'package:lawdesk/services/connectivity_service.dart';
 import 'package:lawdesk/services/offline_storage_service.dart';
 import 'package:lawdesk/widgets/offline_indicator.dart';
 import 'package:lawdesk/utils/offline_action_helper.dart';
+import 'package:lawdesk/services/notification_service.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -672,6 +673,17 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
                     const SizedBox(height: 24),
                     _buildUpcomingDatesSection(context),
                     const SizedBox(height: 80),
+                    // button to trigger the instant notification for testing
+                    ElevatedButton(
+                      onPressed: () {
+                        NotificationService.showInstantNotification(
+                        id: 1,
+                          title: 'Test Notification',
+                          body: 'This is a test notification from LawDesk.',
+                        );
+                      },
+                      child: const Text('Test Notification'),
+                    ),
                   ],
                 ),
               ),
