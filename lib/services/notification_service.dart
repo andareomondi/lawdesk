@@ -127,7 +127,6 @@ class NotificationService {
         // Note: androidScheduleMode replaces androidAllowWhileIdle in newer versions (v10+)
         // If your version is older, swap this line back to: androidAllowWhileIdle: true,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-
       );
 
       print('✓ Test notification scheduled successfully');
@@ -155,16 +154,25 @@ class NotificationService {
         } else {
           print('✗ Notification permission denied');
         }
+      } else {
+        print('✓ Notification permission already granted');
       }
 
       // Request schedule exact alarm permission for Android 12+
-      if (await Permission.scheduleExactAlarm.isDenied) {
+      final exactAlarmStatus = await Permission.scheduleExactAlarm.status;
+      print('📱 Schedule Exact Alarm status: $exactAlarmStatus');
+
+      if (exactAlarmStatus.isDenied || exactAlarmStatus.isPermanentlyDenied) {
+        print('⚠ Requesting exact alarm permission...');
         final status = await Permission.scheduleExactAlarm.request();
         if (status.isGranted) {
           print('✓ Schedule exact alarm permission granted');
         } else {
           print('✗ Schedule exact alarm permission denied');
+          print('⚠ User needs to enable this manually in settings');
         }
+      } else if (exactAlarmStatus.isGranted) {
+        print('✓ Schedule exact alarm permission already granted');
       }
     } catch (e) {
       print('✗ Error requesting permissions: $e');
@@ -192,8 +200,34 @@ class NotificationService {
 
     await cancelNotificationsForCase(caseId);
 
-    if (courtDate.isBefore(DateTime.now())) {
-      print('⚠ Court date is in the past, skipping notification scheduling');
+    final now = DateTime.now();
+
+    // Build the full court DateTime including time
+    final courtHour = courtTime != null ? courtTime.hour : 23;
+    final courtMinute = courtTime != null ? courtTime.minute : 59;
+
+    DateTime fullCourtDateTime = DateTime(
+      courtDate.year,
+      courtDate.month,
+      courtDate.day,
+      courtHour,
+      courtMinute,
+      0,
+    );
+
+    print('📅 Scheduling notifications for: $caseName');
+    print('   Court date: $courtDate');
+    print(
+      '   Court time: ${courtTime != null ? _formatTime(courtTime) : "Not specified"}',
+    );
+    print('   Full court DateTime: $fullCourtDateTime');
+    print('   Current time: $now');
+
+    // Check if the FULL court date/time is in the past
+    if (fullCourtDateTime.isBefore(now)) {
+      print(
+        '⚠ Court date/time is in the past, skipping notification scheduling',
+      );
       return;
     }
 
@@ -202,13 +236,8 @@ class NotificationService {
           'court_reminders',
           'Court Date Reminders',
           channelDescription: 'Notifications for upcoming court dates',
-          importance: Importance.high,
+          importance: Importance.max,
           priority: Priority.high,
-          icon: '@mipmap/ic_launcher',
-          color: Color(0xFF1E3A8A),
-          enableLights: true,
-          enableVibration: true,
-          playSound: true,
         );
 
     const NotificationDetails notificationDetails = NotificationDetails(
@@ -217,99 +246,95 @@ class NotificationService {
 
     int scheduledCount = 0;
 
-    // 7 days before at 7 AM
-    final sevenDaysBefore = DateTime(
-      courtDate.year,
-      courtDate.month,
-      courtDate.day,
-      7,
-      0,
-    ).subtract(const Duration(days: 7));
+    // ============================================================================
+    // NOTIFICATION 1: ONE DAY BEFORE AT 7 AM
+    // ============================================================================
+    try {
+      // Create the exact date/time for notification: 1 day before court date at 7:00 AM
+      DateTime oneDayBeforeAt7AM = DateTime(
+        courtDate.year,
+        courtDate.month,
+        courtDate.day,
+        7, // 7 AM
+        0, // 0 minutes
+        0, // 0 seconds
+      ).subtract(const Duration(days: 1)); // Subtract 1 day
 
-    if (sevenDaysBefore.isAfter(DateTime.now())) {
-      try {
+      print('   Calculated 1-day-before time: $oneDayBeforeAt7AM');
+
+      // Only schedule if this time is in the future
+      if (oneDayBeforeAt7AM.isAfter(now)) {
+        // Parse into TZDateTime using the SAME method that worked in test
+        final tz.TZDateTime scheduledDate = tz.TZDateTime.parse(
+          tz.local,
+          oneDayBeforeAt7AM.toString().replaceAll('Z', ''),
+        );
+
         await _notifications.zonedSchedule(
           _getCourtNotificationId(caseId, 0),
-          '⚖️ Court Date in 7 Days',
-          '$caseName on ${_formatDate(courtDate)}',
-          tz.TZDateTime.from(sevenDaysBefore, tz.local),
-          notificationDetails,
-          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-          payload: 'case_$caseId',
-        );
-        scheduledCount++;
-        print('  → 7-day reminder: ${sevenDaysBefore.toString()}');
-      } catch (e) {
-        print('  ✗ Failed to schedule 7-day reminder: $e');
-      }
-    }
-
-    // 24 hours before at 7 AM
-    final oneDayBefore = DateTime(
-      courtDate.year,
-      courtDate.month,
-      courtDate.day,
-      7,
-      0,
-    ).subtract(const Duration(days: 1));
-
-    if (oneDayBefore.isAfter(DateTime.now())) {
-      try {
-        await _notifications.zonedSchedule(
-          _getCourtNotificationId(caseId, 1),
           '⚖️ Court Date Tomorrow',
           '$caseName at ${courtTime != null ? _formatTime(courtTime) : "scheduled time"}',
-          tz.TZDateTime.from(oneDayBefore, tz.local),
+          scheduledDate,
           notificationDetails,
           androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
           payload: 'case_$caseId',
         );
+
         scheduledCount++;
-        print('  → 1-day reminder: ${oneDayBefore.toString()}');
-      } catch (e) {
-        print('  ✗ Failed to schedule 1-day reminder: $e');
+        print('   ✅ 1-day reminder scheduled for: $oneDayBeforeAt7AM');
+      } else {
+        print('   ⚠ 1-day reminder time has passed, skipping');
       }
+    } catch (e) {
+      print('   ✗ Failed to schedule 1-day reminder: $e');
     }
 
-    // Day of (2 hours before or 9 AM)
-    final dayOfHour = courtTime != null ? courtTime.hour : 9;
-    final dayOfMinute = courtTime != null ? courtTime.minute : 0;
+    // ============================================================================
+    // NOTIFICATION 2: 1 HOUR BEFORE COURT TIME (OR 9 AM IF NO TIME SET)
+    // ============================================================================
 
-    DateTime dayOf = DateTime(
-      courtDate.year,
-      courtDate.month,
-      courtDate.day,
-      dayOfHour,
-      dayOfMinute,
-    );
+    try {
+      // TEMPORARY: Schedule for 10 seconds from now instead of 1 hour before
+      DateTime oneHourBefore = now.add(const Duration(seconds: 10));
 
-    if (courtTime != null) {
-      dayOf = dayOf.subtract(const Duration(hours: 2));
-    }
+      print('   Court time: $fullCourtDateTime');
+      print('   Calculated 1-hour-before time (TEST - 10 sec): $oneHourBefore');
 
-    if (dayOf.isAfter(DateTime.now())) {
-      try {
+      // Only schedule if this time is in the future
+      if (oneHourBefore.isAfter(now)) {
+        // Parse into TZDateTime
+        final tz.TZDateTime scheduledDate = tz.TZDateTime.parse(
+          tz.local,
+          oneHourBefore.toString().replaceAll('Z', ''),
+        );
+
         await _notifications.zonedSchedule(
-          _getCourtNotificationId(caseId, 2),
-          '⚖️ Court Date Today!',
-          courtTime != null
-              ? '$caseName at ${_formatTime(courtTime)}'
-              : '$caseName today',
-          tz.TZDateTime.from(dayOf, tz.local),
+          _getCourtNotificationId(caseId, 1),
+          '⚖️ Court Date in 1 Hour! (TEST)',
+          '$caseName at ${courtTime != null ? _formatTime(courtTime) : "9:00 AM"}',
+          scheduledDate,
           notificationDetails,
           androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
           payload: 'case_$caseId',
         );
+
         scheduledCount++;
-        print('  → Day-of reminder: ${dayOf.toString()}');
-      } catch (e) {
-        print('  ✗ Failed to schedule day-of reminder: $e');
+        print('   ✅ 1-hour reminder scheduled for: $oneHourBefore');
+      } else {
+        print('   ⚠ 1-hour reminder time has passed, skipping');
       }
+    } catch (e) {
+      print('   ✗ Failed to schedule 1-hour reminder: $e');
     }
 
-    print(
-      '✓ Court notifications scheduled: $caseName ($scheduledCount reminders)',
-    );
+    print('✅ Scheduled $scheduledCount of 2 possible reminders for: $caseName');
+
+    // Verify scheduled notifications
+    final pending = await _notifications.pendingNotificationRequests();
+    print('📋 Total pending notifications: ${pending.length}');
+    for (var notification in pending) {
+      print('   - ID: ${notification.id}, Title: ${notification.title}');
+    }
   }
 
   Future<void> cancelNotificationsForCase(int caseId) async {
