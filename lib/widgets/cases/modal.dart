@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:lawdesk/widgets/delightful_toast.dart';
 import 'client_modal.dart'; // Import the client modal
-import 'package:lawdesk/services/notification_service.dart';
 
 class AddCaseModal extends StatefulWidget {
   final VoidCallback? onCaseAdded;
@@ -216,17 +215,6 @@ class _AddCaseModalState extends State<AddCaseModal> {
           })
           .select()
           .single(); // Add .select().single() to get the created case back
-
-      final newCaseId = response['id'] as int;
-
-      // Schedule notifications for the new case
-      await notificationService.scheduleCourtDateNotifications(
-        caseId: newCaseId,
-        courtDate: _selectedCourtDate!,
-        caseName: _selectedClientId ?? 'New Case',
-        courtTime: _selectedTime,
-      );
-
 
 
       if (mounted) {

@@ -19,7 +19,6 @@ import 'package:lawdesk/services/connectivity_service.dart';
 import 'package:lawdesk/services/offline_storage_service.dart';
 import 'package:lawdesk/widgets/offline_indicator.dart';
 import 'package:lawdesk/utils/offline_action_helper.dart';
-import 'package:lawdesk/services/notification_service.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -62,7 +61,6 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     super.initState();
     _setupShimmerAnimation();
 
-    // Check initial connectivity state
     _isOfflineMode = !connectivityService.isConnected;
 
     // Listen to connectivity changes
@@ -664,31 +662,14 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
                     _isLoading
                         ? _buildShimmerWelcomeCard()
                         : _buildWelcomeSection(),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
                     _isLoading
                         ? _buildShimmerStatsCards()
                         : StatsSection(key: _statsKey),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
                     _buildUpcomingDatesSection(context),
-                    // const SizedBox(height: 80),
+                    const SizedBox(height: 16),
                     // button to trigger the instant notification for testing
-                    ElevatedButton(
-                      onPressed: () {
-                        notificationService.cancelAllNotifications();
-                        notificationService.scheduleTestNotification(
-                          id: 345,
-                          title: "this is a scheduled",
-                          body: "notification for testing scheduled one",
-                        );
-                        print('Test notification scheduled');
-                        //notificationService.showInstantNotification(
-                        //  id: 1,
-                        //title: 'Test Notification',
-                        //body: 'This is a test notification from LawDesk.',
-                        //);
-                      },
-                      child: const Text('Test Notification'),
-                    ),
                   ],
                 ),
               ),

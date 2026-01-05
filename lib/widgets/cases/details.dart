@@ -6,7 +6,6 @@ import 'package:lawdesk/widgets/delightful_toast.dart';
 import 'package:lawdesk/services/connectivity_service.dart';
 import 'package:lawdesk/services/offline_storage_service.dart';
 import 'package:lawdesk/utils/offline_action_helper.dart';
-import 'package:lawdesk/services/notification_service.dart';
 
 class CaseDetailsPage extends StatefulWidget {
   final String caseId;
@@ -586,22 +585,6 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
           })
           .eq('id', widget.caseId);
 
-      // Schedule notifications if court date is set
-      if (_selectedDate != null) {
-        await notificationService.scheduleCourtDateNotifications(
-          caseId: int.parse(widget.caseId),
-          courtDate: _selectedDate!,
-          caseName: _nameController.text.trim(),
-          courtTime: _selectedTime,
-        );
-      } else {
-        // Cancel notifications if court date was removed
-        await notificationService.cancelNotificationsForCase(
-          int.parse(widget.caseId),
-        );
-      }
-
-
       await _loadCaseDetails();
 
       setState(() {
@@ -661,25 +644,7 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
     setState(() => _isDeleting = true);
 
     try {
-      // 1. Get all event IDs for this case BEFORE deleting
-      final eventsResponse = await _supabase
-          .from('events')
-          .select('id')
-          .eq('case', int.parse(widget.caseId));
 
-      final eventIds = List<int>.from(
-        eventsResponse.map((event) => event['id'] as int),
-      );
-
-      print('Found ${eventIds.length} events to cancel notifications for');
-
-      // 2. Cancel all notifications (case + events) BEFORE deleting from database
-      await notificationService.cancelAllNotificationsForCase(
-        caseId: int.parse(widget.caseId),
-        eventIds: eventIds,
-      );
-
-      // 3. Delete the case from database (events will cascade delete automatically)
       await _supabase.from('cases').delete().eq('id', widget.caseId);
 
       if (mounted) {
@@ -1410,15 +1375,6 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
 
       final eventId = response['id'] as int;
 
-      // Schedule notifications for the event
-      await notificationService.scheduleEventNotifications(
-        eventId: eventId,
-        eventDate: _eventSelectedDate!,
-        eventAgenda: agendaValue,
-        caseName: _caseData!['name'] ?? 'Case',
-        eventTime: _eventSelectedTime,
-      );
-
       await _loadEvents();
 
       if (mounted) {
@@ -1492,15 +1448,6 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
           })
           .eq('id', _editingEventId!);
 
-      // Reschedule notifications for the updated event
-      await notificationService.scheduleEventNotifications(
-        eventId: _editingEventId!,
-        eventDate: _eventSelectedDate!,
-        eventAgenda: agendaValue,
-        caseName: _caseData!['name'] ?? 'Case',
-        eventTime: _eventSelectedTime,
-      );
-
       await _loadEvents();
 
       if (mounted) {
@@ -1553,10 +1500,6 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
     if (confirmed != true) return;
 
     try {
-      // 1. Cancel notifications FIRST
-      await notificationService.cancelNotificationsForEvent(eventId);
-
-      // 2. Delete from database
       await _supabase.from('events').delete().eq('id', eventId);
 
       await _loadEvents();
