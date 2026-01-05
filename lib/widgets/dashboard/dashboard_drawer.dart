@@ -5,6 +5,7 @@ import 'package:lawdesk/screens/documents/userDocuments.dart';
 import 'package:lawdesk/screens/calender/calender.dart';
 import 'package:lawdesk/widgets/delightful_toast.dart';
 import 'package:lawdesk/providers/auth_provider.dart';
+import 'package:lawdesk/screens/help/help_support.dart';
 
 class DashboardDrawer extends StatelessWidget {
   final String userName;
@@ -186,12 +187,12 @@ class DashboardDrawer extends StatelessWidget {
                     icon: Icons.help_outline,
                     title: 'Help & Support',
                     onTap: () {
-                      Navigator.pop(context);
-                      // TODO: Navigate to help page when implemented
-                      AppToast.showInfo(
-                        context: context,
-                        title: "Coming Soon",
-                        message: "Help & Support page is under development",
+                      Navigator.pop(context); // Close the drawer
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const HelpSupportScreen(),
+                        ),
                       );
                     },
                   ),
