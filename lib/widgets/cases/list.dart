@@ -190,7 +190,6 @@ class CasesListWidgetState extends State<CasesListWidget>
 
     final cases = await _fetchCases();
 
-
     if (mounted) {
       setState(() {
         _cases = cases;
@@ -215,7 +214,6 @@ class CasesListWidgetState extends State<CasesListWidget>
             .eq('user', user.id)
             .order('courtDate', ascending: true)
             .limit(5);
-
 
         if (response is List) {
           final cases = List<Map<String, dynamic>>.from(response);
@@ -266,24 +264,52 @@ class CasesListWidgetState extends State<CasesListWidget>
     List<Map<String, dynamic>> cases,
   ) {
     final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
 
     for (var case_ in cases) {
       if (case_['courtDate'] != null) {
         try {
           final courtDate = DateTime.parse(case_['courtDate']);
-          final courtDateOnly = DateTime(
-            courtDate.year,
-            courtDate.month,
-            courtDate.day,
-          );
-          final daysDifference = courtDateOnly.difference(today).inDays;
 
-          if (daysDifference < 0) {
+          // Create full DateTime with time if available
+          DateTime fullCourtDateTime;
+          if (case_['time'] != null && case_['time'].toString().isNotEmpty) {
+            final timeParts = case_['time'].toString().split(':');
+            if (timeParts.length >= 2) {
+              final hour = int.parse(timeParts[0]);
+              final minute = int.parse(timeParts[1]);
+              fullCourtDateTime = DateTime(
+                courtDate.year,
+                courtDate.month,
+                courtDate.day,
+                hour,
+                minute,
+              );
+            } else {
+              fullCourtDateTime = DateTime(
+                courtDate.year,
+                courtDate.month,
+                courtDate.day,
+                23,
+                59,
+              );
+            }
+          } else {
+            fullCourtDateTime = DateTime(
+              courtDate.year,
+              courtDate.month,
+              courtDate.day,
+              23,
+              59,
+            );
+          }
+
+          final difference = fullCourtDateTime.difference(now);
+
+          if (difference.isNegative) {
             case_['status'] = 'expired';
-          } else if (daysDifference <= 2) {
+          } else if (difference.inHours <= 48) {
             case_['status'] = 'urgent';
-          } else if (daysDifference > 2 && daysDifference < 5) {
+          } else if (difference.inHours > 48 && difference.inHours < 120) {
             case_['status'] = 'upcoming';
           } else {
             case_['status'] = 'no worries';
@@ -348,19 +374,17 @@ class CasesListWidgetState extends State<CasesListWidget>
     }
   }
 
-void _navigateToCaseDetails(String caseId) async {
-  // Allow viewing case details offline, but editing will be blocked inside
-  final result = await Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => CaseDetailsPage(caseId: caseId),
-    ),
-  );
-  if (result == true && mounted) {
-    loadCases();
-    widget.onCaseChanged?.call();
+  void _navigateToCaseDetails(String caseId) async {
+    // Allow viewing case details offline, but editing will be blocked inside
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => CaseDetailsPage(caseId: caseId)),
+    );
+    if (result == true && mounted) {
+      loadCases();
+      widget.onCaseChanged?.call();
+    }
   }
-}
 
   @override
   Widget build(BuildContext context) {

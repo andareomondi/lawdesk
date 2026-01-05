@@ -280,24 +280,52 @@ class AllCasesListWidgetState extends State<AllCasesListWidget>
     List<Map<String, dynamic>> cases,
   ) {
     final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
 
     for (var case_ in cases) {
       if (case_['courtDate'] != null) {
         try {
           final courtDate = DateTime.parse(case_['courtDate']);
-          final courtDateOnly = DateTime(
-            courtDate.year,
-            courtDate.month,
-            courtDate.day,
-          );
-          final daysDifference = courtDateOnly.difference(today).inDays;
 
-          if (daysDifference < 0) {
+          // Create full DateTime with time if available
+          DateTime fullCourtDateTime;
+          if (case_['time'] != null && case_['time'].toString().isNotEmpty) {
+            final timeParts = case_['time'].toString().split(':');
+            if (timeParts.length >= 2) {
+              final hour = int.parse(timeParts[0]);
+              final minute = int.parse(timeParts[1]);
+              fullCourtDateTime = DateTime(
+                courtDate.year,
+                courtDate.month,
+                courtDate.day,
+                hour,
+                minute,
+              );
+            } else {
+              fullCourtDateTime = DateTime(
+                courtDate.year,
+                courtDate.month,
+                courtDate.day,
+                23,
+                59,
+              );
+            }
+          } else {
+            fullCourtDateTime = DateTime(
+              courtDate.year,
+              courtDate.month,
+              courtDate.day,
+              23,
+              59,
+            );
+          }
+
+          final difference = fullCourtDateTime.difference(now);
+
+          if (difference.isNegative) {
             case_['status'] = 'expired';
-          } else if (daysDifference <= 2) {
+          } else if (difference.inHours <= 48) {
             case_['status'] = 'urgent';
-          } else if (daysDifference > 2 && daysDifference < 5) {
+          } else if (difference.inHours > 48 && difference.inHours < 120) {
             case_['status'] = 'upcoming';
           } else {
             case_['status'] = 'no worries';

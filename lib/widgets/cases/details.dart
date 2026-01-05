@@ -294,20 +294,53 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
 
     try {
       final courtDate = DateTime.parse(_caseData!['courtDate']);
-      final now = DateTime.now();
-      final today = DateTime(now.year, now.month, now.day);
-      final courtDateOnly = DateTime(
-        courtDate.year,
-        courtDate.month,
-        courtDate.day,
-      );
-      final daysDifference = courtDateOnly.difference(today).inDays;
 
-      if (daysDifference < 0) {
+      // Create full DateTime with time if available
+      DateTime fullCourtDateTime;
+      if (_caseData!['time'] != null &&
+          _caseData!['time'].toString().isNotEmpty) {
+        final timeParts = _caseData!['time'].toString().split(':');
+        if (timeParts.length >= 2) {
+          final hour = int.parse(timeParts[0]);
+          final minute = int.parse(timeParts[1]);
+          fullCourtDateTime = DateTime(
+            courtDate.year,
+            courtDate.month,
+            courtDate.day,
+            hour,
+            minute,
+          );
+        } else {
+          // If time parsing fails, default to end of day
+          fullCourtDateTime = DateTime(
+            courtDate.year,
+            courtDate.month,
+            courtDate.day,
+            23,
+            59,
+          );
+        }
+      } else {
+        // If no time, default to end of day to be safe
+        fullCourtDateTime = DateTime(
+          courtDate.year,
+          courtDate.month,
+          courtDate.day,
+          23,
+          59,
+        );
+      }
+
+      final now = DateTime.now();
+      final difference = fullCourtDateTime.difference(now);
+
+      if (difference.isNegative) {
         return 'expired';
-      } else if (daysDifference <= 2) {
+      } else if (difference.inHours <= 48) {
+        // 2 days
         return 'urgent';
-      } else if (daysDifference > 2 && daysDifference < 5) {
+      } else if (difference.inHours > 48 && difference.inHours < 120) {
+        // 2-5 days
         return 'upcoming';
       } else {
         return 'no worries';
@@ -644,7 +677,6 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
     setState(() => _isDeleting = true);
 
     try {
-
       await _supabase.from('cases').delete().eq('id', widget.caseId);
 
       if (mounted) {

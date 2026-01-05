@@ -40,21 +40,58 @@ class StatsSectionState extends State<StatsSection> {
     loadStats();
   }
 
-  String _calculateStatus(DateTime courtDate) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final courtDateOnly = DateTime(
-      courtDate.year,
-      courtDate.month,
-      courtDate.day,
-    );
-    final daysDifference = courtDateOnly.difference(today).inDays;
+  String _calculateStatus(DateTime courtDate, dynamic time) {
+    // Create full DateTime with time if available
+    DateTime fullCourtDateTime;
+    if (time != null && time.toString().isNotEmpty) {
+      try {
+        final timeParts = time.toString().split(':');
+        if (timeParts.length >= 2) {
+          final hour = int.parse(timeParts[0]);
+          final minute = int.parse(timeParts[1]);
+          fullCourtDateTime = DateTime(
+            courtDate.year,
+            courtDate.month,
+            courtDate.day,
+            hour,
+            minute,
+          );
+        } else {
+          fullCourtDateTime = DateTime(
+            courtDate.year,
+            courtDate.month,
+            courtDate.day,
+            23,
+            59,
+          );
+        }
+      } catch (e) {
+        fullCourtDateTime = DateTime(
+          courtDate.year,
+          courtDate.month,
+          courtDate.day,
+          23,
+          59,
+        );
+      }
+    } else {
+      fullCourtDateTime = DateTime(
+        courtDate.year,
+        courtDate.month,
+        courtDate.day,
+        23,
+        59,
+      );
+    }
 
-    if (daysDifference < 0) {
+    final now = DateTime.now();
+    final difference = fullCourtDateTime.difference(now);
+
+    if (difference.isNegative) {
       return 'expired';
-    } else if (daysDifference <= 2) {
+    } else if (difference.inHours <= 48) {
       return 'urgent';
-    } else if (daysDifference > 2 && daysDifference < 5) {
+    } else if (difference.inHours > 48 && difference.inHours < 120) {
       return 'upcoming';
     } else {
       return 'no worries';
@@ -161,6 +198,7 @@ class StatsSectionState extends State<StatsSection> {
     int urgentCases = 0;
 
     // Process each case
+    // Process each case
     for (var case_ in cases) {
       if (case_['courtDate'] != null) {
         try {
@@ -172,15 +210,16 @@ class StatsSectionState extends State<StatsSection> {
           );
 
           // Calculate status
-          final status = _calculateStatus(courtDate);
+          final status = _calculateStatus(courtDate, case_['time']);
 
-          // Count urgent cases
+          // Count urgent cases (only non-expired)
           if (status == 'urgent') {
             urgentCases++;
           }
 
-          // Count cases due this week
-          if (courtDateOnly.isAfter(
+          // Count cases due this week (only non-expired)
+          if (status != 'expired' &&
+              courtDateOnly.isAfter(
                 startOfWeek.subtract(const Duration(days: 1)),
               ) &&
               courtDateOnly.isBefore(endOfWeek.add(const Duration(days: 1)))) {
@@ -200,7 +239,6 @@ class StatsSectionState extends State<StatsSection> {
         }
       }
     }
-
     return StatsData(
       totalCases: totalCases,
       monthlyIncrease: monthlyIncrease,
