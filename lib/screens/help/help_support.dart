@@ -62,10 +62,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen>
       await _supabase.from(tableName).insert(data);
 
       if (mounted) {
-        // Clear form and show success
-        _titleController.clear();
-        _descriptionController.clear();
-        
+       
         AppToast.showSuccess(
           context: context,
           title: 'Received',
@@ -73,6 +70,12 @@ class _HelpSupportScreenState extends State<HelpSupportScreen>
               ? 'Bug report submitted. Thank you!' 
               : 'Suggestion received. We appreciate it!',
         );
+        // Show message then clear form
+        _titleController.clear();
+        _descriptionController.clear();
+ 
+
+
       }
     } catch (e) {
       if (mounted) {
