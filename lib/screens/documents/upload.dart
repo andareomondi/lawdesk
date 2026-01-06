@@ -111,8 +111,6 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
         }
       }
     } catch (e) {
-      print('Error loading documents: $e');
-
       // Try cache on error
       final cachedDocs = await offlineStorage.getCachedDocuments();
 
@@ -195,7 +193,7 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
         AppToast.showError(
           context: context,
           title: "Error occurred",
-          message: "Failed to process document: ${e.toString()}",
+          message: "Failed to process document. Please make sure you have granted the necessary permissions.",
         );
       }
     }
@@ -216,7 +214,7 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
         AppToast.showError(
           context: context,
           title: "Error occurred",
-          message: "Failed to pick document: ${e.toString()}",
+          message: "Failed to pick document. Please make sure you have granted the necessary permissions.",
         );
       }
     }
@@ -326,12 +324,11 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
         );
       }
     } catch (e) {
-      print('Upload error: $e');
       if (mounted) {
         AppToast.showError(
           context: context,
           title: "Error occurred",
-          message: "Failed to upload: ${e.toString()}",
+          message: "Failed to upload. Please try again.",
         );
       }
     } finally {
@@ -438,12 +435,11 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
         );
       }
     } catch (e) {
-      print('Upload error: $e'); // Debug logging
       if (mounted) {
         AppToast.showError(
           context: context,
           title: "Error occurred",
-          message: "Failed to upload: ${e.toString()}",
+          message: "Failed to upload. Please try again.",
         );
       }
     } finally {
@@ -504,12 +500,11 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
           );
         }
       } catch (e) {
-        print('Delete error: $e'); // Debug logging
         if (mounted) {
           AppToast.showError(
             context: context,
             title: "Error occurred",
-            message: "Failed to delete: ${e.toString()}",
+            message: "Failed to delete. Please try again.",
           );
         }
       }
@@ -548,12 +543,11 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
         );
       }
     } catch (e) {
-      print('Download error: $e'); // Debug logging
       if (mounted) {
         AppToast.showError(
           context: context,
           title: "Error occurred",
-          message: "Failed to download: ${e.toString()}",
+          message: "Failed to download document. Please try again.",
         );
       }
     }
