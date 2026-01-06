@@ -177,7 +177,10 @@ class _CaseDocumentsPageState extends State<CaseDocumentsPage> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF1E3A8A),
                 ),
-                child: const Text('Choose File'),
+                child: const Text(
+                  'Choose File',
+                  style: TextStyle(color: Colors.white),
+                ),
               ),
             ],
           ),
