@@ -12,7 +12,8 @@ class HelpSupportScreen extends StatefulWidget {
 class _HelpSupportScreenState extends State<HelpSupportScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final _supabase = Supabase.instance.client; // Using the client from your config
+  final _supabase =
+      Supabase.instance.client; // Using the client from your config
   final _formKey = GlobalKey<FormState>();
 
   // Form Controllers
@@ -62,20 +63,16 @@ class _HelpSupportScreenState extends State<HelpSupportScreen>
       await _supabase.from(tableName).insert(data);
 
       if (mounted) {
-       
         AppToast.showSuccess(
           context: context,
           title: 'Received',
-          message: _feedbackType == 'bug' 
-              ? 'Bug report submitted. Thank you!' 
+          message: _feedbackType == 'bug'
+              ? 'Bug report submitted. Thank you!'
               : 'Suggestion received. We appreciate it!',
         );
         // Show message then clear form
         _titleController.clear();
         _descriptionController.clear();
- 
-
-
       }
     } catch (e) {
       if (mounted) {
@@ -117,10 +114,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen>
       ),
       body: TabBarView(
         controller: _tabController,
-        children: [
-          _buildGuidesTab(),
-          _buildFeedbackTab(),
-        ],
+        children: [_buildGuidesTab(), _buildFeedbackTab()],
       ),
     );
   }
@@ -131,24 +125,46 @@ class _HelpSupportScreenState extends State<HelpSupportScreen>
       padding: const EdgeInsets.all(16),
       children: [
         _buildGuideCard(
+          icon: Icons.person_outline,
+          title: 'User Profile',
+          content:
+              'Access your profile by tapping the avatar icon in the top right corner of the Dashboard. Here, you can update your personal information and change your password. LSK number is your unique identifier for support inquiries.',
+        ),
+        _buildGuideCard(
           icon: Icons.refresh,
           title: 'Refreshing Your Data',
-          content: 'To verify you have the latest cases and documents, go to the Dashboard and pull down from the top. You will see a liquid animation confirming the refresh.',
+          content:
+              'To verify you have the latest cases and documents, go to the Dashboard and pull down from the top. You will see a liquid animation confirming the refresh.',
+        ),
+        _buildGuideCard(
+          icon: Icons.add_alert,
+          title: 'Notifications',
+          content:
+              'LawDesk sends you notifications for upcoming court dates and deadlines. Ensure notifications are enabled in your device settings to stay informed. Notifications are recieved if the device is online.',
         ),
         _buildGuideCard(
           icon: Icons.wifi_off_outlined,
           title: 'Offline Access',
-          content: 'LawDesk stores your data locally. You can view your calendar, cases, and documents even without an internet connection. Changes will sync once you are back online.',
+          content:
+              'LawDesk stores your data locally. You can view your calendar, cases, and documents even without an internet connection. Changes will sync once you are back online.',
         ),
         _buildGuideCard(
           icon: Icons.grid_view_rounded,
           title: 'Quick Actions Menu',
-          content: 'Tap the Floating Action Button (bottom right of Dashboard) to reveal quick shortcuts for adding new Clients, Cases, or accessing the Calendar.',
+          content:
+              'Tap the Floating Action Button (bottom right of Dashboard) to reveal quick shortcuts for adding new Clients, Cases, or accessing the Calendar.',
         ),
         _buildGuideCard(
           icon: Icons.person_add_outlined,
           title: 'Managing Clients',
-          content: 'You must add a Client to the system before you can assign a Case to them. Use the "New Client" button in the Quick Actions menu.',
+          content:
+              'You must add a Client to the system before you can assign a Case to them. Use the "New Client" button in the Quick Actions menu.',
+        ),
+        _buildGuideCard(
+          icon: Icons.folder_open,
+          title: 'Document Organization',
+          content:
+              'Documents are organized by Case. To upload documents, navigate to a specific Case and use the "Add Document" option.',
         ),
       ],
     );
@@ -234,9 +250,21 @@ class _HelpSupportScreenState extends State<HelpSupportScreen>
             // Type Selector (Bug vs Improvement)
             Row(
               children: [
-                Expanded(child: _buildTypeButton('Report Bug', 'bug', Icons.bug_report)),
+                Expanded(
+                  child: _buildTypeButton(
+                    'Report Bug',
+                    'bug',
+                    Icons.bug_report,
+                  ),
+                ),
                 const SizedBox(width: 12),
-                Expanded(child: _buildTypeButton('Suggestion', 'improvement', Icons.lightbulb)),
+                Expanded(
+                  child: _buildTypeButton(
+                    'Suggestion',
+                    'improvement',
+                    Icons.lightbulb,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 24),
@@ -246,11 +274,16 @@ class _HelpSupportScreenState extends State<HelpSupportScreen>
               controller: _titleController,
               decoration: InputDecoration(
                 labelText: 'Title',
-                hintText: _feedbackType == 'bug' ? 'e.g., App crashes on login' : 'e.g., Add Dark Mode',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                hintText: _feedbackType == 'bug'
+                    ? 'e.g., App crashes on login'
+                    : 'e.g., Add Dark Mode',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 prefixIcon: const Icon(Icons.title, color: Color(0xFF9CA3AF)),
               ),
-              validator: (val) => val == null || val.isEmpty ? 'Please enter a title' : null,
+              validator: (val) =>
+                  val == null || val.isEmpty ? 'Please enter a title' : null,
             ),
             const SizedBox(height: 16),
 
@@ -261,10 +294,14 @@ class _HelpSupportScreenState extends State<HelpSupportScreen>
               decoration: InputDecoration(
                 labelText: 'Description',
                 hintText: 'Provide as much detail as possible...',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 alignLabelWithHint: true,
               ),
-              validator: (val) => val == null || val.isEmpty ? 'Please enter a description' : null,
+              validator: (val) => val == null || val.isEmpty
+                  ? 'Please enter a description'
+                  : null,
             ),
             const SizedBox(height: 32),
 
@@ -285,11 +322,18 @@ class _HelpSupportScreenState extends State<HelpSupportScreen>
                     ? const SizedBox(
                         height: 20,
                         width: 20,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
                       )
                     : const Text(
                         'Submit Feedback',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
                       ),
               ),
             ),
@@ -310,7 +354,9 @@ class _HelpSupportScreenState extends State<HelpSupportScreen>
           color: isSelected ? const Color(0xFF1E3A8A) : Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? const Color(0xFF1E3A8A) : const Color(0xFFE5E7EB),
+            color: isSelected
+                ? const Color(0xFF1E3A8A)
+                : const Color(0xFFE5E7EB),
           ),
         ),
         child: Column(
