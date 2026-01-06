@@ -25,6 +25,8 @@ class _CalendarPageState extends State<CalendarPage> {
   List<Map<String, dynamic>> _allEvents = [];
   bool _isLoading = true;
   bool _isOfflineMode = false;
+  bool _isCalendarExpanded = false;
+  double _dragOffset = 0;
 
   // View mode: 'month' or 'list'
   String _viewMode = 'month';
@@ -426,11 +428,160 @@ class _CalendarPageState extends State<CalendarPage> {
     return Column(
       children: [
         if (_isOfflineMode) const OfflineDataIndicator(),
-        _buildCalendarHeader(),
-        _buildCalendarGrid(),
-        const SizedBox(height: 16),
-        Expanded(child: _buildSelectedDayItems()),
+        GestureDetector(
+          onVerticalDragUpdate: (details) {
+            // Detect downward swipe to expand, upward to collapse
+            if (details.delta.dy > 5 && !_isCalendarExpanded) {
+              setState(() => _isCalendarExpanded = true);
+            } else if (details.delta.dy < -5 && _isCalendarExpanded) {
+              setState(() => _isCalendarExpanded = false);
+            }
+          },
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: const BorderRadius.vertical(
+                bottom: Radius.circular(20),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.08),
+                  blurRadius: 15,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                _buildCalendarHeader(),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 400),
+                  transitionBuilder:
+                      (Widget child, Animation<double> animation) {
+                        return SizeTransition(
+                          sizeFactor: animation,
+                          axisAlignment: -1.0,
+                          child: FadeTransition(
+                            opacity: animation,
+                            child: child,
+                          ),
+                        );
+                      },
+                  child: _isCalendarExpanded
+                      ? KeyedSubtree(
+                          key: const ValueKey('grid'),
+                          child: _buildCalendarGrid(),
+                        )
+                      : KeyedSubtree(
+                          key: const ValueKey('row'),
+                          child: _buildWeeklyRow(),
+                        ),
+                ),
+                // Visual "Handle" for better affordance
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  child: Center(
+                    child: Container(
+                      width: 36,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(2.5),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        // Scrollable list area
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 8.0),
+            child: _buildSelectedDayItems(),
+          ),
+        ),
       ],
+    );
+  }
+
+  Widget _buildWeeklyRow() {
+    final DateTime now = _selectedDay ?? DateTime.now();
+    // Calculate the Sunday of the current week
+    final DateTime startOfWeek = now.subtract(Duration(days: now.weekday % 7));
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: List.generate(7, (index) {
+          final date = startOfWeek.add(Duration(days: index));
+          final isSelected =
+              _selectedDay != null &&
+              date.year == _selectedDay!.year &&
+              date.month == _selectedDay!.month &&
+              date.day == _selectedDay!.day;
+          final hasItems = _hasItemsOnDay(date);
+
+          return Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _selectedDay = date),
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 2),
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? const Color(0xFF1E3A8A)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                  border: isSelected
+                      ? null
+                      : Border.all(color: Colors.transparent),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      ['S', 'M', 'T', 'W', 'T', 'F', 'S'][index],
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: isSelected ? Colors.white70 : Colors.grey[500],
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${date.day}',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: isSelected
+                            ? Colors.white
+                            : const Color(0xFF1F2937),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    // Small indicator dot for events
+                    Container(
+                      width: 4,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: hasItems
+                            ? (isSelected
+                                  ? Colors.white
+                                  : const Color(0xFF1E3A8A))
+                            : Colors.transparent,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }),
+      ),
     );
   }
 
@@ -482,6 +633,10 @@ class _CalendarPageState extends State<CalendarPage> {
     final firstDayOfMonth = DateTime(_focusedDay.year, _focusedDay.month, 1);
     final firstWeekday = firstDayOfMonth.weekday % 7;
 
+    // Calculate how many rows are actually needed (usually 5 or 6)
+    final totalItems = firstWeekday + daysInMonth;
+    final rowCount = (totalItems / 7).ceil();
+
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.all(16),
@@ -508,7 +663,7 @@ class _CalendarPageState extends State<CalendarPage> {
           ),
           const SizedBox(height: 8),
 
-          ...List.generate(6, (weekIndex) {
+          ...List.generate(rowCount, (weekIndex) {
             return Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: List.generate(7, (dayIndex) {
@@ -539,6 +694,7 @@ class _CalendarPageState extends State<CalendarPage> {
                     onTap: () {
                       setState(() {
                         _selectedDay = date;
+                        _isCalendarExpanded = false;
                       });
                     },
                     child: Container(
@@ -643,13 +799,15 @@ class _CalendarPageState extends State<CalendarPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Text(
-            DateFormat('EEEE, MMMM d, yyyy').format(_selectedDay!),
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF1F2937),
+          padding: const EdgeInsets.all(16),
+          child: Center(
+            child: Text(
+              DateFormat('EEEE, MMMM d, yyyy').format(_selectedDay!),
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1F2937),
+              ),
             ),
           ),
         ),
