@@ -6,6 +6,7 @@ import 'package:lawdesk/screens/calender/calender.dart';
 import 'package:lawdesk/widgets/delightful_toast.dart';
 import 'package:lawdesk/providers/auth_provider.dart';
 import 'package:lawdesk/screens/help/help_support.dart';
+import 'package:lawdesk/screens/clients/clients_page.dart'; 
 
 class DashboardDrawer extends StatelessWidget {
   final String userName;
@@ -136,6 +137,21 @@ class DashboardDrawer extends StatelessWidget {
                       );
                     },
                   ),
+                  // Added Clients Item
+                  _buildDrawerItem(
+                    context: context,
+                    icon: Icons.people_alt_outlined,
+                    title: 'Clients',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ClientsPage(),
+                        ),
+                      );
+                    },
+                  ),
                   _buildDrawerItem(
                     context: context,
                     icon: Icons.description_outlined,
@@ -174,7 +190,6 @@ class DashboardDrawer extends StatelessWidget {
                     title: 'Settings',
                     onTap: () {
                       Navigator.pop(context);
-                      // TODO: Navigate to settings page when implemented
                       AppToast.showInfo(
                         context: context,
                         title: "Coming Soon",
@@ -187,7 +202,7 @@ class DashboardDrawer extends StatelessWidget {
                     icon: Icons.help_outline,
                     title: 'Help & Support',
                     onTap: () {
-                      Navigator.pop(context); // Close the drawer
+                      Navigator.pop(context);
                       Navigator.push(
                         context,
                         MaterialPageRoute(
