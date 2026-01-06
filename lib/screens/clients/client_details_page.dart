@@ -313,10 +313,20 @@ class _ClientDetailsPageState extends State<ClientDetailsPage> {
               child: Icon(Icons.gavel, color: Color(0xFF1E3A8A), size: 20),
             ),
             title: Text(
-              caseItem['case_name'] ?? 'Untitled Case',
+              caseItem['number'] ?? 'Untitled Case',
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
-            subtitle: Text('Status: ${caseItem['status'] ?? 'N/A'}'),
+            subtitle: Text(
+              'Status: ${caseItem['progress_status'] == null ? 'N/A' : (caseItem['progress_status'] == true ? 'Completed' : 'Ongoing')}',
+              style: TextStyle(
+                // Optional: Add color coding for better UX
+                color: caseItem['progress_status'] == true
+                    ? Colors.green
+                    : Colors.orange,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+
             trailing: const Icon(Icons.chevron_right, size: 20),
           ),
         );
