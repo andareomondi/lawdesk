@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:lawdesk/widgets/delightful_toast.dart';
 import 'package:lawdesk/services/connectivity_service.dart';
 import 'package:lawdesk/utils/offline_action_helper.dart';
@@ -70,6 +71,38 @@ class _ClientDetailsPageState extends State<ClientDetailsPage> {
     } catch (e) {
       debugPrint('Error loading linked cases: $e');
       if (mounted) setState(() => _isLoadingCases = false);
+    }
+  }
+
+  Future<void> _makePhoneCall(String phoneNumber) async {
+    if (phoneNumber.isEmpty) return;
+    final Uri launchUri = Uri(scheme: 'tel', path: phoneNumber);
+    if (await canLaunchUrl(launchUri)) {
+      await launchUrl(launchUri);
+    } else {
+      if (mounted) {
+        AppToast.showError(
+          context: context,
+          title: 'Error',
+          message: 'Could not launch dialer',
+        );
+      }
+    }
+  }
+
+  Future<void> _sendEmail(String email) async {
+    if (email.isEmpty) return;
+    final Uri launchUri = Uri(scheme: 'mailto', path: email);
+    if (await canLaunchUrl(launchUri)) {
+      await launchUrl(launchUri);
+    } else {
+      if (mounted) {
+        AppToast.showError(
+          context: context,
+          title: 'Error',
+          message: 'Could not launch email',
+        );
+      }
     }
   }
 
@@ -215,6 +248,13 @@ class _ClientDetailsPageState extends State<ClientDetailsPage> {
           'Client Profile',
           style: TextStyle(color: Color(0xFF1F2937)),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete, color: Color(0xFFEF4444)),
+            onPressed: _isLoading ? null : _deleteClient,
+            tooltip: 'Delete Client',
+          ),
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: _loadLinkedCases,
