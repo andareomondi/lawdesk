@@ -23,6 +23,7 @@ class CasesListWidgetState extends State<CasesListWidget>
 
   late AnimationController _shimmerController;
   late Animation<double> _shimmerAnimation;
+  bool _hasCompletedCases = false;
 
   @override
   void initState() {
@@ -189,10 +190,34 @@ class CasesListWidgetState extends State<CasesListWidget>
     setState(() => _isLoading = true);
 
     final cases = await _fetchCases();
+    bool hasCompleted = false;
+
+    if (cases.isEmpty) {
+      try {
+        if (connectivityService.isConnected) {
+          // Lightweight query just to check existence (limit 1)
+          final res = await _supabase
+              .from('cases')
+              .select('id')
+              .eq('user', _supabase.auth.currentUser!.id)
+              .eq('progress_status', true)
+              .limit(1);
+
+          if (res is List && res.isNotEmpty) {
+            hasCompleted = true;
+          }
+        }
+        // Note: Checking offline is harder without caching completed cases specifically,
+        // so we default to false offline to prevent errors.
+      } catch (e) {
+        // Silent error, default to generic message
+      }
+    }
 
     if (mounted) {
       setState(() {
         _cases = cases;
+        _hasCompletedCases = hasCompleted;
         _isLoading = false;
       });
     }
@@ -435,30 +460,55 @@ class CasesListWidgetState extends State<CasesListWidget>
           Container(
             padding: const EdgeInsets.all(32),
             decoration: BoxDecoration(
-              color: const Color(0xFF1E3A8A).withOpacity(0.1),
+              color: _hasCompletedCases
+                  ? const Color(0xFF10B981).withOpacity(
+                      0.1,
+                    ) // Green for success
+                  : const Color(0xFF1E3A8A).withOpacity(0.1), // Blue for empty
               shape: BoxShape.circle,
             ),
-            child: const Icon(
-              Icons.folder_open,
+            child: Icon(
+              _hasCompletedCases ? Icons.task_alt : Icons.folder_open,
               size: 80,
-              color: Color(0xFF1E3A8A),
+              color: _hasCompletedCases
+                  ? const Color(0xFF10B981)
+                  : const Color(0xFF1E3A8A),
             ),
           ),
           const SizedBox(height: 24),
-          const Text(
-            'No Cases Yet',
-            style: TextStyle(
+          Text(
+            _hasCompletedCases ? 'All Caught Up!' : 'No Cases Yet',
+            style: const TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
               color: Color(0xFF1F2937),
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Add cases to see them here',
-            style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
+          Text(
+            _hasCompletedCases
+                ? 'You have no pending cases.\nGreat job clearing your schedule!'
+                : 'Add cases to see them here',
+            style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
             textAlign: TextAlign.center,
           ),
+
+          // Optional: Button to view completed cases if you have a screen for that
+          if (_hasCompletedCases) ...[
+            const SizedBox(height: 24),
+            TextButton(
+              onPressed: () {
+                // Navigate to full case list (if you have one that shows completed)
+                // or just show a toast
+                AppToast.showSuccess(
+                  context: context,
+                  title: "Completed Cases",
+                  message: "Use the main menu to view Case History",
+                );
+              },
+              child: const Text('View History'),
+            ),
+          ],
         ],
       ),
     );

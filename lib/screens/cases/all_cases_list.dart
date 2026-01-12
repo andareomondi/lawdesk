@@ -282,6 +282,11 @@ class AllCasesListWidgetState extends State<AllCasesListWidget>
     final now = DateTime.now();
 
     for (var case_ in cases) {
+      if (case_['progress_status'] == true) {
+        case_['status'] = 'completed';
+        continue; // Skip date calculation for completed cases
+      }
+
       if (case_['courtDate'] != null) {
         try {
           final courtDate = DateTime.parse(case_['courtDate']);
@@ -884,6 +889,7 @@ class _CourtDateCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isCompleted = status == 'completed';
     final isUrgent = status == 'urgent';
     final isUpcoming = status == 'upcoming';
     final isNoWorries = status == 'no worries';
@@ -900,7 +906,9 @@ class _CourtDateCard extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isUrgent
+            color: isCompleted
+                ? const Color(0xFF10B981)
+                : isUrgent
                 ? const Color(0xFFF59E0B)
                 : isUpcoming
                 ? const Color.fromARGB(255, 91, 204, 129)
@@ -931,7 +939,6 @@ class _CourtDateCard extends StatelessWidget {
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF1F2937),
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -945,7 +952,41 @@ class _CourtDateCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (isUrgent)
+                if (isCompleted)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: const Color(0xFF10B981).withOpacity(0.3),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(
+                          Icons.check_circle,
+                          size: 12,
+                          color: Color(0xFF10B981),
+                        ),
+                        SizedBox(width: 4),
+                        Text(
+                          'COMPLETED',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF10B981),
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else if (isUrgent)
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,

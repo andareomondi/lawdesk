@@ -1846,8 +1846,10 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
                 ),
               ),
 
-            _buildStatusCard(),
-            const SizedBox(height: 16),
+            if (!_isCompleted) ...[
+              _buildStatusCard(),
+              const SizedBox(height: 16),
+            ],
             _buildInfoCard(),
             const SizedBox(height: 16),
             _buildCourtDetailsCard(),

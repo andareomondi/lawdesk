@@ -192,14 +192,22 @@ class StatsSectionState extends State<StatsSection> {
     final startOfWeek = today.subtract(Duration(days: today.weekday - 1));
     final endOfWeek = startOfWeek.add(const Duration(days: 7));
 
-    int totalCases = cases.length;
+    // Initialize counts
+    int totalCases = 0; // Changed from cases.length to count only active
     int monthlyIncrease = 0;
     int dueThisWeek = 0;
     int urgentCases = 0;
 
     // Process each case
-    // Process each case
     for (var case_ in cases) {
+      // 1. FILTER: Skip completed cases
+      if (case_['progress_status'] == true) {
+        continue;
+      }
+
+      // Increment total active cases
+      totalCases++;
+
       if (case_['courtDate'] != null) {
         try {
           final courtDate = DateTime.parse(case_['courtDate']);
@@ -234,7 +242,6 @@ class StatsSectionState extends State<StatsSection> {
             monthlyIncrease++;
           }
         } catch (e) {
-          // Skip cases with invalid dates
           continue;
         }
       }
@@ -320,7 +327,7 @@ class StatsSectionState extends State<StatsSection> {
               );
             },
             child: _StatCard(
-              title: 'Total Cases',
+              title: 'Total Active Cases',
               value: '${_statsData!.totalCases}',
               icon: Icons.folder_outlined,
               color: const Color(0xFF1E3A8A),
