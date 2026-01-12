@@ -201,7 +201,12 @@ class _CalendarPageState extends State<CalendarPage> {
     return _casesMap.containsKey(dateKey) || _eventsMap.containsKey(dateKey);
   }
 
-  String _getStatus(DateTime courtDate, dynamic time) {
+  String _getStatus(
+    DateTime courtDate,
+    dynamic time, {
+    bool isCompleted = false,
+  }) {
+    if (isCompleted) return 'completed';
     // Create full DateTime with time if available
     DateTime fullCourtDateTime;
     if (time != null && time.toString().isNotEmpty) {
@@ -261,6 +266,8 @@ class _CalendarPageState extends State<CalendarPage> {
 
   Color _getStatusColor(String status) {
     switch (status) {
+      case 'completed':
+        return const Color(0xFF10B981);
       case 'urgent':
         return const Color(0xFFF59E0B);
       case 'upcoming':
@@ -962,7 +969,17 @@ class _CalendarPageState extends State<CalendarPage> {
 
   Widget _buildCaseCard(Map<String, dynamic> case_) {
     final courtDate = DateTime.parse(case_['courtDate']);
-    final status = _getStatus(courtDate, case_['time']);
+
+    // Use progress_status from the database to determine if it's completed
+    final bool isCompleted = case_['progress_status'] == true;
+
+    // Pass the isCompleted flag to get the correct 'completed' status string
+    final status = _getStatus(
+      courtDate,
+      case_['time'],
+      isCompleted: isCompleted,
+    );
+
     final statusColor = _getStatusColor(status);
     final time = _formatTime(case_['time']);
 
@@ -971,7 +988,13 @@ class _CalendarPageState extends State<CalendarPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: statusColor.withOpacity(0.3), width: 2),
+        border: Border.all(
+          // High-contrast green border for completed cases
+          color: isCompleted
+              ? const Color(0xFF10B981)
+              : statusColor.withOpacity(0.3),
+          width: isCompleted ? 2 : 1,
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
@@ -996,7 +1019,11 @@ class _CalendarPageState extends State<CalendarPage> {
                       color: statusColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Icon(Icons.gavel, color: statusColor, size: 20),
+                    child: Icon(
+                      isCompleted ? Icons.check_circle : Icons.gavel,
+                      color: statusColor,
+                      size: 20,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -1005,10 +1032,16 @@ class _CalendarPageState extends State<CalendarPage> {
                       children: [
                         Text(
                           case_['name'] ?? 'Unnamed Case',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
-                            color: Color(0xFF1F2937),
+                            // Subtle strike-through or grey color for completed text
+                            color: isCompleted
+                                ? const Color(0xFF6B7280)
+                                : const Color(0xFF1F2937),
+                            decoration: isCompleted
+                                ? TextDecoration.lineThrough
+                                : null,
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -1022,6 +1055,7 @@ class _CalendarPageState extends State<CalendarPage> {
                       ],
                     ),
                   ),
+                  // Badge Logic
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
@@ -1033,7 +1067,9 @@ class _CalendarPageState extends State<CalendarPage> {
                       border: Border.all(color: statusColor.withOpacity(0.3)),
                     ),
                     child: Text(
-                      status == 'urgent'
+                      status == 'completed'
+                          ? 'COMPLETED'
+                          : status == 'urgent'
                           ? 'URGENT'
                           : status == 'upcoming'
                           ? 'Upcoming'

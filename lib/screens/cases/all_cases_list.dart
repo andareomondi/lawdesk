@@ -915,7 +915,7 @@ class _CourtDateCard extends StatelessWidget {
                 : isExpired
                 ? const Color(0xFF6B7280)
                 : const Color(0xFF10B981),
-            width: isUrgent ? 2 : 1,
+            width: (isUrgent || isCompleted) ? 2 : 1,
           ),
           boxShadow: [
             BoxShadow(
@@ -936,9 +936,15 @@ class _CourtDateCard extends StatelessWidget {
                     children: [
                       Text(
                         caseName,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
+                          color: isCompleted
+                              ? const Color(0xFF6B7280)
+                              : const Color(0xFF1F2937),
+                          decoration: isCompleted
+                              ? TextDecoration.lineThrough
+                              : null,
                         ),
                       ),
                       const SizedBox(height: 4),
