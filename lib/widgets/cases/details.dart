@@ -36,6 +36,8 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
   final _descriptionController = TextEditingController();
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
+  bool get _isCompleted =>
+      _caseData != null && _caseData!['progress_status'] == true;
 
   // Controllers for notes
   final _noteNameController = TextEditingController();
@@ -82,6 +84,46 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
     _noteDescriptionController.dispose();
     _eventAgendaController.dispose();
     super.dispose();
+  }
+
+  Future<void> _toggleCaseCompletion() async {
+    if (!OfflineActionHelper.canPerformAction(
+      context,
+      actionName: 'update case status',
+    )) {
+      return;
+    }
+
+    final newStatus = !_isCompleted;
+    setState(() => _isLoading = true);
+
+    try {
+      await _supabase
+          .from('cases')
+          .update({'progress_status': newStatus})
+          .eq('id', widget.caseId);
+
+      await _loadCaseDetails();
+
+      if (mounted) {
+        AppToast.showSuccess(
+          context: context,
+          title: newStatus ? 'Case Completed' : 'Case Reopened',
+          message: newStatus
+              ? 'This case has been marked as complete.'
+              : 'This case is now active.',
+        );
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        AppToast.showError(
+          context: context,
+          title: 'Error',
+          message: 'Failed to update case status.',
+        );
+      }
+    }
   }
 
   Future<void> _loadCaseDetails() async {
@@ -1575,6 +1617,26 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
               fontWeight: FontWeight.w600,
             ),
           ),
+          actions: [
+            // Add Checkmark icon in AppBar for quick toggle
+            if (_caseData != null &&
+                !_isEditing &&
+                !_isDeleting &&
+                !_isOfflineMode)
+              IconButton(
+                tooltip: _isCompleted ? 'Reopen Case' : 'Mark as Complete',
+                icon: Icon(
+                  _isCompleted
+                      ? Icons.check_circle
+                      : Icons.check_circle_outline,
+                  color: _isCompleted
+                      ? const Color(0xFF10B981)
+                      : const Color(0xFF6B7280),
+                ),
+                onPressed: _toggleCaseCompletion,
+              ),
+          ],
+
           bottom: _caseData != null && !_isDeleting && !_isLoading
               ? TabBar(
                   labelColor: const Color(0xFF10B981),
@@ -1647,13 +1709,59 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
                   ],
                 ),
               )
-            : TabBarView(
+            : Column(
                 children: [
-                  _buildDetailsTab(),
-                  _buildEventsTab(),
-                  _buildNotesTab(),
+                  if (_isCompleted) _buildCompletionBanner(),
+                  Expanded(
+                    child: TabBarView(
+                      children: [
+                        _buildDetailsTab(),
+                        _buildEventsTab(),
+                        _buildNotesTab(),
+                      ],
+                    ),
+                  ),
                 ],
               ),
+      ),
+    );
+  }
+
+  Widget _buildCompletionBanner() {
+    return Container(
+      width: double.infinity,
+      color: const Color(0xFF10B981).withOpacity(0.1),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      child: Row(
+        children: [
+          const Icon(Icons.check_circle, color: Color(0xFF10B981), size: 20),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Text(
+              'This case is marked as complete. Editing is disabled.',
+              style: TextStyle(
+                color: Color(0xFF065F46),
+                fontWeight: FontWeight.w500,
+                fontSize: 14,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: _toggleCaseCompletion,
+            style: TextButton.styleFrom(
+              padding: EdgeInsets.zero,
+              minimumSize: const Size(50, 30),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: const Text(
+              'Reopen',
+              style: TextStyle(
+                color: Color(0xFF10B981),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1661,7 +1769,7 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
   Widget _buildDetailsTab() {
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
-      floatingActionButton: _isOfflineMode
+      floatingActionButton: (_isOfflineMode || _isCompleted)
           ? null // Hide FAB when offline
           : FloatingActionButton(
               onPressed: _isEditing
@@ -1759,22 +1867,24 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
             // Only show delete button when online
             if (!_isEditing && !_isOfflineMode) ...[
               const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: _deleteCase,
-                  icon: const Icon(Icons.delete_outline),
-                  label: const Text('Delete Case'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.red,
-                    side: const BorderSide(color: Colors.red),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+
+              if (!_isCompleted)
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _deleteCase,
+                    icon: const Icon(Icons.delete_outline),
+                    label: const Text('Delete Case'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.red,
+                      side: const BorderSide(color: Colors.red),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                   ),
                 ),
-              ),
             ],
 
             if (_isEditing) ...[
@@ -1809,8 +1919,8 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
   Widget _buildEventsTab() {
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
-      floatingActionButton: _isOfflineMode
-          ? null // Hide FAB when offline
+      floatingActionButton: (_isOfflineMode || _isCompleted)
+          ? null // Hide FAB when offline and when case is completed
           : FloatingActionButton(
               onPressed: () => _showAddEventModal(),
               backgroundColor: const Color(0xFF10B981),
@@ -2047,8 +2157,8 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
   Widget _buildNotesTab() {
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
-      floatingActionButton: _isOfflineMode
-          ? null // Hide FAB when offline
+      floatingActionButton: (_isOfflineMode || _isCompleted)
+          ? null // Hide FAB when offline and when case is completed
           : FloatingActionButton(
               onPressed: _showAddNoteModal,
               backgroundColor: const Color(0xFF10B981),
