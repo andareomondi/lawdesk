@@ -39,6 +39,7 @@ dependencies:
   photo_view: ^0.15.0
   timezone: ^0.10.1
   flutter_local_notifications: ^19.5.0
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:

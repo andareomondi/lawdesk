@@ -4,7 +4,7 @@ import 'package:lawdesk/widgets/delightful_toast.dart';
 import 'package:lawdesk/services/connectivity_service.dart';
 import 'package:lawdesk/services/offline_storage_service.dart';
 import 'package:lawdesk/widgets/offline_indicator.dart';
-import 'package:lawdesk/widgets/cases/client_modal.dart'; // Using the provided modal
+import 'package:lawdesk/widgets/cases/client_modal.dart';
 import 'package:lawdesk/screens/clients/client_details_page.dart';
 import 'package:lawdesk/utils/offline_action_helper.dart';
 
@@ -65,6 +65,17 @@ class _ClientsPageState extends State<ClientsPage>
     super.dispose();
   }
 
+  // Helper to format phone number with leading 0
+  String _formatPhoneNumber(dynamic phone) {
+    if (phone == null) return '';
+    String p = phone.toString();
+    // If it's a 9 digit number (e.g. 712345678), add the leading 0
+    if (p.length == 9 && !p.startsWith('0')) {
+      return '0$p';
+    }
+    return p;
+  }
+
   Future<void> _loadClients() async {
     setState(() => _isLoading = true);
 
@@ -73,7 +84,7 @@ class _ClientsPageState extends State<ClientsPage>
       if (user == null) throw Exception('No user logged in');
 
       if (connectivityService.isConnected) {
-        // Load from server
+        // Online: Fetch from Supabase
         final response = await _supabase
             .from('clients')
             .select()
@@ -81,33 +92,48 @@ class _ClientsPageState extends State<ClientsPage>
             .order('created_at', ascending: false);
 
         if (mounted) {
+          final clientsList = List<Map<String, dynamic>>.from(response);
           setState(() {
-            _clients = List<Map<String, dynamic>>.from(response);
+            _clients = clientsList;
             _isLoading = false;
           });
           
-          // Note: Assuming cacheClients exists in your offlineStorage based on convention
-          // If not, this serves as a placeholder for where you'd cache this specific data
-          // await offlineStorage.cacheClients(_clients); 
+          // Cache the fresh data
+          await offlineStorage.cacheClients(clientsList); 
         }
       } else {
-        // Load from cache logic would go here
-        // For now, if offline and no cache logic specific to clients exists in the provided
-        // snippets, we handle the empty state or previous state.
+        // Offline: Load from cache
         final cachedClients = await offlineStorage.getCachedClients();
-        setState(() {
-          _clients = []; // Or cached data
-          _isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            if (cachedClients != null) {
+              _clients = List<Map<String, dynamic>>.from(cachedClients);
+            } else {
+              _clients = [];
+            }
+            _isLoading = false;
+          });
+        }
       }
     } catch (e) {
+      // Fallback to cache on error
+      final cachedClients = await offlineStorage.getCachedClients();
       if (mounted) {
-        setState(() => _isLoading = false);
-        AppToast.showError(
-          context: context,
-          title: 'Error',
-          message: 'Failed to load clients',
-        );
+        setState(() {
+          if (cachedClients != null) {
+            _clients = List<Map<String, dynamic>>.from(cachedClients);
+          }
+          _isLoading = false;
+        });
+        
+        // Only show error toast if we have no data at all
+        if (_clients.isEmpty) {
+          AppToast.showError(
+            context: context,
+            title: 'Error',
+            message: 'Failed to load clients',
+          );
+        }
       }
     }
   }
@@ -142,15 +168,17 @@ class _ClientsPageState extends State<ClientsPage>
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          if (OfflineActionHelper.canPerformAction(context, actionName: 'add client')) {
-             AddClientModal.show(context, onClientAdded: _loadClients);
-          }
-        },
-        backgroundColor: const Color(0xFF1E3A8A),
-        child: const Icon(Icons.person_add, color: Colors.white),
-      ),
+      floatingActionButton: _isOfflineMode 
+        ? null // Hide FAB if offline (since we can't create clients offline usually)
+        : FloatingActionButton(
+            onPressed: () {
+              if (OfflineActionHelper.canPerformAction(context, actionName: 'add client')) {
+                 AddClientModal.show(context, onClientAdded: _loadClients);
+              }
+            },
+            backgroundColor: const Color(0xFF1E3A8A),
+            child: const Icon(Icons.person_add, color: Colors.white),
+          ),
       body: Column(
         children: [
           if (_isOfflineMode) const OfflineDataIndicator(),
@@ -285,6 +313,9 @@ class _ClientsPageState extends State<ClientsPage>
         ? client['name'].toString()[0].toUpperCase()
         : '?';
 
+    // Format phone number to include leading 0
+    final String displayPhone = _formatPhoneNumber(client['phone']);
+
     return InkWell(
       onTap: () async {
         final result = await Navigator.push(
@@ -364,13 +395,13 @@ class _ClientsPageState extends State<ClientsPage>
                   ],
                 ),
               const SizedBox(height: 4),
-              if (client['phone'] != null)
+              if (displayPhone.isNotEmpty)
                 Row(
                   children: [
                     const Icon(Icons.phone_outlined, size: 14, color: Color(0xFF6B7280)),
                     const SizedBox(width: 6),
                     Text(
-                      client['phone'].toString(),
+                      displayPhone,
                       style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
                     ),
                   ],
@@ -442,6 +473,7 @@ class _ClientsPageState extends State<ClientsPage>
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 32),
+          if (!_isOfflineMode)
           ElevatedButton.icon(
             onPressed: () {
                if (OfflineActionHelper.canPerformAction(context, actionName: 'add client')) {

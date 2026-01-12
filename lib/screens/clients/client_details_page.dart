@@ -3,6 +3,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:lawdesk/widgets/delightful_toast.dart';
 import 'package:lawdesk/services/connectivity_service.dart';
+import 'package:lawdesk/services/offline_storage_service.dart'; // Import offline storage
+import 'package:lawdesk/widgets/offline_indicator.dart'; // Added offline indicator
 import 'package:lawdesk/utils/offline_action_helper.dart';
 import 'package:lawdesk/widgets/cases/details.dart';
 
@@ -32,8 +34,8 @@ class _ClientDetailsPageState extends State<ClientDetailsPage> {
   @override
   void initState() {
     super.initState();
-    _initializeControllers();
     _isOfflineMode = !connectivityService.isConnected;
+    _initializeControllers();
     _loadLinkedCases();
 
     connectivityService.connectionStream.listen((isConnected) {
@@ -41,15 +43,32 @@ class _ClientDetailsPageState extends State<ClientDetailsPage> {
         setState(() {
           _isOfflineMode = !isConnected;
         });
+
+        // Retry loading cases if we just came online
+        if (isConnected && _linkedCases.isEmpty) {
+          _loadLinkedCases();
+        }
       }
     });
+  }
+
+  // Helper to format phone number with leading 0
+  String _formatPhoneNumber(dynamic phone) {
+    if (phone == null) return '';
+    String p = phone.toString();
+    // If it's a 9 digit number (e.g. 712345678), add the leading 0
+    if (p.length == 9 && !p.startsWith('0')) {
+      return '0$p';
+    }
+    return p;
   }
 
   void _initializeControllers() {
     _nameController = TextEditingController(text: widget.clientData['name']);
     _emailController = TextEditingController(text: widget.clientData['email']);
+    // Apply formatting to initial text so "0" appears in UI
     _phoneController = TextEditingController(
-      text: widget.clientData['phone']?.toString(),
+      text: _formatPhoneNumber(widget.clientData['phone']),
     );
     _notesController = TextEditingController(text: widget.clientData['notes']);
   }
@@ -57,26 +76,59 @@ class _ClientDetailsPageState extends State<ClientDetailsPage> {
   Future<void> _loadLinkedCases() async {
     setState(() => _isLoadingCases = true);
     try {
-      final response = await _supabase
-          .from('cases')
-          .select()
-          .eq('name', widget.clientData['name']);
+      if (connectivityService.isConnected) {
+        // Online: Fetch from Supabase
+        final response = await _supabase
+            .from('cases')
+            .select()
+            .eq('name', widget.clientData['name']);
 
-      if (mounted) {
-        setState(() {
-          _linkedCases = List<Map<String, dynamic>>.from(response);
-          _isLoadingCases = false;
-        });
+        if (mounted) {
+          setState(() {
+            _linkedCases = List<Map<String, dynamic>>.from(response);
+            _isLoadingCases = false;
+          });
+        }
+      } else {
+        // Offline: Fetch from local cache and filter by client name
+        final cachedCases = await offlineStorage.getCachedCases();
+        if (mounted) {
+          if (cachedCases != null) {
+            // Filter locally
+            final clientName = widget.clientData['name'];
+            _linkedCases = List<Map<String, dynamic>>.from(
+              cachedCases,
+            ).where((c) => c['name'] == clientName).toList();
+          }
+          setState(() => _isLoadingCases = false);
+        }
       }
     } catch (e) {
       debugPrint('Error loading linked cases: $e');
-      if (mounted) setState(() => _isLoadingCases = false);
+      // Fallback to cache on error
+      final cachedCases = await offlineStorage.getCachedCases();
+      if (mounted) {
+        if (cachedCases != null) {
+          final clientName = widget.clientData['name'];
+          _linkedCases = List<Map<String, dynamic>>.from(
+            cachedCases,
+          ).where((c) => c['name'] == clientName).toList();
+        }
+        setState(() => _isLoadingCases = false);
+      }
     }
   }
 
   Future<void> _makePhoneCall(String phoneNumber) async {
     if (phoneNumber.isEmpty) return;
-    final Uri launchUri = Uri(scheme: 'tel', path: phoneNumber);
+
+    // Ensure we send the number with the leading zero to the dialer
+    String formattedNumber = phoneNumber;
+    if (formattedNumber.length == 9 && !formattedNumber.startsWith('0')) {
+      formattedNumber = '0$formattedNumber';
+    }
+
+    final Uri launchUri = Uri(scheme: 'tel', path: formattedNumber);
     if (await canLaunchUrl(launchUri)) {
       await launchUrl(launchUri);
     } else {
@@ -135,12 +187,17 @@ class _ClientDetailsPageState extends State<ClientDetailsPage> {
     setState(() => _isLoading = true);
 
     try {
+      // Parse phone back to int for DB if needed, or keep as int if DB is int
+      // NOTE: If DB is int, leading zero is lost. UI re-adds it on load.
+      final phoneInput = _phoneController.text.trim();
+      final phoneInt = int.tryParse(phoneInput);
+
       await _supabase
           .from('clients')
           .update({
             'name': _nameController.text.trim(),
             'email': _emailController.text.trim(),
-            'phone': int.tryParse(_phoneController.text.trim()),
+            'phone': phoneInt, // Storing as int
             'notes': _notesController.text.trim(),
           })
           .eq('id', widget.clientData['id']);
@@ -152,9 +209,7 @@ class _ClientDetailsPageState extends State<ClientDetailsPage> {
           // Update local widget data to reflect changes immediately
           widget.clientData['name'] = _nameController.text.trim();
           widget.clientData['email'] = _emailController.text.trim();
-          widget.clientData['phone'] = int.tryParse(
-            _phoneController.text.trim(),
-          );
+          widget.clientData['phone'] = phoneInt;
           widget.clientData['notes'] = _notesController.text.trim();
         });
         AppToast.showSuccess(
@@ -250,8 +305,24 @@ class _ClientDetailsPageState extends State<ClientDetailsPage> {
         ),
         actions: [
           IconButton(
+            icon: Icon(
+              _isEditing ? Icons.check : Icons.edit,
+              color: _isEditing ? Colors.green : const Color(0xFF3B82F6),
+            ),
+            onPressed: _isLoading || _isOfflineMode
+                ? null
+                : () {
+                    if (_isEditing) {
+                      _saveChanges();
+                    } else {
+                      setState(() => _isEditing = true);
+                    }
+                  },
+            tooltip: _isEditing ? 'Save Changes' : 'Edit Client',
+          ),
+          IconButton(
             icon: const Icon(Icons.delete, color: Color(0xFFEF4444)),
-            onPressed: _isLoading ? null : _deleteClient,
+            onPressed: _isLoading || _isOfflineMode ? null : _deleteClient,
             tooltip: 'Delete Client',
           ),
         ],
@@ -264,6 +335,11 @@ class _ClientDetailsPageState extends State<ClientDetailsPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (_isOfflineMode)
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 16.0),
+                  child: OfflineDataIndicator(),
+                ),
               _buildProfileHeader(),
               const SizedBox(height: 24),
               _buildInfoCard(),
@@ -359,7 +435,6 @@ class _ClientDetailsPageState extends State<ClientDetailsPage> {
             subtitle: Text(
               'Status: ${caseItem['progress_status'] == null ? 'N/A' : (caseItem['progress_status'] == true ? 'Completed' : 'Ongoing')}',
               style: TextStyle(
-                // Optional: Add color coding for better UX
                 color: caseItem['progress_status'] == true
                     ? Colors.green
                     : Colors.orange,
@@ -378,6 +453,9 @@ class _ClientDetailsPageState extends State<ClientDetailsPage> {
     final String initial = _nameController.text.isNotEmpty
         ? _nameController.text[0].toUpperCase()
         : '?';
+
+    // Get current phone from controller (which has formatting applied in init)
+    final String displayPhone = _phoneController.text;
 
     return Center(
       child: Column(
@@ -425,9 +503,19 @@ class _ClientDetailsPageState extends State<ClientDetailsPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _buildActionChip(Icons.email, 'Email', Colors.blue),
+                // Call email functionality
+                InkWell(
+                  onTap: () => _sendEmail(_emailController.text),
+                  borderRadius: BorderRadius.circular(20),
+                  child: _buildActionChip(Icons.email, 'Email', Colors.blue),
+                ),
                 const SizedBox(width: 12),
-                _buildActionChip(Icons.phone, 'Call', Colors.green),
+                // Call phone functionality
+                InkWell(
+                  onTap: () => _makePhoneCall(displayPhone),
+                  borderRadius: BorderRadius.circular(20),
+                  child: _buildActionChip(Icons.phone, 'Call', Colors.green),
+                ),
               ],
             ),
           ],
@@ -626,3 +714,4 @@ class _ClientDetailsPageState extends State<ClientDetailsPage> {
     );
   }
 }
+
