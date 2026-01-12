@@ -144,7 +144,8 @@ class _ClientDetailsPageState extends State<ClientDetailsPage> {
 
   Future<void> _sendEmail(String email) async {
     if (email.isEmpty) return;
-    final Uri launchUri = Uri(scheme: 'mailto', path: email);
+    final Uri launchUri = Uri.parse('mailto:$email');
+    // final Uri launchUri = Uri(scheme: 'mailto', path: email);
     if (await canLaunchUrl(launchUri)) {
       await launchUrl(launchUri);
     } else {
