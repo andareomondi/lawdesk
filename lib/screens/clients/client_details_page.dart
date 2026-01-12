@@ -304,22 +304,23 @@ class _ClientDetailsPageState extends State<ClientDetailsPage> {
           style: TextStyle(color: Color(0xFF1F2937)),
         ),
         actions: [
-          IconButton(
-            icon: Icon(
-              _isEditing ? Icons.check : Icons.edit,
-              color: _isEditing ? Colors.green : const Color(0xFF3B82F6),
-            ),
-            onPressed: _isLoading || _isOfflineMode
-                ? null
-                : () {
-                    if (_isEditing) {
-                      _saveChanges();
-                    } else {
-                      setState(() => _isEditing = true);
-                    }
-                  },
-            tooltip: _isEditing ? 'Save Changes' : 'Edit Client',
-          ),
+        // TODO: Enable editing in future release and fix the save flow logic first and offline handling
+          // IconButton(
+          //   icon: Icon(
+          //     _isEditing ? Icons.check : Icons.edit,
+          //     color: _isEditing ? Colors.green : const Color(0xFF3B82F6),
+          //   ),
+          //   onPressed: _isLoading || _isOfflineMode
+          //       ? null
+          //       : () {
+          //           if (_isEditing) {
+          //             _saveChanges();
+          //           } else {
+          //             setState(() => _isEditing = true);
+          //           }
+          //         },
+          //   tooltip: _isEditing ? 'Save Changes' : 'Edit Client',
+          // ),
           IconButton(
             icon: const Icon(Icons.delete, color: Color(0xFFEF4444)),
             onPressed: _isLoading || _isOfflineMode ? null : _deleteClient,
