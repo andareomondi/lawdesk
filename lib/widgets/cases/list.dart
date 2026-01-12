@@ -212,6 +212,7 @@ class CasesListWidgetState extends State<CasesListWidget>
             .from('cases')
             .select()
             .eq('user', user.id)
+            .neq('progress_status', true)
             .order('courtDate', ascending: true)
             .limit(5);
 
@@ -233,7 +234,9 @@ class CasesListWidgetState extends State<CasesListWidget>
         final cachedCases = await offlineStorage.getCachedCases();
 
         if (cachedCases != null) {
-          final cases = List<Map<String, dynamic>>.from(cachedCases);
+          var cases = List<Map<String, dynamic>>.from(cachedCases);
+
+          cases = cases.where((c) => c['progress_status'] != true).toList();
 
           // Process status with current date (status may have changed)
           final processedCases = _processStatusForCases(cases);
@@ -251,7 +254,8 @@ class CasesListWidgetState extends State<CasesListWidget>
       final cachedCases = await offlineStorage.getCachedCases();
 
       if (cachedCases != null) {
-        final cases = List<Map<String, dynamic>>.from(cachedCases);
+        var cases = List<Map<String, dynamic>>.from(cachedCases);
+        cases = cases.where((c) => c['progress_status'] != true).toList();
         final processedCases = _processStatusForCases(cases);
         return processedCases.take(5).toList();
       }
