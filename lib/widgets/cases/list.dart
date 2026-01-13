@@ -492,23 +492,6 @@ class CasesListWidgetState extends State<CasesListWidget>
             style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
             textAlign: TextAlign.center,
           ),
-
-          // Optional: Button to view completed cases if you have a screen for that
-          if (_hasCompletedCases) ...[
-            const SizedBox(height: 24),
-            TextButton(
-              onPressed: () {
-                // Navigate to full case list (if you have one that shows completed)
-                // or just show a toast
-                AppToast.showSuccess(
-                  context: context,
-                  title: "Completed Cases",
-                  message: "Use the main menu to view Case History",
-                );
-              },
-              child: const Text('View History'),
-            ),
-          ],
         ],
       ),
     );
