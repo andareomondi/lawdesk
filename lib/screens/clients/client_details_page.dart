@@ -144,16 +144,17 @@ class _ClientDetailsPageState extends State<ClientDetailsPage> {
 
   Future<void> _sendEmail(String email) async {
     if (email.isEmpty) return;
-    final Uri launchUri = Uri.parse('mailto:$email');
-    // final Uri launchUri = Uri(scheme: 'mailto', path: email);
-    if (await canLaunchUrl(launchUri)) {
-      await launchUrl(launchUri);
-    } else {
+    final Uri launchUri = Uri(scheme: 'mailto', path: email);
+
+    try {
+      // Attempt launch directly; avoid canLaunchUrl check which can be unreliable
+      await launchUrl(launchUri, mode: LaunchMode.externalApplication);
+    } catch (e) {
       if (mounted) {
         AppToast.showError(
           context: context,
           title: 'Error',
-          message: 'Could not launch email',
+          message: 'No email app found on this device.',
         );
       }
     }
@@ -305,7 +306,7 @@ class _ClientDetailsPageState extends State<ClientDetailsPage> {
           style: TextStyle(color: Color(0xFF1F2937)),
         ),
         actions: [
-        // TODO: Enable editing in future release and fix the save flow logic first and offline handling
+          // TODO: Enable editing in future release and fix the save flow logic first and offline handling
           // IconButton(
           //   icon: Icon(
           //     _isEditing ? Icons.check : Icons.edit,
@@ -716,4 +717,3 @@ class _ClientDetailsPageState extends State<ClientDetailsPage> {
     );
   }
 }
-

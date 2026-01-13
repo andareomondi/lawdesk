@@ -1746,21 +1746,6 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
               ),
             ),
           ),
-          TextButton(
-            onPressed: _toggleCaseCompletion,
-            style: TextButton.styleFrom(
-              padding: EdgeInsets.zero,
-              minimumSize: const Size(50, 30),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            child: const Text(
-              'Reopen',
-              style: TextStyle(
-                color: Color(0xFF10B981),
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
         ],
       ),
     );
