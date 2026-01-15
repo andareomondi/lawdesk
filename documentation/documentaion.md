@@ -5,13 +5,13 @@
 
 ## Index
 
-* [Chapter 1: Project Initialization and Setup](#chapter-1)
-* [Chapter 2: Data Modeling](https://www.google.com/search?q=%23chapter-2-data-modeling)
-* [Chapter 3: Local Database Implementation](https://www.google.com/search?q=%23chapter-3-local-database-implementation)
-* [Chapter 4: Authentication Services](https://www.google.com/search?q=%23chapter-4-authentication-services)
-* [Chapter 5: Case Management Provider](https://www.google.com/search?q=%23chapter-5-case-management-provider)
-* [Chapter 6: User Interface - Case Forms](https://www.google.com/search?q=%23chapter-6-user-interface---case-forms)
-* [Chapter 7: Build and Deployment](https://www.google.com/search?q=%23chapter-7-build-and-deployment)
+* [Chapter 1: Project Initialization and Setup](#chapter-1-project-initialization-and-setup)
+* [Chapter 2: Data Modeling](#chapter-2-data-modeling)
+* [Chapter 3: Local Database Implementation](#chapter-3-local-database-implementation)
+* [Chapter 4: Authentication Services](#chapter-4-authentication-services)
+* [Chapter 5: Case Management Provider](#chapter-5-case-management-provider)
+* [Chapter 6: User Interface - Case Forms](#chapter-6-user-interface---case-forms)
+* [Chapter 7: Build and Deployment](#chapter-7-build-and-deployment)
 
 ---
 
