@@ -5,7 +5,7 @@
 
 ## Index
 
-* [Chapter 1: Project Initialization and Setup](chapter-1-project-initialization-and-setup)
+* [Chapter 1: Project Initialization and Setup](#chapter-1)
 * [Chapter 2: Data Modeling](https://www.google.com/search?q=%23chapter-2-data-modeling)
 * [Chapter 3: Local Database Implementation](https://www.google.com/search?q=%23chapter-3-local-database-implementation)
 * [Chapter 4: Authentication Services](https://www.google.com/search?q=%23chapter-4-authentication-services)
