@@ -5,7 +5,7 @@
 
 ## Index
 
-* [Chapter 1: Project Initialization and Setup](#chapter-1-project-initialization-and-setup)
+* [Chapter 1: Project Introduction and Setup](#chapter-1-project-introduction-and-setup)
 * [Chapter 2: Data Modeling](#chapter-2-data-modeling)
 * [Chapter 3: Local Database Implementation](#chapter-3-local-database-implementation)
 * [Chapter 4: Authentication Services](#chapter-4-authentication-services)
@@ -15,7 +15,45 @@
 
 ---
 
-## Chapter 1: Project Initialization and Setup
+## Chapter 1: Project Introduction and Setup
+
+### Project Overview
+LawDesk is a Flutter based android mobile application designed for managing and diarising legal cases. The app utilises supabase as its backend service for authentication and data storage. Notifications are handled through a custom cron job setup. 
+
+The cron job initiates a serverless edge function which sends push notifications trigger to firebase cloud messaging which then delivers the notifications to the users devices which each has a specific fcm token.
+
+***What is an FCM Token?***: It is a unique identifier assigned to each device by Firebase Cloud Messaging (FCM). This token allows the FCM service to route notifications specifically to that device. It also handles offline notifications by queuing them until the device is back online.
+
+The application also handles document upload and storage using supabase storage buckets. View of documents is also possible using the [flutter_pdfview](https://pub.dev/packages/flutter_pdfview) package and the [photo_view](https://pub.dev/packages/photo_view) packages for pdf and Image views respectively.
+
+Offline capabilities are provided through storing data locally using the [shared_preferences](https://pub.dev/packages/shared_preferences) package. This is not the most optimal solution for large data sets but works well for small scale usage. A better solution must be implemented in future versions using [sqlite](https://pub.dev/packages/sqlite) or hive databases.
+
+OTA UPDATES: The app is capable of recieving over the air updates by using [shorebird_code_push](https://pub.dev/packages/shorebird_code_push) package. This allows for quick bug fixes and feature releases without going through the lengthy play store review process. ***Note: While building a patch for the app, ensure to use the code below to avoid issues with icon tree shaking which causes the app to crash on startup.***
+
+```powershell
+shorebird patch android '--' --no-tree-shake-icons
+
+```
+while for bash use
+```bash
+shorebird patch android -- --no-tree-shake-icons
+
+```
+
+Other packages used in the project include:
+* [provider](https://pub.dev/packages/provider) - State Management
+* [intl](https://pub.dev/packages/intl) - Date Formatting
+* [connectivity_plus](https://pub.dev/packages/connectivity_plus) - Network Connectivity Checks
+* [delightful_toast](https://pub.dev/packages/delightful_toast) - Toast notifications
+* [image_picker](https://pub.dev/packages/image_picker) - Image selection from gallery or camera
+* [introduction_screen](https://pub.dev/packages/introduction_screen) - Onboarding screens
+* [flutter_launcher_icons](https://pub.dev/packages/flutter_launcher_icons) - App icon generation
+* [liquid_pull_to_refresh](https://pub.dev/packages/liquid_pull_to_refresh) - Pull to refresh functionality
+* [flutter_local_notifications](https://pub.dev/packages/flutter_local_notifications) - Local notifications. ***Has been implemented but not yet in use. It's still buggy and unreliable. ***
+* [Firebase_core](https://pub.dev/packages/firebase_core)
+* [firebase_messaging](https://pub.dev/packages/firebase_messaging) - Firebase integration for push notifications.
+* [url_launcher](https://pub.dev/packages/url_launcher) - To open contact information with relevant apps in the clients page.
+
 
 ### Establishing the Environment and Dependencies
 
