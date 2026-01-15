@@ -220,80 +220,335 @@ create table public.court (
 
 ## Chapter 3: Local Database Implementation
 
-### Persisting Data with SQLite
+### Persisting Data with local storage
 
-This chapter explains the setup of the SQLite database layer. It handles the creation of tables and the raw CRUD (Create, Read, Update, Delete) operations required for offline functionality.
+This chapter explains the setup of the local storage  layer. It handles the creation of tables and the raw CRUD (Create, Read, Update, Delete) operations required for offline functionality.
+The whole system comprises of a offline service which "caches" the data into local storage and then retrived by the respective widget
 
 ### Implementation
 
-#### 1. Database Initialization
+#### 1. Service Initialization
 
-This code opens the database and creates the `cases` table if it does not exist.
+This code opens the service and should be called in the [main.dart](https://github.com/andareomondi/lawdesk/blob/main/lib/main.dart) file during the on start of the applicaton.
 
 ```dart
-import 'package:sqflite/sqflite.dart';
-import 'package:path/path.dart';
 
-class DatabaseHelper {
-  static final DatabaseHelper instance = DatabaseHelper._init();
-  static Database? _database;
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 
-  DatabaseHelper._init();
+class OfflineStorageService {
+  static final OfflineStorageService _instance = OfflineStorageService._internal();
+  factory OfflineStorageService() => _instance;
+  OfflineStorageService._internal();
 
-  Future<Database> get database async {
-    if (_database != null) return _database!;
-    _database = await _initDB('cases.db');
-    return _database!;
+  static const String _casesCacheKey = 'cached_cases';
+  static const String _profileCacheKey = 'cached_profile';
+  static const String _statsCacheKey = 'cached_stats';
+  static const String _documentsCacheKey = 'cached_documents';
+  static const String _eventsCacheKey = 'cached_events';
+  static const String _clientsCacheKey = 'cached_clients'; // Added clients key
+  static const String _lastSyncKey = 'last_sync_time';
+
+  // Save clients to local storage
+  Future<void> cacheClients(List<dynamic> clients) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonString = jsonEncode(clients);
+      await prefs.setString(_clientsCacheKey, jsonString);
+      await _updateLastSyncTime();
+      print('Successfully cached ${clients.length} clients');
+    } catch (e) {
+      print('Error caching clients: $e');
+    }
   }
 
-  Future<Database> _initDB(String filePath) async {
-    final dbPath = await getDatabasesPath();
-    final path = join(dbPath, filePath);
-
-    return await openDatabase(path, version: 1, onCreate: _createDB);
+  // Get cached clients
+  Future<List<dynamic>?> getCachedClients() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonString = prefs.getString(_clientsCacheKey);
+      if (jsonString != null) {
+        return jsonDecode(jsonString) as List<dynamic>;
+      }
+    } catch (e) {
+      print('Error getting cached clients: $e');
+    }
+    return null;
   }
 
-  Future _createDB(Database db, int version) async {
-    const idType = 'TEXT PRIMARY KEY';
-    const textType = 'TEXT NOT NULL';
+  // Save events to local storage
+  Future<void> cacheEvents(List<dynamic> events) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonString = jsonEncode(events);
+      await prefs.setString(_eventsCacheKey, jsonString);
+      await _updateLastSyncTime();
+      print('Successfully cached ${events.length} events');
+    } catch (e) {
+      print('Error caching events: $e');
+    }
+  }
 
-    await db.execute('''
-CREATE TABLE cases ( 
-  id $idType, 
-  title $textType,
-  description $textType,
-  status $textType,
-  dateCreated $textType
-  )
-''');
+  // Get cached events
+  Future<List<dynamic>?> getCachedEvents() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonString = prefs.getString(_eventsCacheKey);
+      if (jsonString != null) {
+        return jsonDecode(jsonString) as List<dynamic>;
+      }
+    } catch (e) {
+      print('Error getting cached events: $e');
+    }
+    return null;
+  }
+
+  // Save cases to local storage
+  Future<void> cacheCases(List<dynamic> cases) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonString = jsonEncode(cases);
+      await prefs.setString(_casesCacheKey, jsonString);
+      await _updateLastSyncTime();
+      print('Successfully cached ${cases.length} cases');
+    } catch (e) {
+      print('Error caching cases: $e');
+    }
+  }
+
+  // Get cached cases
+  Future<List<dynamic>?> getCachedCases() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonString = prefs.getString(_casesCacheKey);
+      if (jsonString != null) {
+        return jsonDecode(jsonString) as List<dynamic>;
+      }
+    } catch (e) {
+      print('Error getting cached cases: $e');
+    }
+    return null;
+  }
+
+  // Save documents to local storage
+  Future<void> cacheDocuments(List<dynamic> documents) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonString = jsonEncode(documents);
+      await prefs.setString(_documentsCacheKey, jsonString);
+      await _updateLastSyncTime();
+      print('Successfully cached ${documents.length} documents');
+    } catch (e) {
+      print('Error caching documents: $e');
+    }
+  }
+
+  // Get cached documents
+  Future<List<dynamic>?> getCachedDocuments() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonString = prefs.getString(_documentsCacheKey);
+      if (jsonString != null) {
+        return jsonDecode(jsonString) as List<dynamic>;
+      }
+    } catch (e) {
+      print('Error getting cached documents: $e');
+    }
+    return null;
+  }
+
+  // Save profile to local storage
+  Future<void> cacheProfile(Map<String, dynamic> profile) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonString = jsonEncode(profile);
+      await prefs.setString(_profileCacheKey, jsonString);
+      await _updateLastSyncTime();
+    } catch (e) {
+      print('Error caching profile: $e');
+    }
+  }
+
+  // Get cached profile
+  Future<Map<String, dynamic>?> getCachedProfile() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonString = prefs.getString(_profileCacheKey);
+      if (jsonString != null) {
+        return jsonDecode(jsonString) as Map<String, dynamic>;
+      }
+    } catch (e) {
+      print('Error getting cached profile: $e');
+    }
+    return null;
+  }
+
+  // Save stats to local storage
+  Future<void> cacheStats(Map<String, dynamic> stats) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonString = jsonEncode(stats);
+      await prefs.setString(_statsCacheKey, jsonString);
+    } catch (e) {
+      print('Error caching stats: $e');
+    }
+  }
+
+  // Get cached stats
+  Future<Map<String, dynamic>?> getCachedStats() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonString = prefs.getString(_statsCacheKey);
+      if (jsonString != null) {
+        return jsonDecode(jsonString) as Map<String, dynamic>;
+      }
+    } catch (e) {
+      print('Error getting cached stats: $e');
+    }
+    return null;
+  }
+
+  // Update last sync time
+  Future<void> _updateLastSyncTime() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_lastSyncKey, DateTime.now().toIso8601String());
+  }
+
+  // Get last sync time
+  Future<DateTime?> getLastSyncTime() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final timeString = prefs.getString(_lastSyncKey);
+      if (timeString != null) {
+        return DateTime.parse(timeString);
+      }
+    } catch (e) {
+      print('Error getting last sync time: $e');
+    }
+    return null;
+  }
+
+  // Clear all cached data
+  Future<void> clearCache() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_casesCacheKey);
+    await prefs.remove(_profileCacheKey);
+    await prefs.remove(_statsCacheKey);
+    await prefs.remove(_documentsCacheKey);
+    await prefs.remove(_eventsCacheKey);
+    await prefs.remove(_clientsCacheKey); // Added clear for clients
+    await prefs.remove(_lastSyncKey);
   }
 }
 
+final offlineStorage = OfflineStorageService();
+
 ```
 
-#### 2. Insert Operation
+#### 2. Service recall example
 
-A specific method to insert a new case into the database using conflict resolution.
-
+This is an example of how to use the service to obtain the cached data and to cache which ever is applicable. The sample code is retrived from the dashboard stat card that shows the total active number of cases and their diffrence.
 ```dart
-Future<void> create(CaseModel caseItem) async {
-  final db = await instance.database;
-  
-  await db.insert(
-    'cases',
-    caseItem.toMap(),
-    conflictAlgorithm: ConflictAlgorithm.replace,
-  );
-}
+
+  Future<void> loadStats() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+
+      final user = _supabase.auth.currentUser;
+      if (user == null) {
+        throw Exception('User not authenticated');
+      }
+
+      // Check if online
+      if (connectivityService.isConnected) {
+        // Fetch all cases for the user from server
+        final response = await _supabase
+            .from('cases')
+            .select()
+            .eq('user', user.id);
+
+        if (response is List) {
+          final cases = List<Map<String, dynamic>>.from(response);
+          final statsData = _processStatsData(cases);
+
+          setState(() {
+            _statsData = statsData;
+            _isLoading = false;
+          });
+
+          // Cache the stats
+          await offlineStorage.cacheStats({
+            'totalCases': statsData.totalCases,
+            'monthlyIncrease': statsData.monthlyIncrease,
+            'dueThisWeek': statsData.dueThisWeek,
+            'urgentCases': statsData.urgentCases,
+          });
+
+          // Also cache the cases data for consistency
+          await offlineStorage.cacheCases(cases);
+        }
+      } else {
+        // Load from cache when offline
+        final cachedStats = await offlineStorage.getCachedStats();
+
+        if (cachedStats != null) {
+          setState(() {
+            _statsData = StatsData(
+              totalCases: cachedStats['totalCases'] ?? 0,
+              monthlyIncrease: cachedStats['monthlyIncrease'] ?? 0,
+              dueThisWeek: cachedStats['dueThisWeek'] ?? 0,
+              urgentCases: cachedStats['urgentCases'] ?? 0,
+            );
+            _isLoading = false;
+          });
+        } else {
+          // No cached data available
+          setState(() {
+            _errorMessage = 'No offline data available';
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      print('Error loading stats: $e');
+
+      // Try to load from cache on error
+      final cachedStats = await offlineStorage.getCachedStats();
+
+      if (cachedStats != null && mounted) {
+        setState(() {
+          _statsData = StatsData(
+            totalCases: cachedStats['totalCases'] ?? 0,
+            monthlyIncrease: cachedStats['monthlyIncrease'] ?? 0,
+            dueThisWeek: cachedStats['dueThisWeek'] ?? 0,
+            urgentCases: cachedStats['urgentCases'] ?? 0,
+          );
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _errorMessage = 'Failed to load stats';
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
 ```
+***NOTE1:*** Similar logic is implemented across the app to cache and retrieve data for cases, profile, documents, events and clients. And don't forget to import the `offline_storage_service.dart` file wherever you intend to use it.
+
+***NOTE2:*** A sync method is implemented in the app to retrive the actual data from supabase when the device is online. This is done seemlessly and with a visual feeback
 
 ---
 
 **Future Improvements:**
 
-* Implement database migration scripts to handle schema changes in future app updates.
-* Add encryption to the local database using SQLCipher for security compliance.
+* Implement a more robust local database solution using SQLite or Hive for complex queries and relationships.
+* Clean up the service if deemed to be the only option to go with in production
+
 
 ---
 
