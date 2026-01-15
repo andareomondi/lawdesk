@@ -28,7 +28,7 @@ The application also handles document upload and storage using supabase storage 
 
 Offline capabilities are provided through storing data locally using the [shared_preferences](https://pub.dev/packages/shared_preferences) package. This is not the most optimal solution for large data sets but works well for small scale usage. A better solution must be implemented in future versions using [sqlite](https://pub.dev/packages/sqlite) or hive databases.
 
-OTA UPDATES: The app is capable of recieving over the air updates by using [shorebird_code_push](https://pub.dev/packages/shorebird_code_push) package. This allows for quick bug fixes and feature releases without going through the lengthy play store review process. ***Note: While building a patch for the app, ensure to use the code below to avoid issues with icon tree shaking which causes the app to crash on startup.***
+OTA UPDATES: The app is capable of recieving over the air updates by using [shorebird_code_push](https://pub.dev/packages/shorebird_code_push) package. This allows for quick bug fixes and feature releases without going through the lengthy play store review process. ***Note: While building a patch for the app, ensure to use the code below to avoid issues with icon tree shaking which causes loss of icons pushed via the update.***
 
 ```powershell
 shorebird patch android '--' --no-tree-shake-icons
