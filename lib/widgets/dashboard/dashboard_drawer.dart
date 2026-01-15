@@ -20,24 +20,6 @@ class DashboardDrawer extends StatelessWidget {
     required this.onProfileUpdate,
   });
 
-  Future<void> _handleLogout(BuildContext context) async {
-    final authProvider = AuthProvider();
-    try {
-      await authProvider.signOut();
-      if (context.mounted) {
-        Navigator.pop(context);
-      }
-    } catch (e) {
-      if (context.mounted) {
-        AppToast.showError(
-          context: context,
-          title: "Error",
-          message: "Failed to logout. Please try again.",
-        );
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Drawer(
