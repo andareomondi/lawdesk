@@ -25,22 +25,8 @@ LawDesk is a modern, mobile-first case management system designed specifically f
 - **📊 Dashboard** - At-a-glance overview of cases and upcoming deadlines
 - **🔍 Search & Filter** - Quick access to cases and documents
 - **📱 Mobile-First** - Designed for lawyers on the go
+- **👤 Client Tracking** - Track client details and case associations with embedded contact management
 
-### 🪂 Upcoming Features
-
-- **🤖 AI Intergration** - AI Intregration to help plan, execute and conduct cases based on case documents 
-- **💬 In-App Text Editor** - In app text editor to create new text file and short notes for individual cases while brainstorming
-
-## 🚀 Screenshots
-
-<div align="center">
-  <img src="screenshots/dashboard.jpg" width="250" />
-  <img src="screenshots/allcases.jpg" width="250" />
-  <img src="screenshots/documents.jpg" width="250" />
-  <img src="screenshots/casedocuments.jpg" width="250" />
-  <img src="screenshots/documents2.jpg" width="250" />
-  <img src="screenshots/delete.jpg" width="250" />
-</div>
 
 ## 🛠️ Tech Stack
 
