@@ -1192,127 +1192,295 @@ Attached is a simple example of how the logout functionality is implemented in t
 * Implement password reset functionality via email.***It is already partially implemented but commented out in the login screen***
 ---
 
-## Chapter 5: Case Management Provider
+## Chapter 5: Case Management
 
-### State Management Logic
+Creation of involves calling of the [case modal](https://github.com/andareomondi/lawdesk/blob/main/lib/widgets/cases/modal.dart) and then saving the case to the database. All cases can be viewed in the [details](https://github.com/andareomondi/lawdesk/blob/main/lib/widgets/cases/details.dart) screen from which CRUD operations can be performed.
+The details screen also implementes a tabbed view to separate case details, events and notes views for specific and granular access. 
+***An event*** comprises of any activity or task related to a case from evidence collection, court dates, filing deadlines among others. Documents are any files attached to a case for reference or submission in court.
 
-This chapter connects the UI to the Data Layer using the Provider pattern. It allows the UI to reactively update when cases are added or modified.
+Below are the relevant code snippets for the individual tabs and their implementations. 
+`notes tab`
+``` dart
 
-### Implementation
-
-#### 1. The Cases Provider
-
-This class extends `ChangeNotifier` to alert listeners (widgets) when the list of cases changes.
-
-```dart
-import 'package:flutter/material.dart';
-
-class CaseProvider with ChangeNotifier {
-  List<CaseModel> _items = [];
-
-  List<CaseModel> get items {
-    return [..._items];
-  }
-
-  void addCase(String title, String description) {
-    final newCase = CaseModel(
-      id: DateTime.now().toString(), // Replace with UUID in prod
-      title: title,
-      description: description,
-      status: 'Open',
-      dateCreated: DateTime.now(),
-    );
-    
-    _items.add(newCase);
-    // Notify widgets to rebuild
-    notifyListeners();
-    
-    // Trigger DB save here
-  }
-  
-  void deleteCase(String id) {
-    _items.removeWhere((item) => item.id == id);
-    notifyListeners();
-  }
-}
-
-```
-
----
-
-**Future Improvements:**
-
-* Implement lazy loading for the list to handle thousands of cases efficiently.
-* Add sorting and filtering logic (e.g., Sort by Date, Filter by 'Open' status).
-
----
-
-## Chapter 6: User Interface - Case Forms
-
-### Input Handling and Validation
-
-This chapter demonstrates the UI implementation for creating a new case, focusing on form validation and user input handling.
-
-### Implementation
-
-#### 1. New Case Form Widget
-
-A Stateful widget containing a form with text validations.
-
-```dart
-import 'package:flutter/material.dart';
-
-class NewCaseForm extends StatefulWidget {
-  @override
-  _NewCaseFormState createState() => _NewCaseFormState();
-}
-
-class _NewCaseFormState extends State<NewCaseForm> {
-  final _formKey = GlobalKey<FormState>();
-  String _title = '';
-  String _description = '';
-
-  void _saveForm() {
-    final isValid = _formKey.currentState!.validate();
-    if (!isValid) return;
-    
-    _formKey.currentState!.save();
-    // Call Provider to add case here
-    Navigator.of(context).pop();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Form(
-      key: _formKey,
-      child: Column(
+  Widget _buildNotesTab() {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF9FAFB),
+      floatingActionButton: (_isOfflineMode || _isCompleted)
+          ? null // Hide FAB when offline and when case is completed
+          : FloatingActionButton(
+              onPressed: _showAddNoteModal,
+              backgroundColor: const Color(0xFF10B981),
+              child: const Icon(Icons.add, color: Colors.white),
+            ),
+      body: Column(
         children: [
-          TextFormField(
-            decoration: InputDecoration(labelText: 'Case Title'),
-            validator: (value) {
-              if (value == null || value.isEmpty) return 'Please enter a title';
-              return null;
-            },
-            onSaved: (value) => _title = value!,
-          ),
-          ElevatedButton(
-            onPressed: _saveForm,
-            child: Text('Add Case'),
+          // Add offline indicator
+          if (_isOfflineMode)
+            Container(
+              margin: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF3C7),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: const Color(0xFFF59E0B).withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF59E0B).withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Icon(
+                      Icons.cloud_off_rounded,
+                      color: Color(0xFFF59E0B),
+                      size: 18,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Viewing Offline',
+                          style: TextStyle(
+                            color: Color(0xFF92400E),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          'Connect to internet to add/delete notes',
+                          style: TextStyle(
+                            color: Color(0xFFB45309),
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          // Rest of notes tab content
+          Expanded(
+            child: _isLoadingNotes
+                ? const Center(child: CircularProgressIndicator())
+                : _notes.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.note_outlined,
+                          size: 64,
+                          color: Colors.grey[400],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No notes yet',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Add your first note to get started',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _notes.length,
+                    itemBuilder: (context, index) {
+                      final note = _notes[index];
+                      return _buildNoteCard(note);
+                    },
+                  ),
           ),
         ],
       ),
     );
   }
-}
+
 
 ```
+`Events tab`
+``` dart
+
+  Widget _buildEventsTab() {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF9FAFB),
+      floatingActionButton: (_isOfflineMode || _isCompleted)
+          ? null // Hide FAB when offline and when case is completed
+          : FloatingActionButton(
+              onPressed: () => _showAddEventModal(),
+              backgroundColor: const Color(0xFF10B981),
+              child: const Icon(Icons.add, color: Colors.white),
+            ),
+      body: Column(
+        children: [
+          // Add offline indicator
+          if (_isOfflineMode)
+            Container(
+              margin: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF3C7),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: const Color(0xFFF59E0B).withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF59E0B).withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Icon(
+                      Icons.cloud_off_rounded,
+                      color: Color(0xFFF59E0B),
+                      size: 18,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Viewing Offline',
+                          style: TextStyle(
+                            color: Color(0xFF92400E),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          'Connect to internet to add/edit events',
+                          style: TextStyle(
+                            color: Color(0xFFB45309),
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          // Rest of events tab content
+          Expanded(
+            child: _isLoadingEvents
+                ? const Center(child: CircularProgressIndicator())
+                : _events.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.event_outlined,
+                          size: 64,
+                          color: Colors.grey[400],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No events yet',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Add your first event to get started',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _events.length,
+                    itemBuilder: (context, index) {
+                      final event = _events[index];
+                      return _buildEventCard(event);
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+```
+***Note1:*** The above code snippets also implement an offline mode indicator to inform users when they are offline and restricts certain actions like adding notes or events.
+***Note2:*** The [details](https://github.com/andareomondi/lawdesk/blob/main/lib/widgets/cases/details.dart) is a large file with over 1000 lines of code. The code snippets above are just a small part of the entire implementation. For a complete understanding, please refer to the full file in the repository.
 
 ---
 
 **Future Improvements:**
 
-* Add file attachment capability (images/PDFs) to the form.
-* Implement auto-save functionality to prevent data loss if the app crashes.
+* Modularize the details screen into smaller widgets for better maintainability.
+* Implement a responsive system that auto refreshes data incase of changes instead of manual refresh for the dashboard.
+* Improve the `mark completed` functionality to archive completed cases instead of just marking them as completed and adding a specific section for archived cases.
+
+
+---
+
+## Chapter 6: User Interface
+
+Below is a list of all the widgets and screens with their respective links in the repository for easy access and reference. These components make up the user interface of the application and carry out CRUD functionality of the app.
+### Screens
+* [Login Screen](https://github.com/andareomondi/lawdesk/blob/main/lib/screens/auth/login_screen.dart)
+* [Signup Screen](https://github.com/andareomondi/lawdesk/blob/main/lib/screens/auth/signup_screen.dart)
+* [Dashboard Screen](https://github.com/andareomondi/lawdesk/blob/main/lib/dashboard.dart)
+* [Profile Screen](https://github.com/andareomondi/lawdesk/blob/main/lib/screens/profile/profile.dart)
+* [Case Details Screen](https://github.com/andareomondi/lawdesk/blob/main/lib/widgets/cases/details.dart)
+* [Client Details Screen](https://github.com/andareomondi/lawdesk/blob/main/lib/screens/clients/client_details_page.dart)
+* [Calendar Screen](https://github.com/andareomondi/lawdesk/blob/main/lib/screens/calender/calender.dart)
+* [Documents Screen](https://github.com/andareomondi/lawdesk/blob/main/lib/screens/documents/userDocuments.dart)
+* [Help & Support Screen](https://github.com/andareomondi/lawdesk/blob/main/lib/screens/help/help_support.dart)
+### Widgets
+* [Case Modal Widget](https://github.com/andareomondi/lawdesk/blob/main/lib/widgets/cases/modal.dart)
+* [Auth wrapper Widget](https://github.com/andareomondi/lawdesk/blob/main/lib/widgets/auth_wrapper.dart)
+* [Client Modal Widget](https://github.com/andareomondi/lawdesk/blob/main/lib/widgets/cases/client_modal.dart)
+* [Document preview Widget](https://github.com/andareomondi/lawdesk/blob/main/lib/widgets/document_preview_modal.dart)
+* [Toast notification Widget](https://github.com/andareomondi/lawdesk/blob/main/lib/widgets/delightful_toast.dart)
+* [Stat Card Widget](https://github.com/andareomondi/lawdesk/blob/main/lib/widgets/dashboard/statCard.dart)
+
+
+---
+
+**Future Improvements:**
+* Implement a consistent theming system across the app for better UI/UX.
+* Refactor large widgets into smaller, reusable components for better maintainability.
+* Add dark mode support for improved user experience in low-light environments.
+
 
 ---
 ### Architecture Summary
