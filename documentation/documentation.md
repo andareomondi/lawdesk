@@ -213,6 +213,67 @@ create table public.court (
   constraint court_name_key unique (name)
 ) TABLESPACE pg_default;
 
+
+```
+Below is a simple ER diagram showing the relationships between the main entities in the application.
+
+```mermaid
+erDiagram
+    USERS ||--o{ PROFILES : "has"
+    USERS ||--o{ CASES : "manages"
+    USERS ||--o{ CLIENTS : "owns"
+    USERS ||--o{ DOCUMENTS : "uploads"
+    CLIENTS ||--o{ CASES : "associated_with"
+    CASES ||--o{ DOCUMENTS : "contains"
+    CASES ||--o{ EVENTS : "schedules"
+
+    USERS {
+        uuid id PK
+        string email
+    }
+
+    PROFILES {
+        uuid id PK "FK to auth.users"
+        string username UK
+        string full_name
+        string lsk_number UK
+        string fcm_token
+    }
+
+    CLIENTS {
+        bigint id PK
+        text name UK "Referenced by Cases"
+        uuid user FK "FK to auth.users"
+        string email
+        integer phone
+    }
+
+    CASES {
+        bigint id PK
+        text name FK "FK to clients.name"
+        uuid user FK "FK to auth.users"
+        text number
+        text court_name
+        date courtDate
+        time time
+        boolean progress_status
+    }
+
+    DOCUMENTS {
+        uuid id PK
+        integer case_id FK "FK to cases.id"
+        uuid uploaded_by FK "FK to auth.users"
+        text file_path
+        text bucket_name
+    }
+
+    EVENTS {
+        bigint id PK
+        bigint case FK "FK to cases.id"
+        uuid profile FK "FK to profiles.id"
+        text agenda
+        date date
+    }
 ```
 
 ---
