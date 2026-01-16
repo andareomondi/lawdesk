@@ -9,8 +9,8 @@
 * [Chapter 2: Data Modeling](#chapter-2-data-modeling)
 * [Chapter 3: Local Database Implementation](#chapter-3-local-database-implementation)
 * [Chapter 4: Authentication Services](#chapter-4-authentication-services)
-* [Chapter 5: Case Management Provider](#chapter-5-case-management-provider)
-* [Chapter 6: User Interface - Case Forms](#chapter-6-user-interface---case-forms)
+* [Chapter 5: Case Management](#chapter-5-case-management)
+* [Chapter 6: User Interface](#chapter-6-user-interface)
 
 ---
 
