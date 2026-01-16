@@ -556,46 +556,570 @@ This is an example of how to use the service to obtain the cached data and to ca
 
 ### User Session Management
 
-This chapter outlines the basic structure for handling user authentication. While currently mock-based, it establishes the interface for login and session token storage.
+This chapter focuses on the authentication layer of the application. It outlines the base service implemented, logic for supabase authentication, user interface for auth services and session persistence. We have a centralized auth service which implements the predefined supabase configuration and the auth provider logic.
 
-### Implementation
+Here is the supabase configuration used in the app:
+`supabase_config.dart`
 
-#### 1. Auth Service Interface
+``` dart
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-The base class defining the required methods for any authentication provider.
+class SupabaseConfig {
+  static Future<void> initialize() async {
+    await Supabase.initialize(
+    // TODO: Implement a env setup with the configurations set to there
+      url: 'YOUR_SUPABASE_URL',
+      anonKey: 'YOUR_SUPABASE_ANON_KEY',
+    );
+  }
 
-```dart
-abstract class BaseAuthService {
-  Future<bool> signIn(String email, String password);
-  Future<void> signOut();
-  Future<String?> getCurrentToken();
+  static SupabaseClient get client => Supabase.instance.client;
+}
+
+```
+This is just but the standard supabase initialization code. Make sure to replace the url and anonKey with your actual supabase project credentials. This also must be called in the [main.dart](https://github.com/andareomondi/lawdesk/blob/main/lib/main.dart) file during app startup in the main function before running the app.
+
+This is the implementation of the auth service interface and its implementation in the auth provider layer.
+`auth_service.dart`
+``` dart
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:lawdesk/config/supabase_config.dart';
+
+class AuthService {
+  final SupabaseClient _client = SupabaseConfig.client;
+
+  // Check if user is currently logged in
+  bool get isLoggedIn => _client.auth.currentSession != null;
+
+  // Get current user
+  User? get currentUser => _client.auth.currentUser;
+
+  // Sign up with email and password
+  Future<void> signUp({
+    required String email,
+    required String password,
+  }) async {
+      await _client.auth.signUp(email: email, password: password);
+  }
+
+  // Sign in with email and password
+  Future<void> signIn({
+    required String email,
+    required String password,
+  }) async {
+      await _client.auth.signInWithPassword(email: email, password: password);
+  }
+
+  // Sign out
+  Future<void> signOut() async {
+    try {
+      await _client.auth.signOut();
+    } catch (e) {
+      throw Exception('Sign out failed: $e');
+    }
+  }
+}
+
+```
+while the `auth_provider.dart` file implements the provider logic as follows:
+``` dart
+
+import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:lawdesk/services/auth_service.dart';
+
+class AuthProvider extends ChangeNotifier {
+  final AuthService _authService = AuthService();
+
+  User? _user;
+  bool _isLoading = false;
+  bool _isInitializing = true;
+
+  // Getters
+  User? get user => _user;
+  bool get isLoggedIn => _user != null;
+  bool get isLoading => _isLoading;
+  bool get isInitializing => _isInitializing;
+
+  AuthProvider() {
+    _initialize();
+  }
+
+  // Initialize: check if user is already logged in on app startup
+  Future<void> _initialize() async {
+    _isInitializing = true;
+    notifyListeners();
+
+    try {
+      _user = _authService.currentUser;
+    } catch (e) {
+      print('Error initializing auth: $e');
+    }
+
+    _isInitializing = false;
+    notifyListeners();
+  }
+
+  // Sign up
+  Future<void> signUp({
+    required String email,
+    required String password,
+  }) async {
+    _isLoading = true;
+    notifyListeners();
+    // TODO: Add email validation and checking if email is already in use
+
+    try {
+      await _authService.signUp(email: email, password: password);
+      _user = _authService.currentUser;
+      notifyListeners();
+    } catch (e) {
+      print('Sign up error: $e');
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Sign in
+  Future<void> signIn({
+    required String email,
+    required String password,
+  }) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      await _authService.signIn(email: email, password: password);
+      _user = _authService.currentUser;
+      notifyListeners();
+    } catch (e) {
+      print('Sign in error: $e');
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Sign out
+  Future<void> signOut() async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      await _authService.signOut();
+      _user = null;
+      notifyListeners();
+    } catch (e) {
+      print('Sign out error: $e');
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 }
 
 ```
 
-#### 2. Mock Implementation
+### Implementation
 
-A temporary implementation for development purposes to bypass backend requirements.
+#### 1. Login Service Interface
+
+This shows how the login mechanism and user interface implemetation is done and how they work together.
+
+[`login_screen.dart`](https://github.com/andareomondi/lawdesk/blob/main/lib/screens/auth/login_screen.dart)
+
 
 ```dart
-class MockAuthService implements BaseAuthService {
-  @override
-  Future<bool> signIn(String email, String password) async {
-    // Simulate network delay
-    await Future.delayed(Duration(seconds: 1));
-    return (email.contains('@') && password.length > 5);
+// Login function inside the page
+  Future<void> _handleLogin() async {
+    if (!_formKey.currentState!.validate()) return;
+    
+    setState(() => _isLoading = true);
+    
+    try {
+      final authProvider = context.read<AuthProvider>();
+      await authProvider.signIn(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+    } on AuthException catch (e) {
+      // Handle Supabase authentication errors
+      if (mounted) {
+        String errorMessage;
+        
+        // Check for invalid credentials
+        if (e.statusCode == '400' || 
+            e.message.toLowerCase().contains('invalid') ||
+            e.message.toLowerCase().contains('credentials')) {
+          errorMessage = 'Invalid email or password. Please try again.';
+        } else if (e.message.toLowerCase().contains('email not confirmed')) {
+          errorMessage = 'Please verify your email before logging in.';
+        } else {
+          errorMessage = "An error occured during logging in. Please try again.";
+        }
+        AppToast.showError(
+          context: context,
+          title: 'Login Failed',
+          message: errorMessage,
+        );
+      }
+    } catch (e) {
+      // Handle any other unexpected errors
+      if (mounted) {
+        AppToast.showError(
+          context: context,
+          title: 'Login Failed',
+          message: 'An unexpected error occurred. Please try again.',
+        ); 
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
+// Widget build method snippet
   @override
-  Future<void> signOut() async {
-    print("User signed out");
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Logo and title
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1E3A8A),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(
+                    Icons.gavel,
+                    size: 48,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  'LawDesk',
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1E3A8A),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Welcome back! Sign in to continue',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF6B7280),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 40),
+
+                // Login form
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Email field
+                        TextFormField(
+                          controller: _emailController,
+                          keyboardType: TextInputType.emailAddress,
+                          textInputAction: TextInputAction.next,
+                          decoration: InputDecoration(
+                            labelText: 'Email',
+                            hintText: 'you@example.com',
+                            prefixIcon: const Icon(Icons.email_outlined),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: Color(0xFF1E3A8A), width: 2),
+                            ),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please enter your email';
+                            }
+                            if (!EmailValidator.validate(value)) {
+                              return 'Please enter a valid email';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Password field
+                        TextFormField(
+                          controller: _passwordController,
+                          obscureText: !_isPasswordVisible,
+                          textInputAction: TextInputAction.done,
+                          onFieldSubmitted: (_) => _handleLogin(),
+                          decoration: InputDecoration(
+                            labelText: 'Password',
+                            hintText: 'Enter your password',
+                            prefixIcon: const Icon(Icons.lock_outlined),
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _isPasswordVisible ? Icons.visibility_off : Icons.visibility,
+                              ),
+                              onPressed: () {
+                                setState(() => _isPasswordVisible = !_isPasswordVisible);
+                              },
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: Color(0xFF1E3A8A), width: 2),
+                            ),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please enter your password';
+                            }
+                            if (value.length < 6) {
+                              return 'Password must be at least 6 characters';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 8),
+
+                        // Forgot password
+                        // Align(
+                        //   alignment: Alignment.centerRight,
+                        //   child: TextButton(
+                        //     onPressed: () {
+                        //       Navigator.push(context, MaterialPageRoute(builder: (context) => const ForgotPasswordPage()),);
+                        //     },
+                        //     style: TextButton.styleFrom(
+                        //       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        //     ),
+                        //     child: const Text(
+                        //       'Forgot Password?',
+                        //       style: TextStyle(
+                        //         color: Color(0xFF1E3A8A),
+                        //         fontSize: 13,
+                        //       ),
+                        //     ),
+                        //   ),
+                        // ),
+                        // const SizedBox(height: 24),
+
+                        // Login button
+                        ElevatedButton(
+                          onPressed: _isLoading ? null : _handleLogin,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF1E3A8A),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 2,
+                          ),
+                          child: _isLoading
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  ),
+                                )
+                              : const Text(
+                                  'Sign In',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Sign up link
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      "Don't have an account? ",
+                      style: TextStyle(
+                        color: Color(0xFF6B7280),
+                        fontSize: 14,
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const SignupPage()),
+                        );
+                      },
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                      ),
+                      child: const Text(
+                        'Sign Up',
+                        style: TextStyle(
+                          color: Color(0xFF1E3A8A),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
-  @override
-  Future<String?> getCurrentToken() async {
-    return "mock_jwt_token_12345";
+
+```
+
+#### 2. Logout Functionality example
+
+Attached is a simple example of how the logout functionality is implemented in the app. This code snippet is taken from the [profile](https://github.com/andareomondi/lawdesk/blob/main/lib/screens/profile/profile.dart) screen where the user can log out of their account.
+
+```dart
+  Future<void> _handleLogout() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      final authProvider = context.read<AuthProvider>();
+
+      try {
+        await authProvider.signOut();
+
+        if (mounted) {
+          AppToast.showSuccess(
+            context: context,
+            title: "Operation sucessfull",
+            message: "Logged out successfully",
+          );
+          Navigator.pop(context);
+        }
+      } catch (e) {
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Error'),
+              content: const Text('Error occurred during logging out'),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              actions: [
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFEF4444),
+                  ),
+                  child: const Text('Close'),
+                ),
+              ],
+            ),
+          );
+        }
+      }
+    }
   }
-}
+ 
+
+// Function call inside a button widget
+  SizedBox(
+    width: double.infinity,
+    child: OutlinedButton.icon(
+      onPressed: _handleLogout,
+      icon: const Icon(Icons.logout, size: 20),
+      label: const Text(
+        'Logout',
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: const Color(0xFFEF4444),
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        side: const BorderSide(
+          color: Color(0xFFEF4444),
+          width: 2,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+    ),
+  ),
 
 ```
 
@@ -603,9 +1127,9 @@ class MockAuthService implements BaseAuthService {
 
 **Future Improvements:**
 
-* Integrate Firebase Auth or a custom REST API backend.
-* Implement biometric authentication (Fingerprint/FaceID) for quicker login.
-
+* Implement social login options (Google, Facebook, etc.) for easier access.
+* Add multi-factor authentication (MFA) for enhanced security.
+* Implement password reset functionality via email.***It is already partially implemented but commented out in the login screen***
 ---
 
 ## Chapter 5: Case Management Provider
