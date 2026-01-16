@@ -11,7 +11,6 @@
 * [Chapter 4: Authentication Services](#chapter-4-authentication-services)
 * [Chapter 5: Case Management Provider](#chapter-5-case-management-provider)
 * [Chapter 6: User Interface - Case Forms](#chapter-6-user-interface---case-forms)
-* [Chapter 7: Build and Deployment](#chapter-7-build-and-deployment)
 
 ---
 
@@ -1253,51 +1252,6 @@ class _NewCaseFormState extends State<NewCaseForm> {
 
 * Add file attachment capability (images/PDFs) to the form.
 * Implement auto-save functionality to prevent data loss if the app crashes.
-
----
-
-## Chapter 7: Build and Deployment
-
-### Generating the Android Artifacts
-
-This chapter covers the commands required to clean the project and generate a release APK or App Bundle for the Google Play Store.
-
-### Implementation
-
-#### 1. Clean Build Environment
-
-Removes old build artifacts to ensure a fresh compilation.
-
-```bash
-flutter clean
-flutter pub get
-
-```
-
-#### 2. Generate Release APK
-
-Builds the fat APK for testing on generic Android devices.
-
-```bash
-flutter build apk --release
-
-```
-
-#### 3. Generate App Bundle
-
-Builds the `.aab` file required for Play Store distribution.
-
-```bash
-flutter build appbundle --release
-
-```
-
----
-
-**Future Improvements:**
-
-* Set up CI/CD pipelines (e.g., GitHub Actions or Codemagic) to automate builds on git push.
-* Configure ProGuard rules to obfuscate code and reduce app size.
 
 ---
 
