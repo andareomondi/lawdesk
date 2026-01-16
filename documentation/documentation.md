@@ -1254,4 +1254,21 @@ class _NewCaseFormState extends State<NewCaseForm> {
 * Implement auto-save functionality to prevent data loss if the app crashes.
 
 ---
+### Architecture Summary
+For a complete overview of the project dependencies and installation steps, please refer to the [`README.md`](https://github.com/andareomondi/lawdesk/blob/main/README.md) file in the root directory of the project repository.
+
+Data Flow Summary:
+* ***UI Layer:*** The project is split into [screens](https://github.com/andareomondi/lawdesk/tree/main/lib/screens) and [widgets](https://github.com/andareomondi/lawdesk/tree/main/lib/widgets) which handle user interactions and display data. Reused widgets are placed in the widgets folder for modularity while the screens directory contains the individual pages of the app.
+* ***State Management Layer:*** The [providers](https://github.com/andareomondi/lawdesk/tree/main/lib/providers) directory contains the state management logic using the Provider package. Each provider manages a specific part of the app's state, such as authentication, cases, clients, and connectivity status. There are also [services](https://github.com/andareomondi/lawdesk/tree/main/lib/services) that handle business logic and data fetching.
+* ***Data Layer:*** Data used among the app can be either online or offline. The online data is fetched from a Supabase backend while the offline data is stored locally using Shared Preferences.
+
+* ***Logging and Error Handling:*** The app implements basic logging using print statements for debugging purposes. Error handling is done using try-catch blocks to gracefully handle exceptions and provide user feedback.
+
+#### Future Improvements:
+* Implement a more robust local database solution using SQLite or Hive for complex queries and relationships.
+* Clean up the service if deemed to be the only option to go with in production
+* Implement logging using a dedicated logging package for better log management.
+
+---
+
 
