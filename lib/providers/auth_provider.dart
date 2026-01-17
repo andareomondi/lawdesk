@@ -35,14 +35,9 @@ class AuthProvider extends ChangeNotifier {
   }
 
   // Sign up
-  Future<void> signUp({
-    required String email,
-    required String password,
-  }) async {
+  Future<void> signUp({required String email, required String password}) async {
     _isLoading = true;
     notifyListeners();
-    // TODO: Add email validation and checking if email is already in use
-
     try {
       await _authService.signUp(email: email, password: password);
       _user = _authService.currentUser;
@@ -57,10 +52,7 @@ class AuthProvider extends ChangeNotifier {
   }
 
   // Sign in
-  Future<void> signIn({
-    required String email,
-    required String password,
-  }) async {
+  Future<void> signIn({required String email, required String password}) async {
     _isLoading = true;
     notifyListeners();
 

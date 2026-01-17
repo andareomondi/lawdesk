@@ -29,28 +29,28 @@ class _SignupPageState extends State<SignupPage> {
     super.dispose();
   }
 
-
-
   Future<void> _handleSignup() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     setState(() => _isLoading = true);
-    
+
     try {
       final authProvider = context.read<AuthProvider>();
       await authProvider.signUp(
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
-      
+
       if (mounted) {
-        // Show success message 
+        // Show success message
         AppToast.showSuccess(
           context: context,
           title: 'Account Created',
-          message: 'Your account has been created successfully. Please check your email to verify your account.',
+          message:
+              'Your account has been created successfully. Please check your email to verify your account.',
+          duration: const Duration(seconds: 10),
         );
-        
+
         // Navigate back to login
         Navigator.pop(context);
       }
@@ -58,26 +58,31 @@ class _SignupPageState extends State<SignupPage> {
       // Handle Supabase authentication errors
       if (mounted) {
         String errorMessage;
-        
+        print('Signup error: ${e.message}');
+
         // Check for specific signup errors
-        if (e.message.toLowerCase().contains('already registered') ||
-            e.message.toLowerCase().contains('already exists')) {
-          errorMessage = 'This email is already registered. Please sign in instead.';
+        if (e.message.toLowerCase().contains('already in use') ||
+            e.message.toLowerCase().contains('exists')) {
+          errorMessage =
+              'This email is already registered. Please sign in instead.';
         } else if (e.message.toLowerCase().contains('invalid email')) {
           errorMessage = 'Please enter a valid email address.';
-        } else if (e.message.toLowerCase().contains('password')) {
-          errorMessage = 'Password does not meet requirements. Please try a stronger password.';
+        } else if (e.message.toLowerCase().contains('weak')) {
+          errorMessage =
+              'Password does not meet requirements. Please try a stronger password.';
         } else if (e.statusCode == '422') {
           errorMessage = 'Invalid signup data. Please check your information.';
         } else {
-          errorMessage = "An error occurred during account creation. Please try again.";
+          errorMessage =
+              "An error occurred during account creation. Please try again.";
         }
-        
-       AppToast.showError(
+
+        AppToast.showError(
           context: context,
           title: 'Signup Failed',
           message: errorMessage,
-        ); 
+          duration: const Duration(seconds: 10),
+        );
       }
     } catch (e) {
       // Handle any other unexpected errors
@@ -86,7 +91,8 @@ class _SignupPageState extends State<SignupPage> {
           context: context,
           title: 'Signup Failed',
           message: 'An unexpected error occurred. Please try again later.',
-        ); 
+          duration: const Duration(seconds: 10),
+        );
       }
     } finally {
       if (mounted) {
@@ -121,11 +127,7 @@ class _SignupPageState extends State<SignupPage> {
                     color: const Color(0xFF1E3A8A),
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: const Icon(
-                    Icons.gavel,
-                    size: 48,
-                    color: Colors.white,
-                  ),
+                  child: const Icon(Icons.gavel, size: 48, color: Colors.white),
                 ),
                 const SizedBox(height: 24),
                 const Text(
@@ -139,10 +141,7 @@ class _SignupPageState extends State<SignupPage> {
                 const SizedBox(height: 8),
                 const Text(
                   'Sign up to get started with LawDesk',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF6B7280),
-                  ),
+                  style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 40),
@@ -180,11 +179,16 @@ class _SignupPageState extends State<SignupPage> {
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                              borderSide: const BorderSide(
+                                color: Color(0xFFE5E7EB),
+                              ),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Color(0xFF1E3A8A), width: 2),
+                              borderSide: const BorderSide(
+                                color: Color(0xFF1E3A8A),
+                                width: 2,
+                              ),
                             ),
                           ),
                           validator: (value) {
@@ -210,10 +214,15 @@ class _SignupPageState extends State<SignupPage> {
                             prefixIcon: const Icon(Icons.lock_outlined),
                             suffixIcon: IconButton(
                               icon: Icon(
-                                _isPasswordVisible ? Icons.visibility_off : Icons.visibility,
+                                _isPasswordVisible
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
                               ),
                               onPressed: () {
-                                setState(() => _isPasswordVisible = !_isPasswordVisible);
+                                setState(
+                                  () =>
+                                      _isPasswordVisible = !_isPasswordVisible,
+                                );
                               },
                             ),
                             border: OutlineInputBorder(
@@ -221,11 +230,16 @@ class _SignupPageState extends State<SignupPage> {
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                              borderSide: const BorderSide(
+                                color: Color(0xFFE5E7EB),
+                              ),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Color(0xFF1E3A8A), width: 2),
+                              borderSide: const BorderSide(
+                                color: Color(0xFF1E3A8A),
+                                width: 2,
+                              ),
                             ),
                           ),
                           validator: (value) {
@@ -252,10 +266,15 @@ class _SignupPageState extends State<SignupPage> {
                             prefixIcon: const Icon(Icons.lock_outlined),
                             suffixIcon: IconButton(
                               icon: Icon(
-                                _isConfirmPasswordVisible ? Icons.visibility_off : Icons.visibility,
+                                _isConfirmPasswordVisible
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
                               ),
                               onPressed: () {
-                                setState(() => _isConfirmPasswordVisible = !_isConfirmPasswordVisible);
+                                setState(
+                                  () => _isConfirmPasswordVisible =
+                                      !_isConfirmPasswordVisible,
+                                );
                               },
                             ),
                             border: OutlineInputBorder(
@@ -263,11 +282,16 @@ class _SignupPageState extends State<SignupPage> {
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                              borderSide: const BorderSide(
+                                color: Color(0xFFE5E7EB),
+                              ),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Color(0xFF1E3A8A), width: 2),
+                              borderSide: const BorderSide(
+                                color: Color(0xFF1E3A8A),
+                                width: 2,
+                              ),
                             ),
                           ),
                           validator: (value) {
@@ -300,7 +324,9 @@ class _SignupPageState extends State<SignupPage> {
                                   width: 20,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white,
+                                    ),
                                   ),
                                 )
                               : const Text(
@@ -323,10 +349,7 @@ class _SignupPageState extends State<SignupPage> {
                   children: [
                     const Text(
                       'Already have an account? ',
-                      style: TextStyle(
-                        color: Color(0xFF6B7280),
-                        fontSize: 14,
-                      ),
+                      style: TextStyle(color: Color(0xFF6B7280), fontSize: 14),
                     ),
                     TextButton(
                       onPressed: () => Navigator.pop(context),
