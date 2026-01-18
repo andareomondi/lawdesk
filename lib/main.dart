@@ -74,6 +74,12 @@ class _MyAppState extends State<MyApp> {
         theme: ThemeData(
           primarySwatch: Colors.blue,
           fontFamily: 'Roboto',
+          pageTransitionsTheme: PageTransitionsTheme(
+            builders: {
+              TargetPlatform.android:
+                  const PredictiveBackPageTransitionsBuilder(),
+            },
+          ),
         ),
         home: widget.seenOnboarding == true
             ? const AuthWrapper()

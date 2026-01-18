@@ -7,7 +7,6 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:lawdesk/widgets/delightful_toast.dart';
 
-
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -29,12 +28,11 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     setState(() => _isLoading = true);
-    
+
     try {
       final authProvider = context.read<AuthProvider>();
       await authProvider.signIn(
@@ -45,16 +43,17 @@ class _LoginPageState extends State<LoginPage> {
       // Handle Supabase authentication errors
       if (mounted) {
         String errorMessage;
-        
+
         // Check for invalid credentials
-        if (e.statusCode == '400' || 
+        if (e.statusCode == '400' ||
             e.message.toLowerCase().contains('invalid') ||
             e.message.toLowerCase().contains('credentials')) {
           errorMessage = 'Invalid email or password. Please try again.';
         } else if (e.message.toLowerCase().contains('email not confirmed')) {
           errorMessage = 'Please verify your email before logging in.';
         } else {
-          errorMessage = "An error occured during logging in. Please try again.";
+          errorMessage =
+              "An error occured during logging in. Please try again.";
         }
         AppToast.showError(
           context: context,
@@ -69,7 +68,7 @@ class _LoginPageState extends State<LoginPage> {
           context: context,
           title: 'Login Failed',
           message: 'An unexpected error occurred. Please try again.',
-        ); 
+        );
       }
     } finally {
       if (mounted) {
@@ -77,8 +76,6 @@ class _LoginPageState extends State<LoginPage> {
       }
     }
   }
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -98,31 +95,25 @@ class _LoginPageState extends State<LoginPage> {
                     color: const Color(0xFF1E3A8A),
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: const Icon(
-                    Icons.gavel,
-                    size: 48,
-                    color: Colors.white,
-                  ),
+                  child: const Icon(Icons.gavel, size: 48, color: Colors.white),
                 ),
                 const SizedBox(height: 24),
                 const Text(
-                  'LawDesk',
+                  'Welcome Back',
                   style: TextStyle(
-                    fontSize: 32,
+                    fontFamily: 'Merriweather',
+                    fontSize: 24,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF1E3A8A),
                   ),
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Welcome back! Sign in to continue',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF6B7280),
-                  ),
+                  'Sign in to continue to your account',
+                  style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 40),
+                const SizedBox(height: 24),
 
                 // Login form
                 Container(
@@ -157,11 +148,16 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                              borderSide: const BorderSide(
+                                color: Color(0xFFE5E7EB),
+                              ),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Color(0xFF1E3A8A), width: 2),
+                              borderSide: const BorderSide(
+                                color: Color(0xFF1E3A8A),
+                                width: 2,
+                              ),
                             ),
                           ),
                           validator: (value) {
@@ -188,10 +184,15 @@ class _LoginPageState extends State<LoginPage> {
                             prefixIcon: const Icon(Icons.lock_outlined),
                             suffixIcon: IconButton(
                               icon: Icon(
-                                _isPasswordVisible ? Icons.visibility_off : Icons.visibility,
+                                _isPasswordVisible
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
                               ),
                               onPressed: () {
-                                setState(() => _isPasswordVisible = !_isPasswordVisible);
+                                setState(
+                                  () =>
+                                      _isPasswordVisible = !_isPasswordVisible,
+                                );
                               },
                             ),
                             border: OutlineInputBorder(
@@ -199,11 +200,16 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                              borderSide: const BorderSide(
+                                color: Color(0xFFE5E7EB),
+                              ),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Color(0xFF1E3A8A), width: 2),
+                              borderSide: const BorderSide(
+                                color: Color(0xFF1E3A8A),
+                                width: 2,
+                              ),
                             ),
                           ),
                           validator: (value) {
@@ -257,7 +263,9 @@ class _LoginPageState extends State<LoginPage> {
                                   width: 20,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white,
+                                    ),
                                   ),
                                 )
                               : const Text(
@@ -280,16 +288,15 @@ class _LoginPageState extends State<LoginPage> {
                   children: [
                     const Text(
                       "Don't have an account? ",
-                      style: TextStyle(
-                        color: Color(0xFF6B7280),
-                        fontSize: 14,
-                      ),
+                      style: TextStyle(color: Color(0xFF6B7280), fontSize: 14),
                     ),
                     TextButton(
                       onPressed: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => const SignupPage()),
+                          MaterialPageRoute(
+                            builder: (context) => const SignupPage(),
+                          ),
                         );
                       },
                       style: TextButton.styleFrom(

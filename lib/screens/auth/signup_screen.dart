@@ -127,7 +127,8 @@ class _SignupPageState extends State<SignupPage> {
                 const Text(
                   'Create Account',
                   style: TextStyle(
-                    fontSize: 32,
+                    fontFamily: 'Merriweather',
+                    fontSize: 24,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF1E3A8A),
                   ),
@@ -138,7 +139,7 @@ class _SignupPageState extends State<SignupPage> {
                   style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 40),
+                const SizedBox(height: 24),
 
                 // Signup form
                 Container(
