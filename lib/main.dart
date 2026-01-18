@@ -60,7 +60,7 @@ class _MyAppState extends State<MyApp> {
         });
       }
     } catch (e) {
-      print('Error getting FCM token: $e');
+      throw Exception('Error obtaining FCM token: $e');
     }
   }
 
@@ -73,7 +73,7 @@ class _MyAppState extends State<MyApp> {
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           primarySwatch: Colors.blue,
-          fontFamily: 'SF Pro Display',
+          fontFamily: 'Roboto',
         ),
         home: widget.seenOnboarding == true
             ? const AuthWrapper()

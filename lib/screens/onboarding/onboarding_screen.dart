@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lawdesk/screens/onboarding/page1.dart';
 import 'package:lawdesk/screens/onboarding/page2.dart';
 import 'package:lawdesk/screens/onboarding/page3.dart';
-import 'package:lawdesk/widgets/auth_wrapper.dart';
+import 'package:lawdesk/screens/auth/signup_screen.dart';
 
 class OnBoardingScreen extends StatefulWidget {
   const OnBoardingScreen({Key? key}) : super(key: key);
@@ -46,10 +46,7 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
                   onTap: () {
                     _controller.jumpToPage(2);
                   },
-                  child: const Text(
-                    'Skip',
-                    style: TextStyle(fontSize: 18),
-                  ),
+                  child: const Text('Skip', style: TextStyle(fontSize: 18)),
                 ),
 
                 // Page indicator
@@ -66,10 +63,11 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
                           // Update local storage that we have already seen this intro
                           final prefs = await SharedPreferences.getInstance();
                           await prefs.setBool('seenOnboarding', true);
+                          // Navigate to the signup page instead of pushing to the auth wrapper which sends them to the login page
                           Navigator.pushReplacement(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const AuthWrapper(),
+                              builder: (context) => const SignupPage(),
                             ),
                           );
                         },
