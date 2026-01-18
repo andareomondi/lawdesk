@@ -680,22 +680,21 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
               Positioned.fill(
                 child: GestureDetector(
                   onTap: _closeFab,
-                  child: AnimatedBuilder(
-                    animation: _expandAnimation,
-                    builder: (context, child) {
-                      return Container(
-                        color: Colors.black.withOpacity(
-                          _expandAnimation.value * 0.6,
+                  child: GestureDetector(
+                    onTap: _closeFab,
+                    child: ClipRect(
+                      // Clips the blur to the widget's bounds
+                      child: BackdropFilter(
+                        filter: dart_ui.ImageFilter.blur(
+                          sigmaX: 3.0,
+                          sigmaY: 3.0,
                         ),
-                        child: BackdropFilter(
-                          filter: dart_ui.ImageFilter.blur(
-                            sigmaX: _expandAnimation.value * 3,
-                            sigmaY: _expandAnimation.value * 3,
-                          ),
+                        child: Container(
+                          color: Colors.black.withOpacity(0.6),
                           child: const SizedBox.expand(),
                         ),
-                      );
-                    },
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -708,38 +707,13 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  // Update each FAB menu item to check connectivity
                   _buildFabMenuItem(
-                    label: 'Open Calender',
-                    icon: Icons.calendar_month_outlined,
-                    color: const Color(0xFF10B981),
-                    delay: 0,
-                    onPressed: () {
-                      if (OfflineActionHelper.canPerformAction(
-                        context,
-                        actionName: 'open calendar',
-                      )) {
-                        _closeFab();
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const CalendarPage(),
-                          ),
-                        );
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  _buildFabMenuItem(
-                    label: 'Documents',
+                    label: 'Review Documents',
                     icon: Icons.description_outlined,
                     color: const Color(0xFFF59E0B),
                     delay: 1,
                     onPressed: () {
-                      if (OfflineActionHelper.canPerformAction(
-                        context,
-                        actionName: 'access documents',
-                      )) {
+                      {
                         _closeFab();
                         Navigator.push(
                           context,
@@ -752,14 +726,14 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
                   ),
                   const SizedBox(height: 16),
                   _buildFabMenuItem(
-                    label: 'New Client',
+                    label: 'Register Client',
                     icon: Icons.person_add_alt_outlined,
                     color: const Color(0xFF8B5CF6),
                     delay: 2,
                     onPressed: () {
                       if (OfflineActionHelper.canPerformAction(
                         context,
-                        actionName: 'add client',
+                        actionName: 'register a new client',
                       )) {
                         _closeFab();
                         AddClientModal.show(
@@ -773,14 +747,14 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
                   ),
                   const SizedBox(height: 16),
                   _buildFabMenuItem(
-                    label: 'New Case',
+                    label: 'Open Case',
                     icon: Icons.add_circle_outline,
                     color: const Color(0xFF1E3A8A),
                     delay: 3,
                     onPressed: () {
                       if (OfflineActionHelper.canPerformAction(
                         context,
-                        actionName: 'add case',
+                        actionName: 'open a new case',
                       )) {
                         _closeFab();
                         AddCaseModal.show(
