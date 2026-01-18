@@ -4,6 +4,7 @@ import 'package:lawdesk/providers/auth_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:lawdesk/widgets/delightful_toast.dart';
+import 'package:lawdesk/screens/auth/login_screen.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -105,14 +106,7 @@ class _SignupPageState extends State<SignupPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF1E3A8A)),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
+      appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -352,7 +346,12 @@ class _SignupPageState extends State<SignupPage> {
                       style: TextStyle(color: Color(0xFF6B7280), fontSize: 14),
                     ),
                     TextButton(
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () => Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const LoginPage(),
+                        ),
+                      ),
                       style: TextButton.styleFrom(
                         padding: const EdgeInsets.symmetric(horizontal: 8),
                       ),
