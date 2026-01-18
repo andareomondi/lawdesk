@@ -6,6 +6,7 @@ import 'package:lawdesk/services/connectivity_service.dart';
 import 'package:lawdesk/services/offline_storage_service.dart';
 import 'package:lawdesk/widgets/offline_indicator.dart';
 import 'package:lawdesk/services/document_preview_service.dart';
+import 'package:lawdesk/screens/cases/casepage.dart';
 
 class AllDocumentsPage extends StatefulWidget {
   const AllDocumentsPage({Key? key}) : super(key: key);
@@ -664,7 +665,10 @@ class _AllDocumentsPageState extends State<AllDocumentsPage>
           ),
           const SizedBox(height: 32),
           ElevatedButton.icon(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const CasesPage()),
+            ),
             icon: const Icon(Icons.arrow_back),
             label: const Text('Go to Cases'),
             style: ElevatedButton.styleFrom(
