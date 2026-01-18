@@ -101,7 +101,6 @@ class _LoginPageState extends State<LoginPage> {
                 const Text(
                   'Welcome Back',
                   style: TextStyle(
-                    fontFamily: 'Merriweather',
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF1E3A8A),
