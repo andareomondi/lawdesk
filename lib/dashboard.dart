@@ -649,7 +649,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
               height: 80,
               backgroundColor: Colors.white,
               animSpeedFactor: 2.0,
-              showChildOpacityTransition: false,
+              showChildOpacityTransition: true,
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
@@ -884,7 +884,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
 
   Widget _buildShimmerStatsCards() {
     return Row(
-      children: List.generate(3, (index) {
+      children: List.generate(2, (index) {
         return Expanded(
           child: Padding(
             padding: EdgeInsets.only(right: index < 2 ? 12 : 0),
