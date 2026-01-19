@@ -240,17 +240,38 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
   Future<void> _loadDocuments() async {
     setState(() => _isLoadingDocuments = true);
     try {
-      final response = await _supabase
-          .from('documents')
-          .select()
-          .eq('case_id', int.parse(widget.caseId))
-          .order('created_at', ascending: false)
-          .limit(3);
+      if (connectivityService.isConnected) {
+        final response = await _supabase
+            .from('documents')
+            .select()
+            .eq('case_id', int.parse(widget.caseId))
+            .order('created_at', ascending: false)
+            .limit(3);
+        await offlineStorage.cacheDocuments(response);
 
-      setState(() {
-        _documents = List<Map<String, dynamic>>.from(response);
-        _isLoadingDocuments = false;
-      });
+        setState(() {
+          _documents = List<Map<String, dynamic>>.from(response);
+          _isLoadingDocuments = false;
+        });
+      } else {
+        final cachedDocuments = await offlineStorage.getCachedDocuments();
+
+        if (cachedDocuments != null) {
+          final caseDocuments = cachedDocuments
+              .where((d) => d['case_id'].toString() == widget.caseId)
+              .take(3);
+
+          setState(() {
+            _documents = List<Map<String, dynamic>>.from(caseDocuments);
+            _isLoadingDocuments = false;
+          });
+        } else {
+          setState(() {
+            _documents = [];
+            _isLoadingDocuments = false;
+          });
+        }
+      }
     } catch (e) {
       setState(() => _isLoadingDocuments = false);
     }
@@ -259,16 +280,39 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
   Future<void> _loadNotes() async {
     setState(() => _isLoadingNotes = true);
     try {
-      final response = await _supabase
-          .from('notes')
-          .select()
-          .eq('case', int.parse(widget.caseId))
-          .order('created_at', ascending: false);
+      // Implementing offline caching for notes can be done similarly to cases
+      if (connectivityService.isConnected) {
+        final notes = await _supabase
+            .from('notes')
+            .select()
+            .eq('case', int.parse(widget.caseId))
+            .order('created_at', ascending: false);
 
-      setState(() {
-        _notes = List<Map<String, dynamic>>.from(response);
-        _isLoadingNotes = false;
-      });
+        await offlineStorage.cacheNotes(notes);
+
+        setState(() {
+          _notes = List<Map<String, dynamic>>.from(notes);
+          _isLoadingNotes = false;
+        });
+      } else {
+        final cachedNotes = await offlineStorage.getCachedNotes();
+
+        if (cachedNotes != null) {
+          final caseNotes = cachedNotes.where(
+            (n) => n['case'].toString() == widget.caseId,
+          );
+
+          setState(() {
+            _notes = List<Map<String, dynamic>>.from(caseNotes);
+            _isLoadingNotes = false;
+          });
+        } else {
+          setState(() {
+            _notes = [];
+            _isLoadingNotes = false;
+          });
+        }
+      }
     } catch (e) {
       setState(() => _isLoadingNotes = false);
       if (mounted) {
@@ -284,16 +328,38 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
   Future<void> _loadEvents() async {
     setState(() => _isLoadingEvents = true);
     try {
-      final response = await _supabase
-          .from('events')
-          .select()
-          .eq('case', int.parse(widget.caseId))
-          .order('date', ascending: true);
+      if (connectivityService.isConnected) {
+        final response = await _supabase
+            .from('events')
+            .select()
+            .eq('case', int.parse(widget.caseId))
+            .order('date', ascending: true);
 
-      setState(() {
-        _events = List<Map<String, dynamic>>.from(response);
-        _isLoadingEvents = false;
-      });
+        await offlineStorage.cacheEvents(response);
+
+        setState(() {
+          _events = List<Map<String, dynamic>>.from(response);
+          _isLoadingEvents = false;
+        });
+      } else {
+        final cachedEvents = await offlineStorage.getCachedEvents();
+
+        if (cachedEvents != null) {
+          final caseEvents = cachedEvents
+              .where((e) => e['case'].toString() == widget.caseId)
+              .toList();
+
+          setState(() {
+            _events = List<Map<String, dynamic>>.from(caseEvents);
+            _isLoadingEvents = false;
+          });
+        } else {
+          setState(() {
+            _events = [];
+            _isLoadingEvents = false;
+          });
+        }
+      }
     } catch (e) {
       setState(() => _isLoadingEvents = false);
       if (mounted) {

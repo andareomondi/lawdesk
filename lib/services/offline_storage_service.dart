@@ -4,7 +4,8 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class OfflineStorageService {
-  static final OfflineStorageService _instance = OfflineStorageService._internal();
+  static final OfflineStorageService _instance =
+      OfflineStorageService._internal();
   factory OfflineStorageService() => _instance;
   OfflineStorageService._internal();
 
@@ -13,35 +14,9 @@ class OfflineStorageService {
   static const String _statsCacheKey = 'cached_stats';
   static const String _documentsCacheKey = 'cached_documents';
   static const String _eventsCacheKey = 'cached_events';
-  static const String _clientsCacheKey = 'cached_clients'; // Added clients key
+  static const String _notesCacheKey = 'cached_notes';
+  static const String _clientsCacheKey = 'cached_clients';
   static const String _lastSyncKey = 'last_sync_time';
-
-  // Save clients to local storage
-  Future<void> cacheClients(List<dynamic> clients) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final jsonString = jsonEncode(clients);
-      await prefs.setString(_clientsCacheKey, jsonString);
-      await _updateLastSyncTime();
-      print('Successfully cached ${clients.length} clients');
-    } catch (e) {
-      print('Error caching clients: $e');
-    }
-  }
-
-  // Get cached clients
-  Future<List<dynamic>?> getCachedClients() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final jsonString = prefs.getString(_clientsCacheKey);
-      if (jsonString != null) {
-        return jsonDecode(jsonString) as List<dynamic>;
-      }
-    } catch (e) {
-      print('Error getting cached clients: $e');
-    }
-    return null;
-  }
 
   // Save events to local storage
   Future<void> cacheEvents(List<dynamic> events) async {
@@ -175,6 +150,60 @@ class OfflineStorageService {
     return null;
   }
 
+  // cached notes
+  Future<void> cacheNotes(List<dynamic> notes) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonString = jsonEncode(notes);
+      await prefs.setString(_notesCacheKey, jsonString);
+      await _updateLastSyncTime();
+      print('Successfully cached ${notes.length} notes');
+    } catch (e) {
+      print('Error caching notes: $e');
+    }
+  }
+
+  // Get cached notes
+  Future<List<dynamic>?> getCachedNotes() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonString = prefs.getString(_notesCacheKey);
+      if (jsonString != null) {
+        return jsonDecode(jsonString) as List<dynamic>;
+      }
+    } catch (e) {
+      print('Error getting cached notes: $e');
+    }
+    return null;
+  }
+
+  // cached clients
+  Future<void> cacheClients(List<dynamic> clients) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonString = jsonEncode(clients);
+      await prefs.setString(_clientsCacheKey, jsonString);
+      await _updateLastSyncTime();
+      print('Successfully cached ${clients.length} clients');
+    } catch (e) {
+      print('Error caching clients: $e');
+    }
+  }
+
+  // Get cached clients
+  Future<List<dynamic>?> getCachedClients() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonString = prefs.getString(_clientsCacheKey);
+      if (jsonString != null) {
+        return jsonDecode(jsonString) as List<dynamic>;
+      }
+    } catch (e) {
+      print('Error getting cached clients: $e');
+    }
+    return null;
+  }
+
   // Update last sync time
   Future<void> _updateLastSyncTime() async {
     final prefs = await SharedPreferences.getInstance();
@@ -203,7 +232,6 @@ class OfflineStorageService {
     await prefs.remove(_statsCacheKey);
     await prefs.remove(_documentsCacheKey);
     await prefs.remove(_eventsCacheKey);
-    await prefs.remove(_clientsCacheKey); // Added clear for clients
     await prefs.remove(_lastSyncKey);
   }
 }
