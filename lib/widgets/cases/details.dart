@@ -68,6 +68,31 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
   @override
   void initState() {
     super.initState();
+    _isOfflineMode = !connectivityService.isConnected;
+
+    // Listen to connectivity changes
+    connectivityService.connectionStream.listen((isConnected) {
+      if (mounted) {
+        setState(() {
+          _isOfflineMode = !isConnected;
+        });
+
+        if (isConnected) {
+          // When connection is restored, refresh data
+          _loadCaseDetails();
+          _loadDocuments();
+          _loadNotes();
+          _loadEvents();
+
+          AppToast.showSuccess(
+            context: context,
+            title: "Back Online",
+            message: "Connection restored. Data synced.",
+          );
+        }
+      }
+    });
+
     _loadCaseDetails();
     _loadDocuments();
     _loadNotes();
@@ -2772,7 +2797,7 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
           if (_isEditing) ...[
             _buildTextField(
               enabled: false,
-              label: 'Case Name',
+              label: 'Client Name',
               controller: _nameController,
               icon: Icons.folder_outlined,
             ),
@@ -2792,7 +2817,7 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
           ] else ...[
             _buildInfoRow(
               icon: Icons.folder_outlined,
-              label: 'Case Name',
+              label: 'Client Name',
               value: _caseData!['name'] ?? 'N/A',
             ),
             const SizedBox(height: 12),
