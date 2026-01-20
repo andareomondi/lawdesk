@@ -678,6 +678,7 @@ class AllCasesListWidgetState extends State<AllCasesListWidget>
                 onTap: () => _navigateToCaseDetails(case_['id'].toString()),
                 caseId: case_['id'].toString(),
                 onPostpone: _showPostponeModal,
+                isCompleted: case_['progress_status'],
               ),
             );
           }).toList(),
@@ -873,6 +874,7 @@ class _CourtDateCard extends StatelessWidget {
   final VoidCallback onTap;
   final String caseId;
   final Function(String caseId)? onPostpone;
+  final bool isCompleted;
 
   const _CourtDateCard({
     required this.caseName,
@@ -885,6 +887,7 @@ class _CourtDateCard extends StatelessWidget {
     required this.onTap,
     required this.caseId,
     this.onPostpone,
+    required this.isCompleted,
   });
 
   @override
@@ -1204,7 +1207,7 @@ class _CourtDateCard extends StatelessWidget {
                 ),
               ),
             ],
-            if (!isExpired && onPostpone != null) ...[
+            if (!isExpired && onPostpone != null && isCompleted == false) ...[
               const SizedBox(height: 12),
               const Divider(color: Color(0xFFE5E7EB)),
               const SizedBox(height: 8),
