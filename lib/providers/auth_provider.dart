@@ -27,7 +27,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       _user = _authService.currentUser;
     } catch (e) {
-      print('Error initializing auth: $e');
+      throw Exception('Initialization error: $e');
     }
 
     _isInitializing = false;
@@ -43,8 +43,7 @@ class AuthProvider extends ChangeNotifier {
       _user = _authService.currentUser;
       notifyListeners();
     } catch (e) {
-      print('Sign up error: $e');
-      rethrow;
+      throw Exception('Sign up error: $e');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -61,8 +60,7 @@ class AuthProvider extends ChangeNotifier {
       _user = _authService.currentUser;
       notifyListeners();
     } catch (e) {
-      print('Sign in error: $e');
-      rethrow;
+      throw Exception('Sign in error: $e');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -79,8 +77,7 @@ class AuthProvider extends ChangeNotifier {
       _user = null;
       notifyListeners();
     } catch (e) {
-      print('Sign out error: $e');
-      rethrow;
+      throw Exception('Sign out error: $e');
     } finally {
       _isLoading = false;
       notifyListeners();

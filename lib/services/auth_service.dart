@@ -30,8 +30,7 @@ class AuthService {
       // This will catch your custom throw AND any Supabase errors
       throw AuthException('$e.message');
     } catch (e) {
-      print('Unexpected error: $e');
-      rethrow;
+      throw Exception('Sign up failed: $e');
     }
   }
 
