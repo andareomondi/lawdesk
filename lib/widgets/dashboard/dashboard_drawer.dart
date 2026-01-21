@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:lawdesk/screens/profile/profile.dart';
 import 'package:lawdesk/screens/cases/casepage.dart';
@@ -93,6 +94,7 @@ class DashboardDrawer extends StatelessWidget {
                     icon: Icons.account_circle_outlined,
                     title: 'Profile',
                     onTap: () async {
+                      HapticFeedback.lightImpact();
                       Navigator.pop(context);
                       final result = await Navigator.push(
                         context,
@@ -110,6 +112,7 @@ class DashboardDrawer extends StatelessWidget {
                     icon: Icons.cases_outlined,
                     title: 'Cases',
                     onTap: () {
+                      HapticFeedback.lightImpact();
                       Navigator.pop(context);
                       Navigator.push(
                         context,
@@ -125,6 +128,7 @@ class DashboardDrawer extends StatelessWidget {
                     icon: Icons.people_alt_outlined,
                     title: 'Clients',
                     onTap: () {
+                      HapticFeedback.lightImpact();
                       Navigator.pop(context);
                       Navigator.push(
                         context,
@@ -139,6 +143,7 @@ class DashboardDrawer extends StatelessWidget {
                     icon: Icons.description_outlined,
                     title: 'Documents',
                     onTap: () {
+                      HapticFeedback.lightImpact();
                       Navigator.pop(context);
                       Navigator.push(
                         context,
@@ -153,6 +158,7 @@ class DashboardDrawer extends StatelessWidget {
                     icon: Icons.calendar_month_outlined,
                     title: 'Calendar',
                     onTap: () {
+                      HapticFeedback.lightImpact();
                       Navigator.pop(context);
                       Navigator.push(
                         context,
@@ -171,6 +177,7 @@ class DashboardDrawer extends StatelessWidget {
                     icon: Icons.settings_outlined,
                     title: 'Settings',
                     onTap: () {
+                      HapticFeedback.lightImpact();
                       Navigator.pop(context);
                       AppToast.showInfo(
                         context: context,
@@ -184,6 +191,7 @@ class DashboardDrawer extends StatelessWidget {
                     icon: Icons.help_outline,
                     title: 'Help & Support',
                     onTap: () {
+                      HapticFeedback.lightImpact();
                       Navigator.pop(context);
                       Navigator.push(
                         context,
