@@ -620,6 +620,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
                 return IconButton(
                   icon: const Icon(Icons.menu),
                   onPressed: () {
+                    HapticFeedback.lightImpact();
                     Scaffold.of(
                       context,
                     ).openEndDrawer(); // Use openEndDrawer instead
