@@ -359,52 +359,38 @@ class _CalendarPageState extends State<CalendarPage> {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      onPopInvoked: (didPop) {
-        if (didPop) {
-          Navigator.of(context).pop(true);
-        }
-      },
-      child: Scaffold(
-        backgroundColor: const Color(0xFFF8FAFC),
-        appBar: AppBar(
-          backgroundColor: const Color(0xFF1E3A8A),
-          foregroundColor: Colors.white,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () {
-              Navigator.of(context).pop(true);
-            },
-          ),
-          elevation: 0,
-          title: const Text(
-            'Calendar',
-            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 20),
-          ),
-          actions: [
-            IconButton(
-              icon: Icon(
-                _viewMode == 'month' ? Icons.list : Icons.calendar_month,
-              ),
-              onPressed: () {
-                setState(() {
-                  _viewMode = _viewMode == 'month' ? 'list' : 'month';
-                });
-              },
-              tooltip: _viewMode == 'month' ? 'List View' : 'Calendar View',
-            ),
-            IconButton(icon: const Icon(Icons.refresh), onPressed: _loadData),
-          ],
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF1E3A8A),
+        foregroundColor: Colors.white,
+        elevation: 0,
+        title: const Text(
+          'Calendar',
+          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 20),
         ),
-        body: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : (_allCases.isEmpty && _allEvents.isEmpty)
-            ? _buildEmptyState()
-            : _viewMode == 'month'
-            ? _buildCalendarView()
-            : _buildListView(),
+        actions: [
+          IconButton(
+            icon: Icon(
+              _viewMode == 'month' ? Icons.list : Icons.calendar_month,
+            ),
+            onPressed: () {
+              setState(() {
+                _viewMode = _viewMode == 'month' ? 'list' : 'month';
+              });
+            },
+            tooltip: _viewMode == 'month' ? 'List View' : 'Calendar View',
+          ),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadData),
+        ],
       ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : (_allCases.isEmpty && _allEvents.isEmpty)
+          ? _buildEmptyState()
+          : _viewMode == 'month'
+          ? _buildCalendarView()
+          : _buildListView(),
     );
   }
 
