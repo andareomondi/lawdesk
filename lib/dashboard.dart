@@ -19,6 +19,7 @@ import 'package:lawdesk/services/offline_storage_service.dart';
 import 'package:lawdesk/widgets/offline_indicator.dart';
 import 'package:lawdesk/utils/offline_action_helper.dart';
 import 'package:lawdesk/widgets/cases/details.dart';
+import 'package:lawdesk/main.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -27,7 +28,8 @@ class Dashboard extends StatefulWidget {
   State<Dashboard> createState() => _DashboardState();
 }
 
-class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
+class _DashboardState extends State<Dashboard>
+    with TickerProviderStateMixin, RouteAware {
   final _supabase = Supabase.instance.client;
   final _updater = ShorebirdUpdater();
 
@@ -56,6 +58,12 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   late Animation<double> _shimmerAnimation;
   late AnimationController _fabController;
   late Animation<double> _expandAnimation;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    routeObserver.subscribe(this, ModalRoute.of(context)! as PageRoute);
+  }
 
   @override
   void initState() {
@@ -102,6 +110,16 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
     );
   }
 
+  @override
+  void didPopNext() {
+    // Refresh data when returning to this screen
+    _loadUserData();
+    _casesListKey.currentState?.loadCases();
+    _statsKey.currentState?.loadStats();
+    _caseDetailsKey.currentState?.loadCaseDetails();
+    super.didPopNext();
+  }
+
   void _setupShimmerAnimation() {
     _shimmerController = AnimationController(
       vsync: this,
@@ -115,6 +133,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    routeObserver.unsubscribe(this);
     _shimmerController.dispose();
     _fabController.dispose();
     super.dispose();

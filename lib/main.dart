@@ -11,6 +11,8 @@ import 'firebase_options.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
+final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
@@ -70,6 +72,7 @@ class _MyAppState extends State<MyApp> {
       providers: [ChangeNotifierProvider(create: (_) => AuthProvider())],
       child: MaterialApp(
         title: 'LawDesk',
+        navigatorObservers: [routeObserver],
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           primarySwatch: Colors.blue,
