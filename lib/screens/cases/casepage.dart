@@ -10,7 +10,8 @@ class CasesPage extends StatefulWidget {
 
 class _CasesPageState extends State<CasesPage> {
   // Use GlobalKey for the all cases list
-  final GlobalKey<AllCasesListWidgetState> _allCasesListKey = GlobalKey<AllCasesListWidgetState>();
+  final GlobalKey<AllCasesListWidgetState> _allCasesListKey =
+      GlobalKey<AllCasesListWidgetState>();
 
   void _refreshCases() {
     _allCasesListKey.currentState?.loadCases();
@@ -22,6 +23,7 @@ class _CasesPageState extends State<CasesPage> {
       backgroundColor: const Color(0xFFF9FAFB),
       appBar: AppBar(
         backgroundColor: Color(0xFF1E3A8A),
+        iconTheme: const IconThemeData(color: Colors.white),
         elevation: 0,
         title: const Text(
           'My Cases',
@@ -58,8 +60,8 @@ class _CasesPageState extends State<CasesPage> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  
+                  const SizedBox(height: 8),
+
                   // All Cases List with filtering
                   AllCasesListWidget(key: _allCasesListKey),
                 ],

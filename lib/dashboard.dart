@@ -9,7 +9,6 @@ import 'package:lawdesk/widgets/cases/list.dart';
 import 'package:lawdesk/screens/cases/casepage.dart';
 import 'package:lawdesk/widgets/cases/modal.dart';
 import 'package:lawdesk/screens/documents/userDocuments.dart';
-import 'package:lawdesk/screens/calender/calender.dart';
 import 'package:lawdesk/widgets/dashboard/statCard.dart';
 import 'package:liquid_pull_to_refresh/liquid_pull_to_refresh.dart';
 import 'package:lawdesk/widgets/delightful_toast.dart';
@@ -19,6 +18,7 @@ import 'package:lawdesk/services/connectivity_service.dart';
 import 'package:lawdesk/services/offline_storage_service.dart';
 import 'package:lawdesk/widgets/offline_indicator.dart';
 import 'package:lawdesk/utils/offline_action_helper.dart';
+import 'package:lawdesk/widgets/cases/details.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -34,6 +34,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   final GlobalKey<CasesListWidgetState> _casesListKey = GlobalKey();
   final GlobalKey<StatsSectionState> _statsKey = GlobalKey<StatsSectionState>();
 
+  final GlobalKey<CaseDetailsPageState> _caseDetailsKey = GlobalKey();
   // User data variables
   String _userName = '';
   String _userEmail = '';
@@ -75,6 +76,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
           _loadUserData();
           _casesListKey.currentState?.loadCases();
           _statsKey.currentState?.loadStats();
+          _caseDetailsKey.currentState?.loadCaseDetails();
 
           AppToast.showSuccess(
             context: context,

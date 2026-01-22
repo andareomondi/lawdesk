@@ -13,10 +13,10 @@ class CaseDetailsPage extends StatefulWidget {
   const CaseDetailsPage({Key? key, required this.caseId}) : super(key: key);
 
   @override
-  State<CaseDetailsPage> createState() => _CaseDetailsPageState();
+  State<CaseDetailsPage> createState() => CaseDetailsPageState();
 }
 
-class _CaseDetailsPageState extends State<CaseDetailsPage> {
+class CaseDetailsPageState extends State<CaseDetailsPage> {
   final _supabase = SupabaseConfig.client;
   Map<String, dynamic>? _caseData;
   List<Map<String, dynamic>> _documents = [];
@@ -38,6 +38,8 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
   TimeOfDay? _selectedTime;
   bool get _isCompleted =>
       _caseData != null && _caseData!['progress_status'] == true;
+
+  bool hasChanges = false;
 
   // Controllers for notes
   final _noteNameController = TextEditingController();
@@ -79,7 +81,7 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
 
         if (isConnected) {
           // When connection is restored, refresh data
-          _loadCaseDetails();
+          loadCaseDetails();
           _loadDocuments();
           _loadNotes();
           _loadEvents();
@@ -93,7 +95,7 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
       }
     });
 
-    _loadCaseDetails();
+    loadCaseDetails();
     _loadDocuments();
     _loadNotes();
     _loadEvents();
@@ -128,9 +130,10 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
           .update({'progress_status': newStatus})
           .eq('id', widget.caseId);
 
-      await _loadCaseDetails();
+      await loadCaseDetails();
 
       if (mounted) {
+        hasChanges = true;
         AppToast.showSuccess(
           context: context,
           title: newStatus ? 'Case Completed' : 'Case Reopened',
@@ -151,7 +154,7 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
     }
   }
 
-  Future<void> _loadCaseDetails() async {
+  Future<void> loadCaseDetails() async {
     setState(() => _isLoading = true);
 
     try {
@@ -751,13 +754,14 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
           })
           .eq('id', widget.caseId);
 
-      await _loadCaseDetails();
+      await loadCaseDetails();
 
       setState(() {
         _isEditing = false;
       });
 
       if (mounted) {
+        hasChanges = true;
         AppToast.showSuccess(
           context: context,
           title: 'Success',
@@ -1691,129 +1695,144 @@ class _CaseDetailsPageState extends State<CaseDetailsPage> {
   Widget build(BuildContext context) {
     return DefaultTabController(
       length: 3,
-      child: Scaffold(
-        backgroundColor: const Color(0xFFF9FAFB),
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Color(0xFF1F2937)),
-            onPressed: _isDeleting ? null : () => Navigator.pop(context),
-          ),
-          title: Text(
-            _isEditing ? 'Edit Case' : 'Case Details',
-            style: const TextStyle(
-              color: Color(0xFF1F2937),
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          actions: [
-            // Add Checkmark icon in AppBar for quick toggle
-            if (_caseData != null &&
-                !_isEditing &&
-                !_isDeleting &&
-                !_isOfflineMode)
-              IconButton(
-                tooltip: _isCompleted ? 'Reopen Case' : 'Mark as Complete',
-                icon: Icon(
-                  _isCompleted
-                      ? Icons.check_circle
-                      : Icons.check_circle_outline,
-                  color: _isCompleted
-                      ? const Color(0xFF10B981)
-                      : const Color(0xFF6B7280),
-                ),
-                onPressed: _toggleCaseCompletion,
-              ),
-          ],
+      child: PopScope(
+        canPop: false,
+        onPopInvoked: (didPop) {
+          if (didPop) return;
 
-          bottom: _caseData != null && !_isDeleting && !_isLoading
-              ? TabBar(
-                  labelColor: const Color(0xFF10B981),
-                  unselectedLabelColor: const Color(0xFF6B7280),
-                  indicatorColor: const Color(0xFF10B981),
-                  tabs: const [
-                    Tab(icon: Icon(Icons.info_outline), text: 'Details'),
-                    Tab(icon: Icon(Icons.event), text: 'Events'),
-                    Tab(icon: Icon(Icons.note), text: 'Notes'),
-                  ],
-                )
-              : null,
-        ),
-        body: _isDeleting
-            ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 16),
-                    Text(
-                      'Deleting case...',
-                      style: TextStyle(fontSize: 16, color: Color(0xFF6B7280)),
-                    ),
-                  ],
-                ),
-              )
-            : _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : _caseData == null
-            ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.error_outline,
-                      size: 64,
-                      color: Color(0xFF6B7280),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Case not found',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF1F2937),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'This case may have been deleted',
-                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                    ),
-                    const SizedBox(height: 24),
-                    ElevatedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF10B981),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 12,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      child: const Text('Go Back'),
-                    ),
-                  ],
-                ),
-              )
-            : Column(
-                children: [
-                  if (_isCompleted) _buildCompletionBanner(),
-                  Expanded(
-                    child: TabBarView(
-                      children: [
-                        _buildDetailsTab(),
-                        _buildEventsTab(),
-                        _buildNotesTab(),
-                      ],
-                    ),
-                  ),
-                ],
+          // 3. Manually pop the route and pass your variable!
+          Navigator.of(context).pop(hasChanges);
+        },
+
+        child: Scaffold(
+          backgroundColor: const Color(0xFFF9FAFB),
+          appBar: AppBar(
+            backgroundColor: Colors.white,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Color(0xFF1F2937)),
+              onPressed: _isDeleting
+                  ? null
+                  : () => Navigator.pop(context, hasChanges),
+            ),
+            title: Text(
+              _isEditing ? 'Edit Case' : 'Case Details',
+              style: const TextStyle(
+                color: Color(0xFF1F2937),
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
               ),
+            ),
+            actions: [
+              // Add Checkmark icon in AppBar for quick toggle
+              if (_caseData != null &&
+                  !_isEditing &&
+                  !_isDeleting &&
+                  !_isOfflineMode)
+                IconButton(
+                  tooltip: _isCompleted ? 'Reopen Case' : 'Mark as Complete',
+                  icon: Icon(
+                    _isCompleted
+                        ? Icons.check_circle
+                        : Icons.check_circle_outline,
+                    color: _isCompleted
+                        ? const Color(0xFF10B981)
+                        : const Color(0xFF6B7280),
+                  ),
+                  onPressed: _toggleCaseCompletion,
+                ),
+            ],
+
+            bottom: _caseData != null && !_isDeleting && !_isLoading
+                ? TabBar(
+                    labelColor: const Color(0xFF10B981),
+                    unselectedLabelColor: const Color(0xFF6B7280),
+                    indicatorColor: const Color(0xFF10B981),
+                    tabs: const [
+                      Tab(icon: Icon(Icons.info_outline), text: 'Details'),
+                      Tab(icon: Icon(Icons.event), text: 'Events'),
+                      Tab(icon: Icon(Icons.note), text: 'Notes'),
+                    ],
+                  )
+                : null,
+          ),
+          body: _isDeleting
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: const [
+                      CircularProgressIndicator(),
+                      SizedBox(height: 16),
+                      Text(
+                        'Deleting case...',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Color(0xFF6B7280),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _caseData == null
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.error_outline,
+                        size: 64,
+                        color: Color(0xFF6B7280),
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Case not found',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1F2937),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'This case may have been deleted',
+                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                      ),
+                      const SizedBox(height: 24),
+                      ElevatedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF10B981),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 12,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text('Go Back'),
+                      ),
+                    ],
+                  ),
+                )
+              : Column(
+                  children: [
+                    if (_isCompleted) _buildCompletionBanner(),
+                    Expanded(
+                      child: TabBarView(
+                        children: [
+                          _buildDetailsTab(),
+                          _buildEventsTab(),
+                          _buildNotesTab(),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+        ),
       ),
     );
   }
