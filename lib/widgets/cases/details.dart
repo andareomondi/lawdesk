@@ -46,6 +46,21 @@ class CaseDetailsPageState extends State<CaseDetailsPage> {
   final _noteDescriptionController = TextEditingController();
   String _selectedNoteType = 'Quick Note';
 
+  // Billing specific variables
+  List<Map<String, dynamic>> _billingRecords = [];
+  bool _isLoadingBilling = false;
+  final _billingServiceController = TextEditingController();
+  final _billingAmountController = TextEditingController();
+
+  // Getters for totals
+  double get _totalPaid => _billingRecords
+      .where((r) => r['paid'] == true)
+      .fold(0.0, (sum, item) => sum + (item['amount'] ?? 0.0));
+
+  double get _totalUnpaid => _billingRecords
+      .where((r) => r['paid'] != true)
+      .fold(0.0, (sum, item) => sum + (item['amount'] ?? 0.0));
+
   // Controllers for events
   final _eventAgendaController = TextEditingController();
   DateTime? _eventSelectedDate;
@@ -85,6 +100,7 @@ class CaseDetailsPageState extends State<CaseDetailsPage> {
           _loadDocuments();
           _loadNotes();
           _loadEvents();
+          _loadBilling();
 
           AppToast.showSuccess(
             context: context,
@@ -99,6 +115,7 @@ class CaseDetailsPageState extends State<CaseDetailsPage> {
     _loadDocuments();
     _loadNotes();
     _loadEvents();
+    _loadBilling();
   }
 
   @override
@@ -110,6 +127,8 @@ class CaseDetailsPageState extends State<CaseDetailsPage> {
     _noteNameController.dispose();
     _noteDescriptionController.dispose();
     _eventAgendaController.dispose();
+    _billingServiceController.dispose();
+    _billingAmountController.dispose();
     super.dispose();
   }
 
@@ -152,6 +171,274 @@ class CaseDetailsPageState extends State<CaseDetailsPage> {
         );
       }
     }
+  }
+
+  Future<void> _loadBilling() async {
+    setState(() => _isLoadingBilling = true);
+    try {
+      if (connectivityService.isConnected) {
+        final response = await _supabase
+            .from('case_billing')
+            .select()
+            .eq('case_id', int.parse(widget.caseId))
+            .order('created_at', ascending: false);
+
+        // Cache the result
+        await offlineStorage.cacheBilling(response);
+
+        setState(() {
+          _billingRecords = List<Map<String, dynamic>>.from(response);
+          _isLoadingBilling = false;
+        });
+      } else {
+        // Load from cache
+        final cachedBilling = await offlineStorage.getCachedBilling();
+
+        if (cachedBilling != null) {
+          final caseBilling = cachedBilling
+              .where((b) => b['case_id'].toString() == widget.caseId)
+              .toList();
+
+          setState(() {
+            _billingRecords = List<Map<String, dynamic>>.from(caseBilling);
+            _isLoadingBilling = false;
+          });
+        } else {
+          setState(() {
+            _billingRecords = [];
+            _isLoadingBilling = false;
+          });
+        }
+      }
+    } catch (e) {
+      print('Error loading billing: $e');
+      setState(() => _isLoadingBilling = false);
+      if (mounted) {
+        AppToast.showError(
+          context: context,
+          title: 'Error',
+          message: 'Failed to load billing records.',
+        );
+      }
+    }
+  }
+
+  Future<void> _addBillingRecord() async {
+    if (!OfflineActionHelper.canPerformAction(
+      context,
+      actionName: 'add bill',
+    )) {
+      return;
+    }
+
+    if (_billingServiceController.text.trim().isEmpty ||
+        _billingAmountController.text.trim().isEmpty) {
+      AppToast.showError(
+        context: context,
+        title: 'Validation Error',
+        message: 'Please fill in all fields',
+      );
+      return;
+    }
+
+    try {
+      final amount = double.tryParse(_billingAmountController.text.trim());
+      if (amount == null) {
+        throw Exception('Invalid amount');
+      }
+
+      await _supabase.from('case_billing').insert({
+        'case_id': int.parse(widget.caseId),
+        'service': _billingServiceController.text.trim(),
+        'amount': amount,
+        'paid': false, // Default to unpaid
+      });
+
+      _billingServiceController.clear();
+      _billingAmountController.clear();
+
+      await _loadBilling();
+
+      if (mounted) {
+        Navigator.pop(context); // Close modal
+        AppToast.showSuccess(
+          context: context,
+          title: 'Success',
+          message: 'Bill added successfully',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        AppToast.showError(
+          context: context,
+          title: 'Error',
+          message: 'Failed to add bill. Please check your inputs.',
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteBillingRecord(int id) async {
+    if (!OfflineActionHelper.canPerformAction(
+      context,
+      actionName: 'delete bill',
+    )) {
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Bill'),
+        content: const Text('Are you sure you want to delete this record?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await _supabase.from('case_billing').delete().eq('id', id);
+      await _loadBilling();
+
+      if (mounted) {
+        AppToast.showSuccess(
+          context: context,
+          title: 'Success',
+          message: 'Record deleted successfully',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        AppToast.showError(
+          context: context,
+          title: 'Error',
+          message: 'Failed to delete record.',
+        );
+      }
+    }
+  }
+
+  Future<void> _toggleBillPaid(int id, bool currentStatus) async {
+    if (!OfflineActionHelper.canPerformAction(
+      context,
+      actionName: 'update status',
+    )) {
+      return;
+    }
+
+    try {
+      await _supabase
+          .from('case_billing')
+          .update({'paid': !currentStatus})
+          .eq('id', id);
+
+      await _loadBilling();
+    } catch (e) {
+      if (mounted) {
+        AppToast.showError(
+          context: context,
+          title: 'Error',
+          message: 'Failed to update status.',
+        );
+      }
+    }
+  }
+
+  void _showAddBillModal() {
+    _billingServiceController.clear();
+    _billingAmountController.clear();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Add Billing Record',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1F2937),
+                ),
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'Service Description',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _billingServiceController,
+                decoration: InputDecoration(
+                  hintText: 'e.g. Consultation Fee, Filing Charges',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Amount',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _billingAmountController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  hintText: '0.00',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _addBillingRecord,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF10B981),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text(
+                    'Add Record',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> loadCaseDetails() async {
@@ -1694,7 +1981,7 @@ class CaseDetailsPageState extends State<CaseDetailsPage> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: PopScope(
         canPop: false,
         onPopInvoked: (didPop) {
@@ -1752,6 +2039,7 @@ class CaseDetailsPageState extends State<CaseDetailsPage> {
                       Tab(icon: Icon(Icons.info_outline), text: 'Details'),
                       Tab(icon: Icon(Icons.event), text: 'Events'),
                       Tab(icon: Icon(Icons.note), text: 'Notes'),
+                      Tab(icon: Icon(Icons.attach_money), text: 'Billing'),
                     ],
                   )
                 : null,
@@ -1827,12 +2115,271 @@ class CaseDetailsPageState extends State<CaseDetailsPage> {
                           _buildDetailsTab(),
                           _buildEventsTab(),
                           _buildNotesTab(),
+                          _buildBillingTab(),
                         ],
                       ),
                     ),
                   ],
                 ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildBillingTab() {
+    final currencyFormat = NumberFormat.currency(symbol: '\$'); // Or 'KES '
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF9FAFB),
+      floatingActionButton: (_isOfflineMode || _isCompleted)
+          ? null
+          : FloatingActionButton(
+              onPressed: _showAddBillModal,
+              backgroundColor: const Color(0xFF10B981),
+              child: const Icon(Icons.add, color: Colors.white),
+            ),
+      body: Column(
+        children: [
+          // Offline Indicator
+          if (_isOfflineMode)
+            Container(
+              margin: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF3C7),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: const Color(0xFFF59E0B).withOpacity(0.3),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.cloud_off_rounded, color: Color(0xFFF59E0B)),
+                  const SizedBox(width: 10),
+                  const Text(
+                    'Viewing Offline - Cannot add/edit bills',
+                    style: TextStyle(color: Color(0xFF92400E)),
+                  ),
+                ],
+              ),
+            ),
+
+          // List of Bills
+          Expanded(
+            child: _isLoadingBilling
+                ? const Center(child: CircularProgressIndicator())
+                : _billingRecords.isEmpty
+                ? Center(
+                    child: Text(
+                      'No billing records found',
+                      style: TextStyle(color: Colors.grey[600]),
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _billingRecords.length,
+                    itemBuilder: (context, index) {
+                      final bill = _billingRecords[index];
+                      final isPaid = bill['paid'] == true;
+                      final amount = bill['amount'] ?? 0;
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isPaid
+                                ? const Color(0xFF10B981).withOpacity(0.3)
+                                : const Color(0xFFE5E7EB),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: isPaid
+                                    ? const Color(0xFF10B981).withOpacity(0.1)
+                                    : const Color(0xFFF3F4F6),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                isPaid ? Icons.check : Icons.attach_money,
+                                color: isPaid
+                                    ? const Color(0xFF10B981)
+                                    : const Color(0xFF6B7280),
+                                size: 20,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    bill['service'] ?? 'Unknown Service',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 16,
+                                      color: Color(0xFF1F2937),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    _formatDate(bill['created_at']),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey[500],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  currencyFormat.format(amount),
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    color: isPaid
+                                        ? const Color(0xFF10B981)
+                                        : const Color(0xFFEF4444),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                if (!_isOfflineMode)
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      InkWell(
+                                        onTap: () =>
+                                            _toggleBillPaid(bill['id'], isPaid),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 4,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: isPaid
+                                                ? const Color(0xFF10B981)
+                                                : Colors.transparent,
+                                            border: Border.all(
+                                              color: const Color(0xFF10B981),
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            isPaid ? 'PAID' : 'MARK PAID',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                              color: isPaid
+                                                  ? Colors.white
+                                                  : const Color(0xFF10B981),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      InkWell(
+                                        onTap: () =>
+                                            _deleteBillingRecord(bill['id']),
+                                        child: Icon(
+                                          Icons.delete_outline,
+                                          size: 20,
+                                          color: Colors.red[400],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+          ),
+
+          // Totals Summary Section
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  offset: const Offset(0, -4),
+                  blurRadius: 16,
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Total Paid',
+                        style: TextStyle(
+                          color: Color(0xFF6B7280),
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        currencyFormat.format(_totalPaid),
+                        style: const TextStyle(
+                          color: Color(0xFF10B981),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(width: 1, height: 40, color: const Color(0xFFE5E7EB)),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      const Text(
+                        'Outstanding',
+                        style: TextStyle(
+                          color: Color(0xFF6B7280),
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        currencyFormat.format(_totalUnpaid),
+                        style: const TextStyle(
+                          color: Color(0xFFEF4444),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -16,6 +16,7 @@ class OfflineStorageService {
   static const String _eventsCacheKey = 'cached_events';
   static const String _notesCacheKey = 'cached_notes';
   static const String _clientsCacheKey = 'cached_clients';
+  static const String _billingCacheKey = 'cached_billing';
   static const String _lastSyncKey = 'last_sync_time';
 
   // Save events to local storage
@@ -220,6 +221,31 @@ class OfflineStorageService {
       }
     } catch (e) {
       print('Error getting last sync time: $e');
+    }
+    return null;
+  }
+
+  Future<void> cacheBilling(List<dynamic> billing) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonString = jsonEncode(billing);
+      await prefs.setString(_billingCacheKey, jsonString);
+      await _updateLastSyncTime();
+      print('Successfully cached ${billing.length} billing records');
+    } catch (e) {
+      print('Error caching billing: $e');
+    }
+  }
+
+  Future<List<dynamic>?> getCachedBilling() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonString = prefs.getString(_billingCacheKey);
+      if (jsonString != null) {
+        return jsonDecode(jsonString) as List<dynamic>;
+      }
+    } catch (e) {
+      print('Error getting cached billing: $e');
     }
     return null;
   }
