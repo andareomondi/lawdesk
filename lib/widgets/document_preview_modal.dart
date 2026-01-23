@@ -24,12 +24,10 @@ class _DocumentPreviewModalState extends State<DocumentPreviewModal> {
   int _totalPages = 0;
   bool _isReady = false;
 
-  String get _fileExtension =>
-      widget.fileName.split('.').last.toLowerCase();
+  String get _fileExtension => widget.fileName.split('.').last.toLowerCase();
 
   bool get _isPdf => _fileExtension == 'pdf';
-  bool get _isImage =>
-      ['jpg', 'jpeg', 'png', 'gif'].contains(_fileExtension);
+  bool get _isImage => ['jpg', 'jpeg', 'png', 'gif'].contains(_fileExtension);
 
   @override
   Widget build(BuildContext context) {
@@ -43,11 +41,9 @@ class _DocumentPreviewModalState extends State<DocumentPreviewModal> {
         children: [
           // Header
           _buildHeader(),
-          
+
           // Preview Content
-          Expanded(
-            child: _buildPreviewContent(),
-          ),
+          Expanded(child: _buildPreviewContent()),
         ],
       ),
     );
@@ -79,7 +75,7 @@ class _DocumentPreviewModalState extends State<DocumentPreviewModal> {
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-          
+
           // Title and Close Button
           Row(
             children: [
@@ -138,7 +134,7 @@ class _DocumentPreviewModalState extends State<DocumentPreviewModal> {
         PDFView(
           filePath: widget.file.path,
           enableSwipe: true,
-          swipeHorizontal: false,
+          swipeHorizontal: true,
           autoSpacing: true,
           pageFling: true,
           pageSnap: true,
@@ -166,7 +162,7 @@ class _DocumentPreviewModalState extends State<DocumentPreviewModal> {
             });
           },
         ),
-        
+
         // Loading indicator
         if (!_isReady)
           Container(
@@ -175,16 +171,11 @@ class _DocumentPreviewModalState extends State<DocumentPreviewModal> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  CircularProgressIndicator(
-                    color: Color(0xFF1E3A8A),
-                  ),
+                  CircularProgressIndicator(color: Color(0xFF1E3A8A)),
                   SizedBox(height: 16),
                   Text(
                     'Loading PDF...',
-                    style: TextStyle(
-                      color: Color(0xFF6B7280),
-                      fontSize: 14,
-                    ),
+                    style: TextStyle(color: Color(0xFF6B7280), fontSize: 14),
                   ),
                 ],
               ),
@@ -202,24 +193,17 @@ class _DocumentPreviewModalState extends State<DocumentPreviewModal> {
         minScale: PhotoViewComputedScale.contained,
         maxScale: PhotoViewComputedScale.covered * 3,
         initialScale: PhotoViewComputedScale.contained,
-        backgroundDecoration: const BoxDecoration(
-          color: Colors.black,
-        ),
+        backgroundDecoration: const BoxDecoration(color: Colors.black),
         loadingBuilder: (context, event) {
           return const Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                CircularProgressIndicator(
-                  color: Colors.white,
-                ),
+                CircularProgressIndicator(color: Colors.white),
                 SizedBox(height: 16),
                 Text(
                   'Loading image...',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: Colors.white, fontSize: 14),
                 ),
               ],
             ),
@@ -230,11 +214,7 @@ class _DocumentPreviewModalState extends State<DocumentPreviewModal> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(
-                  Icons.error_outline,
-                  size: 64,
-                  color: Colors.white,
-                ),
+                const Icon(Icons.error_outline, size: 64, color: Colors.white),
                 const SizedBox(height: 16),
                 Text(
                   'Failed to load image',
@@ -280,10 +260,7 @@ class _DocumentPreviewModalState extends State<DocumentPreviewModal> {
           const SizedBox(height: 8),
           Text(
             'Cannot preview .${_fileExtension} files',
-            style: const TextStyle(
-              fontSize: 14,
-              color: Color(0xFF6B7280),
-            ),
+            style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
           ),
         ],
       ),
