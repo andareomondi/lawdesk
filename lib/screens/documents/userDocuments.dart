@@ -43,6 +43,7 @@ class _AllDocumentsPageState extends State<AllDocumentsPage>
   void initState() {
     super.initState();
     _setupShimmerAnimation();
+    _isOfflineMode = !connectivityService.isConnected;
 
     connectivityService.connectionStream.listen((isConnected) {
       if (mounted) {
