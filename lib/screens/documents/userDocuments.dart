@@ -376,22 +376,25 @@ class _AllDocumentsPageState extends State<AllDocumentsPage>
           ),
         ],
       ),
-      body: Column(
-        children: [
-          if (_isOfflineMode) const OfflineDataIndicator(),
-          Expanded(
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 400),
-              switchInCurve: Curves.easeOut,
-              switchOutCurve: Curves.easeIn,
-              child: _isLoading
-                  ? _buildShimmerLoading()
-                  : _documents.isEmpty
-                  ? _buildEmptyState()
-                  : _buildContent(),
+      body: Container(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+        child: Column(
+          children: [
+            if (_isOfflineMode) const OfflineDataIndicator(),
+            Expanded(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 400),
+                switchInCurve: Curves.easeOut,
+                switchOutCurve: Curves.easeIn,
+                child: _isLoading
+                    ? _buildShimmerLoading()
+                    : _documents.isEmpty
+                    ? _buildEmptyState()
+                    : _buildContent(),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -690,8 +693,8 @@ class _AllDocumentsPageState extends State<AllDocumentsPage>
     final uniqueCases = _documents.map((d) => d['case_id']).toSet().length;
 
     return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.fromLTRB(0, 16, 0, 16),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
@@ -760,7 +763,7 @@ class _AllDocumentsPageState extends State<AllDocumentsPage>
 
   Widget _buildSearchBar() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.fromLTRB(0, 16, 0, 16),
       child: TextField(
         onChanged: (value) => setState(() => _searchQuery = value),
         decoration: InputDecoration(
@@ -794,7 +797,9 @@ class _AllDocumentsPageState extends State<AllDocumentsPage>
       height: 60,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+
+        padding: const EdgeInsets.fromLTRB(0, 16, 0, 16),
+
         itemCount: _documentTypes.length,
         itemBuilder: (context, index) {
           final type = _documentTypes[index];
@@ -859,7 +864,7 @@ class _AllDocumentsPageState extends State<AllDocumentsPage>
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(0, 16, 0, 16),
       itemCount: groupedDocs.length,
       itemBuilder: (context, index) {
         final caseName = groupedDocs.keys.elementAt(index);

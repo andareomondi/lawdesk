@@ -218,7 +218,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         if (mounted) {
           AppToast.showSuccess(
             context: context,
-            title: "Operation sucessfull",
+            title: "Operation sucessful",
             message: "Logged out successfully",
           );
           Navigator.pop(context);

@@ -97,9 +97,9 @@ class _ClientsPageState extends State<ClientsPage>
             _clients = clientsList;
             _isLoading = false;
           });
-          
+
           // Cache the fresh data
-          await offlineStorage.cacheClients(clientsList); 
+          await offlineStorage.cacheClients(clientsList);
         }
       } else {
         // Offline: Load from cache
@@ -125,7 +125,7 @@ class _ClientsPageState extends State<ClientsPage>
           }
           _isLoading = false;
         });
-        
+
         // Only show error toast if we have no data at all
         if (_clients.isEmpty) {
           AppToast.showError(
@@ -168,33 +168,39 @@ class _ClientsPageState extends State<ClientsPage>
           ),
         ],
       ),
-      floatingActionButton: _isOfflineMode 
-        ? null // Hide FAB if offline (since we can't create clients offline usually)
-        : FloatingActionButton(
-            onPressed: () {
-              if (OfflineActionHelper.canPerformAction(context, actionName: 'add client')) {
-                 AddClientModal.show(context, onClientAdded: _loadClients);
-              }
-            },
-            backgroundColor: const Color(0xFF1E3A8A),
-            child: const Icon(Icons.person_add, color: Colors.white),
-          ),
-      body: Column(
-        children: [
-          if (_isOfflineMode) const OfflineDataIndicator(),
-          Expanded(
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 400),
-              switchInCurve: Curves.easeOut,
-              switchOutCurve: Curves.easeIn,
-              child: _isLoading
-                  ? _buildShimmerLoading()
-                  : _clients.isEmpty
-                      ? _buildEmptyState()
-                      : _buildContent(),
+      floatingActionButton: _isOfflineMode
+          ? null // Hide FAB if offline (since we can't create clients offline usually)
+          : FloatingActionButton(
+              onPressed: () {
+                if (OfflineActionHelper.canPerformAction(
+                  context,
+                  actionName: 'add client',
+                )) {
+                  AddClientModal.show(context, onClientAdded: _loadClients);
+                }
+              },
+              backgroundColor: const Color(0xFF1E3A8A),
+              child: const Icon(Icons.person_add, color: Colors.white),
             ),
-          ),
-        ],
+      body: Container(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+        child: Column(
+          children: [
+            if (_isOfflineMode) const OfflineDataIndicator(),
+            Expanded(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 400),
+                switchInCurve: Curves.easeOut,
+                switchOutCurve: Curves.easeIn,
+                child: _isLoading
+                    ? _buildShimmerLoading()
+                    : _clients.isEmpty
+                    ? _buildEmptyState()
+                    : _buildContent(),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -208,15 +214,15 @@ class _ClientsPageState extends State<ClientsPage>
         _buildStatsCard(),
         _buildSearchBar(),
         Expanded(
-          child: filteredClients.isEmpty 
-          ? _buildNoSearchResults()
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: filteredClients.length,
-              itemBuilder: (context, index) {
-                return _buildClientCard(filteredClients[index]);
-              },
-            ),
+          child: filteredClients.isEmpty
+              ? _buildNoSearchResults()
+              : ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(0, 16, 0, 16),
+                  itemCount: filteredClients.length,
+                  itemBuilder: (context, index) {
+                    return _buildClientCard(filteredClients[index]);
+                  },
+                ),
         ),
       ],
     );
@@ -224,8 +230,8 @@ class _ClientsPageState extends State<ClientsPage>
 
   Widget _buildStatsCard() {
     return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.fromLTRB(0, 16, 0, 16),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
@@ -282,7 +288,7 @@ class _ClientsPageState extends State<ClientsPage>
 
   Widget _buildSearchBar() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.fromLTRB(0, 8, 0, 8),
       child: TextField(
         onChanged: (value) => setState(() => _searchQuery = value),
         decoration: InputDecoration(
@@ -302,14 +308,18 @@ class _ClientsPageState extends State<ClientsPage>
             borderRadius: BorderRadius.circular(12),
             borderSide: const BorderSide(color: Color(0xFF1E3A8A), width: 2),
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 12,
+          ),
         ),
       ),
     );
   }
 
   Widget _buildClientCard(Map<String, dynamic> client) {
-    final String initial = client['name'] != null && client['name'].toString().isNotEmpty
+    final String initial =
+        client['name'] != null && client['name'].toString().isNotEmpty
         ? client['name'].toString()[0].toUpperCase()
         : '?';
 
@@ -383,12 +393,19 @@ class _ClientsPageState extends State<ClientsPage>
               if (client['email'] != null)
                 Row(
                   children: [
-                    const Icon(Icons.email_outlined, size: 14, color: Color(0xFF6B7280)),
+                    const Icon(
+                      Icons.email_outlined,
+                      size: 14,
+                      color: Color(0xFF6B7280),
+                    ),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
                         client['email'],
-                        style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF6B7280),
+                        ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -398,17 +415,28 @@ class _ClientsPageState extends State<ClientsPage>
               if (displayPhone.isNotEmpty)
                 Row(
                   children: [
-                    const Icon(Icons.phone_outlined, size: 14, color: Color(0xFF6B7280)),
+                    const Icon(
+                      Icons.phone_outlined,
+                      size: 14,
+                      color: Color(0xFF6B7280),
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       displayPhone,
-                      style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF6B7280),
+                      ),
                     ),
                   ],
                 ),
             ],
           ),
-          trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Color(0xFF9CA3AF)),
+          trailing: const Icon(
+            Icons.arrow_forward_ios,
+            size: 16,
+            color: Color(0xFF9CA3AF),
+          ),
         ),
       ),
     );
@@ -474,23 +502,29 @@ class _ClientsPageState extends State<ClientsPage>
           ),
           const SizedBox(height: 32),
           if (!_isOfflineMode)
-          ElevatedButton.icon(
-            onPressed: () {
-               if (OfflineActionHelper.canPerformAction(context, actionName: 'add client')) {
+            ElevatedButton.icon(
+              onPressed: () {
+                if (OfflineActionHelper.canPerformAction(
+                  context,
+                  actionName: 'add client',
+                )) {
                   AddClientModal.show(context, onClientAdded: _loadClients);
-               }
-            },
-            icon: const Icon(Icons.add),
-            label: const Text('Add Client'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1E3A8A),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                }
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('Add Client'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1E3A8A),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 16,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
-          ),
         ],
       ),
     );
@@ -532,7 +566,10 @@ class _ClientsPageState extends State<ClientsPage>
                             ],
                             stops: [
                               0.0,
-                              (_shimmerAnimation.value + index * 0.2).clamp(0.0, 1.0),
+                              (_shimmerAnimation.value + index * 0.2).clamp(
+                                0.0,
+                                1.0,
+                              ),
                               1.0,
                             ],
                           ),
@@ -559,7 +596,10 @@ class _ClientsPageState extends State<ClientsPage>
                                   ],
                                   stops: [
                                     0.0,
-                                    (_shimmerAnimation.value + index * 0.2 + 0.1).clamp(0.0, 1.0),
+                                    (_shimmerAnimation.value +
+                                            index * 0.2 +
+                                            0.1)
+                                        .clamp(0.0, 1.0),
                                     1.0,
                                   ],
                                 ),
@@ -581,7 +621,10 @@ class _ClientsPageState extends State<ClientsPage>
                                   ],
                                   stops: [
                                     0.0,
-                                    (_shimmerAnimation.value + index * 0.2 + 0.2).clamp(0.0, 1.0),
+                                    (_shimmerAnimation.value +
+                                            index * 0.2 +
+                                            0.2)
+                                        .clamp(0.0, 1.0),
                                     1.0,
                                   ],
                                 ),

@@ -432,85 +432,86 @@ class _CalendarPageState extends State<CalendarPage> {
   }
 
   Widget _buildCalendarView() {
-    return Column(
-      children: [
-        if (_isOfflineMode) const OfflineDataIndicator(),
-        GestureDetector(
-          onVerticalDragUpdate: (details) {
-            // Detect downward swipe to expand, upward to collapse
-            if (details.delta.dy > 5 && !_isCalendarExpanded) {
-              setState(() => _isCalendarExpanded = true);
-            } else if (details.delta.dy < -5 && _isCalendarExpanded) {
-              setState(() => _isCalendarExpanded = false);
-            }
-          },
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: const BorderRadius.vertical(
-                bottom: Radius.circular(20),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(8, 16, 8, 0),
+      child: Column(
+        children: [
+          if (_isOfflineMode) const OfflineDataIndicator(),
+          GestureDetector(
+            onVerticalDragUpdate: (details) {
+              // Detect downward swipe to expand, upward to collapse
+              if (details.delta.dy > 5 && !_isCalendarExpanded) {
+                setState(() => _isCalendarExpanded = true);
+              } else if (details.delta.dy < -5 && _isCalendarExpanded) {
+                setState(() => _isCalendarExpanded = false);
+              }
+            },
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: const BorderRadius.all(Radius.circular(12)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 15,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
-                  blurRadius: 15,
-                  offset: const Offset(0, 5),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                _buildCalendarHeader(),
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 400),
-                  transitionBuilder:
-                      (Widget child, Animation<double> animation) {
-                        return SizeTransition(
-                          sizeFactor: animation,
-                          axisAlignment: -1.0,
-                          child: FadeTransition(
-                            opacity: animation,
-                            child: child,
+              child: Column(
+                children: [
+                  _buildCalendarHeader(),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 400),
+                    transitionBuilder:
+                        (Widget child, Animation<double> animation) {
+                          return SizeTransition(
+                            sizeFactor: animation,
+                            axisAlignment: -1.0,
+                            child: FadeTransition(
+                              opacity: animation,
+                              child: child,
+                            ),
+                          );
+                        },
+                    child: _isCalendarExpanded
+                        ? KeyedSubtree(
+                            key: const ValueKey('grid'),
+                            child: _buildCalendarGrid(),
+                          )
+                        : KeyedSubtree(
+                            key: const ValueKey('row'),
+                            child: _buildWeeklyRow(),
                           ),
-                        );
-                      },
-                  child: _isCalendarExpanded
-                      ? KeyedSubtree(
-                          key: const ValueKey('grid'),
-                          child: _buildCalendarGrid(),
-                        )
-                      : KeyedSubtree(
-                          key: const ValueKey('row'),
-                          child: _buildWeeklyRow(),
+                  ),
+                  // Visual "Handle" for better affordance
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    child: Center(
+                      child: Container(
+                        width: 36,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(2.5),
                         ),
-                ),
-                // Visual "Handle" for better affordance
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  child: Center(
-                    child: Container(
-                      width: 36,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        borderRadius: BorderRadius.circular(2.5),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-        ),
-        // Scrollable list area
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.only(top: 8.0),
-            child: _buildSelectedDayItems(),
+          // Scrollable list area
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: _buildSelectedDayItems(),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
