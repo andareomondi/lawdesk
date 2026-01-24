@@ -2143,7 +2143,7 @@ class CaseDetailsPageState extends State<CaseDetailsPage> {
           // Offline Indicator
           if (_isOfflineMode)
             Container(
-              margin: const EdgeInsets.only(bottom: 16),
+              margin: const EdgeInsets.all(16),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: const Color(0xFFFEF3C7),
@@ -2194,7 +2194,7 @@ class CaseDetailsPageState extends State<CaseDetailsPage> {
                 ],
               ),
             ),
-          // Totals Summary Section
+
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -2259,7 +2259,8 @@ class CaseDetailsPageState extends State<CaseDetailsPage> {
               ],
             ),
           ),
-          // list of all bills
+
+          // List of Bills
           Expanded(
             child: _isLoadingBilling
                 ? const Center(child: CircularProgressIndicator())
