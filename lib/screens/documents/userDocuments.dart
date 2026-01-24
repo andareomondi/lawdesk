@@ -798,9 +798,7 @@ class _AllDocumentsPageState extends State<AllDocumentsPage>
       height: 60,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-
-        padding: const EdgeInsets.fromLTRB(0, 16, 0, 16),
-
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         itemCount: _documentTypes.length,
         itemBuilder: (context, index) {
           final type = _documentTypes[index];
