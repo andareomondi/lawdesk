@@ -8,7 +8,7 @@ import 'package:intl/intl.dart';
 class SubscriptionEndedScreen extends StatelessWidget {
   const SubscriptionEndedScreen({super.key});
 
-  final String _adminPhoneNumber = '0741716609';
+  static const String _adminPhoneNumber = '0741716609';
 
   Future<void> _makePhoneCall(BuildContext context) async {
     final Uri launchUri = Uri(scheme: 'tel', path: _adminPhoneNumber);
@@ -30,7 +30,7 @@ class SubscriptionEndedScreen extends StatelessWidget {
     final authProvider = Provider.of<AuthProvider>(context);
     final profile = authProvider.profile;
 
-    // Determine if blocked or just expired
+    // Determine if blocked (is_activated = false) or just expired
     final bool isBlocked = profile != null && profile['is_activated'] == false;
     final String dateStr = profile?['subscription_end_date'] ?? '';
     String formattedDate = 'Unknown';
@@ -80,7 +80,7 @@ class SubscriptionEndedScreen extends StatelessWidget {
               // Explanation
               Text(
                 isBlocked
-                    ? 'Your account has been deactivated due to policy violations or administrative action.'
+                    ? 'Your account has been deactivated due to policy violations or administrative action. Please contact support.'
                     : 'Your subscription expired on $formattedDate. You cannot access the dashboard until you renew your plan.',
                 style: const TextStyle(
                   fontSize: 16,
@@ -90,6 +90,10 @@ class SubscriptionEndedScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
 
+              // -----------------------------------------------------
+              // Payment Instructions & "I've Paid" Button
+              // ONLY visible if NOT blocked
+              // -----------------------------------------------------
               if (!isBlocked) ...[
                 const SizedBox(height: 32),
                 // Payment Card
@@ -154,11 +158,60 @@ class SubscriptionEndedScreen extends StatelessWidget {
                     ],
                   ),
                 ),
+
+                const SizedBox(height: 12),
+
+                // Refresh Button (Primary Action for Expired Users)
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: authProvider.isLoading
+                        ? null
+                        : () async {
+                            await authProvider.refreshProfile();
+                            if (context.mounted) {
+                              if (authProvider.status ==
+                                  AuthStatus.authenticated) {
+                                AppToast.showSuccess(
+                                  context: context,
+                                  title: "Welcome Back",
+                                  message: "Your subscription is active.",
+                                );
+                              } else {
+                                AppToast.showError(
+                                  context: context,
+                                  title: "Still Inactive",
+                                  message: "Status has not changed yet.",
+                                );
+                              }
+                            }
+                          },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1E3A8A),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: authProvider.isLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Text('I Have Paid (Refresh Status)'),
+                  ),
+                ),
               ],
 
-              const SizedBox(height: 32),
+              // -----------------------------------------------------
+              const SizedBox(height: 24),
 
-              // Call Button
+              // Call Button (Available to both blocked and expired users)
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
@@ -173,54 +226,6 @@ class SubscriptionEndedScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              // Refresh Button (Primary Action)
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: authProvider.isLoading
-                      ? null
-                      : () async {
-                          await authProvider.refreshProfile();
-                          if (context.mounted) {
-                            if (authProvider.status ==
-                                AuthStatus.authenticated) {
-                              AppToast.showSuccess(
-                                context: context,
-                                title: "Welcome Back",
-                                message: "Your subscription is active.",
-                              );
-                            } else {
-                              AppToast.showError(
-                                context: context,
-                                title: "Still Inactive",
-                                message: "Status has not changed yet.",
-                              );
-                            }
-                          }
-                        },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1E3A8A),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: authProvider.isLoading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : const Text('I Have Paid (Refresh Status)'),
                 ),
               ),
 
