@@ -31,25 +31,30 @@ class AuthProvider extends ChangeNotifier {
     _initialize();
   }
 
+  // Initialize: check if user is already logged in on app startup
   Future<void> _initialize() async {
     _status = AuthStatus.initial;
     notifyListeners();
 
+    // Start a timer for a minimum of 2 seconds
+    final minimumDelay = Future.delayed(const Duration(seconds: 2));
+
     try {
       _user = _authService.currentUser;
 
-      if (_user != null) {
-        // User exists, check subscription status
-        await _fetchAndCheckSubscription();
-      } else {
-        _status = AuthStatus.unauthenticated;
-      }
+      // Perform the subscription check logic
+      final authCheck = _fetchAndCheckSubscription();
+
+      // Future.wait ensures BOTH the delay AND the auth check finish
+      // before we move past this line.
+      await Future.wait([minimumDelay, authCheck]);
     } catch (e) {
       debugPrint('Initialization error: $e');
       _status = AuthStatus.unauthenticated;
+    } finally {
+      // Only now do we update the UI to switch away from Splash
+      notifyListeners();
     }
-
-    notifyListeners();
   }
 
   /// Fetches profile and determines if user can access dashboard
