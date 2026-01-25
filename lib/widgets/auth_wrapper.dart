@@ -4,6 +4,7 @@ import 'package:lawdesk/screens/auth/login_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:lawdesk/screens/splash.dart';
 import 'package:lawdesk/dashboard.dart';
+import 'package:lawdesk/screens/auth/subscription_ended.dart';
 
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({Key? key}) : super(key: key);
@@ -12,18 +13,25 @@ class AuthWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<AuthProvider>(
       builder: (context, authProvider, _) {
-        // Still loading? Show splash screen
+        // 1. App is starting up / checking session
         if (authProvider.isInitializing) {
           return const Splash();
         }
 
-        // User logged in? Show home screen
-        if (authProvider.isLoggedIn) {
-          return const Dashboard();
-        }
+        // 2. Decide specific screen based on status
+        switch (authProvider.status) {
+          case AuthStatus.authenticated:
+            return const Dashboard();
 
-        // User not logged in? Show login screen
-        return const LoginPage();
+          case AuthStatus.subscriptionEnded:
+          case AuthStatus.blocked:
+            // Both blocked and expired users go here, UI handles the text difference
+            return const SubscriptionEndedScreen();
+
+          case AuthStatus.unauthenticated:
+          default:
+            return const LoginPage();
+        }
       },
     );
   }
