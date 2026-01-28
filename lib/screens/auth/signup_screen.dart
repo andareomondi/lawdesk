@@ -33,6 +33,7 @@ class _SignupPageState extends State<SignupPage> {
   Future<void> _handleSignup() async {
     if (!_formKey.currentState!.validate()) return;
 
+    FocusScope.of(context).unfocus();
     setState(() => _isLoading = true);
 
     try {
@@ -59,8 +60,6 @@ class _SignupPageState extends State<SignupPage> {
       // Handle Supabase authentication errors
       if (mounted) {
         String errorMessage;
-        print('Signup error: ${e.message}');
-
         // Check for specific signup errors
         if (e.message.toLowerCase().contains('already in use') ||
             e.message.toLowerCase().contains('exists')) {

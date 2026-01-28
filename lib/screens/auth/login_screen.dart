@@ -30,6 +30,7 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
+    FocusScope.of(context).unfocus();
 
     setState(() => _isLoading = true);
 
@@ -40,6 +41,7 @@ class _LoginPageState extends State<LoginPage> {
         password: _passwordController.text,
       );
     } on AuthException catch (e) {
+      print('AuthException: ${e.message}');
       // Handle Supabase authentication errors
       if (mounted) {
         String errorMessage;
