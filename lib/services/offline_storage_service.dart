@@ -2,6 +2,7 @@
 
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class OfflineStorageService {
   static final OfflineStorageService _instance =
@@ -248,6 +249,69 @@ class OfflineStorageService {
       print('Error getting cached billing: $e');
     }
     return null;
+  }
+
+  Future<void> synchronizeAllData() async {
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) return;
+
+      print('Starting full data synchronization...');
+      final supabase = Supabase.instance.client;
+
+      // 1. Fetch and Cache Clients
+      final clientsResponse = await supabase
+          .from('clients')
+          .select()
+          .eq('user', user.id)
+          .order('created_at', ascending: false);
+      await cacheClients(clientsResponse);
+
+      // 2. Fetch and Cache All Cases
+      final casesResponse = await supabase
+          .from('cases')
+          .select()
+          .eq('user', user.id);
+      await cacheCases(casesResponse);
+
+      if (casesResponse.isNotEmpty) {
+        final List<int> caseIds = List<int>.from(
+          casesResponse.map((c) => c['id']),
+        );
+
+        // 3. Fetch and Cache All Events for these cases
+        final eventsResponse = await supabase
+            .from('events')
+            .select()
+            .inFilter('case', caseIds);
+        await cacheEvents(eventsResponse);
+
+        // 4. Fetch and Cache All Notes for these cases
+        final notesResponse = await supabase
+            .from('notes')
+            .select()
+            .inFilter('case', caseIds);
+        await cacheNotes(notesResponse);
+
+        // 5. Fetch and Cache All Billing for these cases
+        final billingResponse = await supabase
+            .from('case_billing')
+            .select()
+            .inFilter('case_id', caseIds);
+        await cacheBilling(billingResponse);
+
+        // 6. Fetch and Cache All Documents for these cases
+        final documentsResponse = await supabase
+            .from('documents')
+            .select()
+            .inFilter('case_id', caseIds);
+        await cacheDocuments(documentsResponse);
+      }
+
+      print('Full synchronization completed successfully.');
+    } catch (e) {
+      print('Error during synchronization: $e');
+    }
   }
 
   // Clear all cached data

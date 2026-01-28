@@ -81,6 +81,8 @@ class _DashboardState extends State<Dashboard>
 
         if (isConnected) {
           // When connection is restored, refresh data
+          OfflineStorageService()
+              .synchronizeAllData(); // Get all data first if possible
           _loadUserData();
           _casesListKey.currentState?.loadCases();
           _statsKey.currentState?.loadStats();
@@ -94,6 +96,10 @@ class _DashboardState extends State<Dashboard>
         }
       }
     });
+
+    if (connectivityService.isConnected) {
+      OfflineStorageService().synchronizeAllData();
+    }
 
     _loadUserData();
     _checkCurrentPatch();
