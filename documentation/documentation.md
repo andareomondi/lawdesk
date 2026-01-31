@@ -16,42 +16,45 @@
 ## Chapter 1: Project Introduction and Setup
 
 ### Project Overview
-LawDesk is a Flutter based android mobile application designed for managing and diarising legal cases. The app utilises supabase as its backend service for authentication and data storage. Notifications are handled through a custom cron job setup. 
+
+LawDesk is a Flutter based android mobile application designed for managing and diarising legal cases. The app utilises supabase as its backend service for authentication and data storage. Notifications are handled through a custom cron job setup.
 
 The cron job initiates a serverless edge function which sends push notifications trigger to firebase cloud messaging which then delivers the notifications to the users devices which each has a specific fcm token.
 
-***What is an FCM Token?***: It is a unique identifier assigned to each device by Firebase Cloud Messaging (FCM). This token allows the FCM service to route notifications specifically to that device. It also handles offline notifications by queuing them until the device is back online.
+**_What is an FCM Token?_**: It is a unique identifier assigned to each device by Firebase Cloud Messaging (FCM). This token allows the FCM service to route notifications specifically to that device. It also handles offline notifications by queuing them until the device is back online.
 
 The application also handles document upload and storage using supabase storage buckets. View of documents is also possible using the [flutter_pdfview](https://pub.dev/packages/flutter_pdfview) package and the [photo_view](https://pub.dev/packages/photo_view) packages for pdf and Image views respectively.
 
 Offline capabilities are provided through storing data locally using the [shared_preferences](https://pub.dev/packages/shared_preferences) package. This is not the most optimal solution for large data sets but works well for small scale usage. A better solution must be implemented in future versions using [sqlite](https://pub.dev/packages/sqlite) or hive databases.
 
-OTA UPDATES: The app is capable of recieving over the air updates by using [shorebird_code_push](https://pub.dev/packages/shorebird_code_push) package. This allows for quick bug fixes and feature releases without going through the lengthy play store review process. ***Note: While building a patch for the app, ensure to use the code below to avoid issues with icon tree shaking which causes loss of icons pushed via the update.***
+OTA UPDATES: The app is capable of recieving over the air updates by using [shorebird_code_push](https://pub.dev/packages/shorebird_code_push) package. This allows for quick bug fixes and feature releases without going through the lengthy play store review process. **_Note: While building a patch for the app, ensure to use the code below to avoid issues with icon tree shaking which causes loss of icons pushed via the update._**
 
 ```powershell
 shorebird patch android '--' --no-tree-shake-icons
 
 ```
+
 while for bash use
+
 ```bash
 shorebird patch android -- --no-tree-shake-icons
 
 ```
 
 Other packages used in the project include:
-* [provider](https://pub.dev/packages/provider) - State Management
-* [intl](https://pub.dev/packages/intl) - Date Formatting
-* [connectivity_plus](https://pub.dev/packages/connectivity_plus) - Network Connectivity Checks
-* [delightful_toast](https://pub.dev/packages/delightful_toast) - Toast notifications
-* [image_picker](https://pub.dev/packages/image_picker) - Image selection from gallery or camera
-* [introduction_screen](https://pub.dev/packages/introduction_screen) - Onboarding screens
-* [flutter_launcher_icons](https://pub.dev/packages/flutter_launcher_icons) - App icon generation
-* [liquid_pull_to_refresh](https://pub.dev/packages/liquid_pull_to_refresh) - Pull to refresh functionality
-* [flutter_local_notifications](https://pub.dev/packages/flutter_local_notifications) - Local notifications have been implemented but not yet in use. It's still buggy and unreliable. 
-* [Firebase_core](https://pub.dev/packages/firebase_core) - Core firebase functionalities.
-* [firebase_messaging](https://pub.dev/packages/firebase_messaging) - Firebase integration for push notifications.
-* [url_launcher](https://pub.dev/packages/url_launcher) - To open contact information with relevant apps in the clients page.
 
+- [provider](https://pub.dev/packages/provider) - State Management
+- [intl](https://pub.dev/packages/intl) - Date Formatting
+- [connectivity_plus](https://pub.dev/packages/connectivity_plus) - Network Connectivity Checks
+- [delightful_toast](https://pub.dev/packages/delightful_toast) - Toast notifications
+- [image_picker](https://pub.dev/packages/image_picker) - Image selection from gallery or camera
+- [introduction_screen](https://pub.dev/packages/introduction_screen) - Onboarding screens
+- [flutter_launcher_icons](https://pub.dev/packages/flutter_launcher_icons) - App icon generation
+- [liquid_pull_to_refresh](https://pub.dev/packages/liquid_pull_to_refresh) - Pull to refresh functionality
+- [flutter_local_notifications](https://pub.dev/packages/flutter_local_notifications) - Local notifications have been implemented but not yet in use. It's still buggy and unreliable.
+- [Firebase_core](https://pub.dev/packages/firebase_core) - Core firebase functionalities.
+- [firebase_messaging](https://pub.dev/packages/firebase_messaging) - Firebase integration for push notifications.
+- [url_launcher](https://pub.dev/packages/url_launcher) - To open contact information with relevant apps in the clients page.
 
 ### Establishing the Environment and Dependencies
 
@@ -60,8 +63,8 @@ Kindly follow the steps shown in the [README.md](https://github.com/andareomondi
 
 **Future Improvements:**
 
-* Migrate to a specific Flutter version manager (FVM) to ensure team consistency.
-* Set up Flavors (Dev, Staging, Prod) in the Gradle configuration.
+- Migrate to a specific Flutter version manager (FVM) to ensure team consistency.
+- Set up Flavors (Dev, Staging, Prod) in the Gradle configuration.
 
 ---
 
@@ -75,7 +78,7 @@ This chapter details the structure of the `Case` object. It serves as the core d
 
 #### 1. The Case Model Class
 
-This is the sql representation of a legal case in the application. It includeds fields for id, created_at, name, number, status, description, courtDate, court_name, time, progress_status and user. The fields `name` and  `user` are foreign keys linked to the clients and users tables respectively.
+This is the sql representation of a legal case in the application. It includeds fields for id, created_at, name, number, status, description, courtDate, court_name, time, progress_status and user. The fields `name` and `user` are foreign keys linked to the clients and users tables respectively.
 
 ```sql
 
@@ -97,32 +100,34 @@ create table public.cases (
 ) TABLESPACE pg_default;
 
 ```
-***Note1:*** The fields `status` and `progress_status` are used to track the state of the case. `status` is a string that can hold values like 'Urgent', 'No worries', 'Upcoming', etc. in respective to the court date and the days date, while `progress_status` is a boolean indicating whether the case is actively being worked on.
 
-***Note2:*** The field `courtDate` is of type date which only stores the date without the time component. The field `time` is used to store the specific time of the court hearing.
+**_Note1:_** The fields `status` and `progress_status` are used to track the state of the case. `status` is a string that can hold values like 'Urgent', 'No worries', 'Upcoming', etc. in respective to the court date and the days date, while `progress_status` is a boolean indicating whether the case is actively being worked on.
 
-***Note3:*** The field `user` is a foreign key that references the `id` field in the `auth.users` table. This links each case to a specific user account.
+**_Note2:_** The field `courtDate` is of type date which only stores the date without the time component. The field `time` is used to store the specific time of the court hearing.
 
-***Note4:*** The field `name` is a foreign key that references the `name` field in the `clients` table. This links each case to a specific client.
+**_Note3:_** The field `user` is a foreign key that references the `id` field in the `auth.users` table. This links each case to a specific user account.
 
-***Note5:*** Cascade delete is enabled on both foreign keys to ensure that when a user or client is deleted, all associated cases are also removed from the database.
+**_Note4:_** The field `name` is a foreign key that references the `name` field in the `clients` table. This links each case to a specific client.
 
+**_Note5:_** Cascade delete is enabled on both foreign keys to ensure that when a user or client is deleted, all associated cases are also removed from the database.
 
 ---
 
 **Future Improvements:**
 
-* Add indexing on frequently queried fields like `status` and `courtDate` to improve query performance.
-* Implement data validation logic within the model to ensure data integrity.
-* Implement a better `status` tracking mechanism.
-##### ***MUST:*** Implement a billing mechanism to track billable hours per case.
+- Add indexing on frequently queried fields like `status` and `courtDate` to improve query performance.
+- Implement data validation logic within the model to ensure data integrity.
+- Implement a better `status` tracking mechanism.
 
+##### **_MUST:_** Implement a billing mechanism to track billable hours per case.
 
 ### Defining of other Entities and tables
+
 Other important entities such as `Client`, `Document`, `Events`, `Profiles` and `Court` sql representation are as follows:
 
-***Clients Table:***
-``` sql
+**_Clients Table:_**
+
+```sql
 
 create table public.clients (
   id bigint generated by default as identity not null,
@@ -138,8 +143,10 @@ create table public.clients (
 ) TABLESPACE pg_default;
 
 ```
-***Documents Table:***
-``` sql
+
+**_Documents Table:_**
+
+```sql
 create table public.documents (
   id uuid not null default gen_random_uuid (),
   case_id integer not null,
@@ -162,8 +169,10 @@ create trigger on_document_delete_remove_storage BEFORE DELETE on documents for 
 execute FUNCTION delete_document_storage ();
 
 ```
-***Events Table:***
-``` sql
+
+**_Events Table:_**
+
+```sql
 
 create table public.events (
   id bigint generated by default as identity not null,
@@ -179,8 +188,10 @@ create table public.events (
 ) TABLESPACE pg_default;
 
 ```
-***Profiles Table:***
-``` sql
+
+**_Profiles Table:_**
+
+```sql
 
 create table public.profiles (
   id uuid not null,
@@ -201,8 +212,10 @@ create table public.profiles (
 ) TABLESPACE pg_default;
 
 ```
-***Courts Table:***
-``` sql
+
+**_Courts Table:_**
+
+```sql
 
 create table public.court (
   id bigint generated by default as identity not null,
@@ -214,6 +227,7 @@ create table public.court (
 
 
 ```
+
 Below is a simple ER diagram showing the relationships between the main entities in the application.
 
 ```mermaid
@@ -281,7 +295,7 @@ erDiagram
 
 ### Persisting Data with local storage
 
-This chapter explains the setup of the local storage  layer. It handles the creation of tables and the raw CRUD (Create, Read, Update, Delete) operations required for offline functionality.
+This chapter explains the setup of the local storage layer. It handles the creation of tables and the raw CRUD (Create, Read, Update, Delete) operations required for offline functionality.
 The whole system comprises of a offline service which "caches" the data into local storage and then retrived by the respective widget
 
 ### Implementation
@@ -507,6 +521,7 @@ final offlineStorage = OfflineStorageService();
 #### 2. Service recall example
 
 This is an example of how to use the service to obtain the cached data and to cache which ever is applicable. The sample code is retrived from the dashboard stat card that shows the total active number of cases and their diffrence.
+
 ```dart
 
   Future<void> loadStats() async {
@@ -597,17 +612,17 @@ This is an example of how to use the service to obtain the cached data and to ca
   }
 
 ```
-***NOTE1:*** Similar logic is implemented across the app to cache and retrieve data for cases, profile, documents, events and clients. And don't forget to import the `offline_storage_service.dart` file wherever you intend to use it.
 
-***NOTE2:*** A sync method is implemented in the app to retrive the actual data from supabase when the device is online. This is done seemlessly and with a visual feeback
+**_NOTE1:_** Similar logic is implemented across the app to cache and retrieve data for cases, profile, documents, events and clients. And don't forget to import the `offline_storage_service.dart` file wherever you intend to use it.
+
+**_NOTE2:_** A sync method is implemented in the app to retrive the actual data from supabase when the device is online. This is done seemlessly and with a visual feeback
 
 ---
 
 **Future Improvements:**
 
-* Implement a more robust local database solution using SQLite or Hive for complex queries and relationships.
-* Clean up the service if deemed to be the only option to go with in production
-
+- Implement a more robust local database solution using SQLite or Hive for complex queries and relationships.
+- Clean up the service if deemed to be the only option to go with in production
 
 ---
 
@@ -620,7 +635,7 @@ This chapter focuses on the authentication layer of the application. It outlines
 Here is the supabase configuration used in the app:
 `supabase_config.dart`
 
-``` dart
+```dart
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupabaseConfig {
@@ -636,11 +651,13 @@ class SupabaseConfig {
 }
 
 ```
+
 This is just but the standard supabase initialization code. Make sure to replace the url and anonKey with your actual supabase project credentials. This also must be called in the [main.dart](https://github.com/andareomondi/lawdesk/blob/main/lib/main.dart) file during app startup in the main function before running the app.
 
 This is the implementation of the auth service interface and its implementation in the auth provider layer.
 `auth_service.dart`
-``` dart
+
+```dart
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:lawdesk/config/supabase_config.dart';
 
@@ -680,8 +697,10 @@ class AuthService {
 }
 
 ```
+
 while the `auth_provider.dart` file implements the provider logic as follows:
-``` dart
+
+```dart
 
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -791,14 +810,13 @@ This shows how the login mechanism and user interface implemetation is done and 
 
 [`login_screen.dart`](https://github.com/andareomondi/lawdesk/blob/main/lib/screens/auth/login_screen.dart)
 
-
 ```dart
 // Login function inside the page
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     setState(() => _isLoading = true);
-    
+
     try {
       final authProvider = context.read<AuthProvider>();
       await authProvider.signIn(
@@ -809,9 +827,9 @@ This shows how the login mechanism and user interface implemetation is done and 
       // Handle Supabase authentication errors
       if (mounted) {
         String errorMessage;
-        
+
         // Check for invalid credentials
-        if (e.statusCode == '400' || 
+        if (e.statusCode == '400' ||
             e.message.toLowerCase().contains('invalid') ||
             e.message.toLowerCase().contains('credentials')) {
           errorMessage = 'Invalid email or password. Please try again.';
@@ -833,7 +851,7 @@ This shows how the login mechanism and user interface implemetation is done and 
           context: context,
           title: 'Login Failed',
           message: 'An unexpected error occurred. Please try again.',
-        ); 
+        );
       }
     } finally {
       if (mounted) {
@@ -1151,7 +1169,7 @@ Attached is a simple example of how the logout functionality is implemented in t
       }
     }
   }
- 
+
 
 // Function call inside a button widget
   SizedBox(
@@ -1186,20 +1204,22 @@ Attached is a simple example of how the logout functionality is implemented in t
 
 **Future Improvements:**
 
-* Implement social login options (Google, Facebook, etc.) for easier access.
-* Add multi-factor authentication (MFA) for enhanced security.
-* Implement password reset functionality via email.***It is already partially implemented but commented out in the login screen***
+- Implement social login options (Google, Facebook, etc.) for easier access.
+- Add multi-factor authentication (MFA) for enhanced security.
+- Implement password reset functionality via email.**_It is already partially implemented but commented out in the login screen_**
+
 ---
 
 ## Chapter 5: Case Management
 
 Creation of involves calling of the [case modal](https://github.com/andareomondi/lawdesk/blob/main/lib/widgets/cases/modal.dart) and then saving the case to the database. All cases can be viewed in the [details](https://github.com/andareomondi/lawdesk/blob/main/lib/widgets/cases/details.dart) screen from which CRUD operations can be performed.
-The details screen also implementes a tabbed view to separate case details, events and notes views for specific and granular access. 
-***An event*** comprises of any activity or task related to a case from evidence collection, court dates, filing deadlines among others. Documents are any files attached to a case for reference or submission in court.
+The details screen also implementes a tabbed view to separate case details, events and notes views for specific and granular access.
+**_An event_** comprises of any activity or task related to a case from evidence collection, court dates, filing deadlines among others. Documents are any files attached to a case for reference or submission in court.
 
-Below are the relevant code snippets for the individual tabs and their implementations. 
+Below are the relevant code snippets for the individual tabs and their implementations.
 `notes tab`
-``` dart
+
+```dart
 
   Widget _buildNotesTab() {
     return Scaffold(
@@ -1318,8 +1338,10 @@ Below are the relevant code snippets for the individual tabs and their implement
 
 
 ```
+
 `Events tab`
-``` dart
+
+```dart
 
   Widget _buildEventsTab() {
     return Scaffold(
@@ -1437,66 +1459,71 @@ Below are the relevant code snippets for the individual tabs and their implement
   }
 
 ```
-***Note1:*** The above code snippets also implement an offline mode indicator to inform users when they are offline and restricts certain actions like adding notes or events.
-***Note2:*** The [details](https://github.com/andareomondi/lawdesk/blob/main/lib/widgets/cases/details.dart) is a large file with over 1000 lines of code. The code snippets above are just a small part of the entire implementation. For a complete understanding, please refer to the full file in the repository.
+
+**_Note1:_** The above code snippets also implement an offline mode indicator to inform users when they are offline and restricts certain actions like adding notes or events.
+**_Note2:_** The [details](https://github.com/andareomondi/lawdesk/blob/main/lib/widgets/cases/details.dart) is a large file with over 1000 lines of code. The code snippets above are just a small part of the entire implementation. For a complete understanding, please refer to the full file in the repository.
 
 ---
 
 **Future Improvements:**
 
-* Modularize the details screen into smaller widgets for better maintainability.
-* Implement a responsive system that auto refreshes data incase of changes instead of manual refresh for the dashboard.
-* Improve the `mark completed` functionality to archive completed cases instead of just marking them as completed and adding a specific section for archived cases.
-
+- Modularize the details screen into smaller widgets for better maintainability.
+- Implement a responsive system that auto refreshes data incase of changes instead of manual refresh for the dashboard.
+- Improve the `mark completed` functionality to archive completed cases instead of just marking them as completed and adding a specific section for archived cases.
 
 ---
 
 ## Chapter 6: User Interface
 
 Below is a list of all the widgets and screens with their respective links in the repository for easy access and reference. These components make up the user interface of the application and carry out CRUD functionality of the app.
-### Screens
-* [Login Screen](https://github.com/andareomondi/lawdesk/blob/main/lib/screens/auth/login_screen.dart)
-* [Signup Screen](https://github.com/andareomondi/lawdesk/blob/main/lib/screens/auth/signup_screen.dart)
-* [Dashboard Screen](https://github.com/andareomondi/lawdesk/blob/main/lib/dashboard.dart)
-* [Profile Screen](https://github.com/andareomondi/lawdesk/blob/main/lib/screens/profile/profile.dart)
-* [Case Details Screen](https://github.com/andareomondi/lawdesk/blob/main/lib/widgets/cases/details.dart)
-* [Client Details Screen](https://github.com/andareomondi/lawdesk/blob/main/lib/screens/clients/client_details_page.dart)
-* [Calendar Screen](https://github.com/andareomondi/lawdesk/blob/main/lib/screens/calender/calender.dart)
-* [Documents Screen](https://github.com/andareomondi/lawdesk/blob/main/lib/screens/documents/userDocuments.dart)
-* [Help & Support Screen](https://github.com/andareomondi/lawdesk/blob/main/lib/screens/help/help_support.dart)
-### Widgets
-* [Case Modal Widget](https://github.com/andareomondi/lawdesk/blob/main/lib/widgets/cases/modal.dart)
-* [Auth wrapper Widget](https://github.com/andareomondi/lawdesk/blob/main/lib/widgets/auth_wrapper.dart)
-* [Client Modal Widget](https://github.com/andareomondi/lawdesk/blob/main/lib/widgets/cases/client_modal.dart)
-* [Document preview Widget](https://github.com/andareomondi/lawdesk/blob/main/lib/widgets/document_preview_modal.dart)
-* [Toast notification Widget](https://github.com/andareomondi/lawdesk/blob/main/lib/widgets/delightful_toast.dart)
-* [Stat Card Widget](https://github.com/andareomondi/lawdesk/blob/main/lib/widgets/dashboard/statCard.dart)
 
+### Screens
+
+- [Login Screen](https://github.com/andareomondi/lawdesk/blob/main/lib/screens/auth/login_screen.dart)
+- [Signup Screen](https://github.com/andareomondi/lawdesk/blob/main/lib/screens/auth/signup_screen.dart)
+- [Dashboard Screen](https://github.com/andareomondi/lawdesk/blob/main/lib/dashboard.dart)
+- [Profile Screen](https://github.com/andareomondi/lawdesk/blob/main/lib/screens/profile/profile.dart)
+- [Case Details Screen](https://github.com/andareomondi/lawdesk/blob/main/lib/widgets/cases/details.dart)
+- [Client Details Screen](https://github.com/andareomondi/lawdesk/blob/main/lib/screens/clients/client_details_page.dart)
+- [Calendar Screen](https://github.com/andareomondi/lawdesk/blob/main/lib/screens/calender/calender.dart)
+- [Documents Screen](https://github.com/andareomondi/lawdesk/blob/main/lib/screens/documents/userDocuments.dart)
+- [Help & Support Screen](https://github.com/andareomondi/lawdesk/blob/main/lib/screens/help/help_support.dart)
+
+### Widgets
+
+- [Case Modal Widget](https://github.com/andareomondi/lawdesk/blob/main/lib/widgets/cases/modal.dart)
+- [Auth wrapper Widget](https://github.com/andareomondi/lawdesk/blob/main/lib/widgets/auth_wrapper.dart)
+- [Client Modal Widget](https://github.com/andareomondi/lawdesk/blob/main/lib/widgets/cases/client_modal.dart)
+- [Document preview Widget](https://github.com/andareomondi/lawdesk/blob/main/lib/widgets/document_preview_modal.dart)
+- [Toast notification Widget](https://github.com/andareomondi/lawdesk/blob/main/lib/widgets/delightful_toast.dart)
+- [Stat Card Widget](https://github.com/andareomondi/lawdesk/blob/main/lib/widgets/dashboard/statCard.dart)
 
 ---
 
 **Future Improvements:**
-* Implement a consistent theming system across the app for better UI/UX.
-* Refactor large widgets into smaller, reusable components for better maintainability.
-* Add dark mode support for improved user experience in low-light environments.
 
+- Implement a consistent theming system across the app for better UI/UX.
+- Refactor large widgets into smaller, reusable components for better maintainability.
+- Add dark mode support for improved user experience in low-light environments.
 
 ---
+
 ### Architecture Summary
+
 For a complete overview of the project dependencies and installation steps, please refer to the [`README.md`](https://github.com/andareomondi/lawdesk/blob/main/README.md) file in the root directory of the project repository.
 
 Data Flow Summary:
-* ***UI Layer:*** The project is split into [screens](https://github.com/andareomondi/lawdesk/tree/main/lib/screens) and [widgets](https://github.com/andareomondi/lawdesk/tree/main/lib/widgets) which handle user interactions and display data. Reused widgets are placed in the widgets folder for modularity while the screens directory contains the individual pages of the app.
-* ***State Management Layer:*** The [providers](https://github.com/andareomondi/lawdesk/tree/main/lib/providers) directory contains the state management logic using the Provider package. Each provider manages a specific part of the app's state, such as authentication, cases, clients, and connectivity status. There are also [services](https://github.com/andareomondi/lawdesk/tree/main/lib/services) that handle business logic and data fetching.
-* ***Data Layer:*** Data used among the app can be either online or offline. The online data is fetched from a Supabase backend while the offline data is stored locally using Shared Preferences.
 
-* ***Logging and Error Handling:*** The app implements basic logging using print statements for debugging purposes. Error handling is done using try-catch blocks to gracefully handle exceptions and provide user feedback.
+- **_UI Layer:_** The project is split into [screens](https://github.com/andareomondi/lawdesk/tree/main/lib/screens) and [widgets](https://github.com/andareomondi/lawdesk/tree/main/lib/widgets) which handle user interactions and display data. Reused widgets are placed in the widgets folder for modularity while the screens directory contains the individual pages of the app.
+- **_State Management Layer:_** The [providers](https://github.com/andareomondi/lawdesk/tree/main/lib/providers) directory contains the state management logic using the Provider package. Each provider manages a specific part of the app's state, such as authentication, cases, clients, and connectivity status. There are also [services](https://github.com/andareomondi/lawdesk/tree/main/lib/services) that handle business logic and data fetching.
+- **_Data Layer:_** Data used among the app can be either online or offline. The online data is fetched from a Supabase backend while the offline data is stored locally using Shared Preferences.
+
+- **_Logging and Error Handling:_** The app implements basic logging using print statements for debugging purposes. Error handling is done using try-catch blocks to gracefully handle exceptions and provide user feedback.
 
 #### Future Improvements:
-* Implement a more robust local database solution using SQLite or Hive for complex queries and relationships.
-* Clean up the service if deemed to be the only option to go with in production
-* Implement logging using a dedicated logging package for better log management.
+
+- Implement a more robust local database solution using SQLite or Hive for complex queries and relationships.
+- Clean up the service if deemed to be the only option to go with in production
+- Implement logging using a dedicated logging package for better log management.
 
 ---
-
-
