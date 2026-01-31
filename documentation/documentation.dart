@@ -1,4 +1,3 @@
-
 ---
 
 # LawDesk Developer Documentation

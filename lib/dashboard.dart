@@ -35,6 +35,7 @@ class _DashboardState extends State<Dashboard>
 
   final GlobalKey<CasesListWidgetState> _casesListKey = GlobalKey();
   final GlobalKey<StatsSectionState> _statsKey = GlobalKey<StatsSectionState>();
+  // just a comment
 
   final GlobalKey<CaseDetailsPageState> _caseDetailsKey = GlobalKey();
   // User data variables
