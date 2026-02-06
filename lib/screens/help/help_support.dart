@@ -140,7 +140,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen>
           icon: Icons.add_alert,
           title: 'Notifications',
           content:
-              'LawDesk sends you notifications for upcoming court dates and deadlines. Ensure notifications are enabled in your device settings to stay informed. Notifications are recieved if the device is online.',
+              'LawDesk sends you notifications for upcoming court dates and deadlines. Ensure notifications are enabled in your device settings to stay informed. Notifications are recieved if the device is online. Completed cases will not trigger notifications, but will still be visible in the app. This is also applicable to their children events such as court dates and deadlines.',
         ),
         _buildGuideCard(
           icon: Icons.wifi_off_outlined,
