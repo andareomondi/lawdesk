@@ -54,7 +54,8 @@ class _SignupPageState extends State<SignupPage> {
         );
 
         // Navigate back to login
-        Navigator.pop(context);
+Navigator.pushReplacement(context,MaterialPageRoute(builder: (context) => const LoginPage(),),);
+
       }
     } on AuthException catch (e) {
       // Handle Supabase authentication errors
