@@ -54,28 +54,35 @@ class _SignupPageState extends State<SignupPage> {
         );
 
         // Navigate back to login
-Navigator.pushReplacement(context,MaterialPageRoute(builder: (context) => const LoginPage(),),);
-
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginPage()),
+        );
       }
     } on AuthException catch (e) {
       // Handle Supabase authentication errors
       if (mounted) {
         String errorMessage;
-        // TODO: Replace this whole logic with a switch case and use e.code as per the documentation https://supabase.com/docs/guides/auth/debugging/error-codes
-        if (e.message.toLowerCase().contains('already in use') ||
-            e.message.toLowerCase().contains('exists')) {
-          errorMessage =
-              'This email is already registered. Please sign in instead.';
-        } else if (e.message.toLowerCase().contains('invalid email')) {
-          errorMessage = 'Please enter a valid email address.';
-        } else if (e.message.toLowerCase().contains('weak')) {
-          errorMessage =
-              'Password does not meet requirements. Please try a stronger password.';
-        } else if (e.statusCode == '422') {
-          errorMessage = 'Invalid signup data. Please check your information.';
-        } else {
-          errorMessage =
-              "An error occurred during account creation. Please try again.";
+        // Implementation using switch case
+        switch (e.code) {
+          case 'user_already_exists':
+            errorMessage =
+                'This email is already registered. Please sign in instead.';
+            break;
+          case 'validation_failed':
+            errorMessage = 'Please enter a valid email address.';
+            break;
+          case 'weak_password':
+            errorMessage =
+                'Password is too weak. Please use a stronger password.';
+            break;
+          case 'over_email_send_rate_limit':
+            errorMessage =
+                'Too many requests. Please wait a moment before trying again.';
+            break;
+          default:
+            errorMessage =
+                'An error occurred during account creation. Please try again.';
         }
 
         AppToast.showError(

@@ -39,6 +39,7 @@ class AuthService {
         throw const AuthException(
           'This email is already in use. Please sign in instead.',
           statusCode: '400', // Manually add a status code so UI can catch it
+          code: 'user_already_exists',
         );
       }
 

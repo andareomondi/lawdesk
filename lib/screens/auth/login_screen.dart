@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:email_validator/email_validator.dart';
 import 'package:lawdesk/screens/auth/signup_screen.dart';
-import 'package:lawdesk/screens/auth/forgotPassword.dart';
 import 'package:lawdesk/providers/auth_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -41,20 +40,25 @@ class _LoginPageState extends State<LoginPage> {
         password: _passwordController.text,
       );
     } on AuthException catch (e) {
-      print('AuthException: ${e.message}');
       // Handle Supabase authentication errors
       if (mounted) {
         String errorMessage;
-          // TODO: Replace this whole logic with a switch case and use e.code as per the documentation https://supabase.com/docs/guides/auth/debugging/error-codes
-        if (e.statusCode == '400' ||
-            e.message.toLowerCase().contains('invalid') ||
-            e.message.toLowerCase().contains('credentials')) {
-          errorMessage = 'Invalid email or password. Please try again.';
-        } else if (e.message.toLowerCase().contains('email not confirmed')) {
-          errorMessage = 'Please verify your email before logging in.';
-        } else {
-          errorMessage =
-              "An error occured during logging in. Please try again.";
+        debugPrint(e.code);
+        // Implementation using switch case.
+        switch (e.code) {
+          case 'invalid_credentials':
+            errorMessage = 'Invalid email or password. Please try again.';
+            break;
+          case 'email_not_confirmed':
+            errorMessage = 'Please verify your email before logging in.';
+            break;
+          case 'user_not_found':
+            errorMessage = 'No user found with this email.';
+            break;
+
+          default:
+            errorMessage =
+                "An error occured during logging in. Please try again.";
         }
         AppToast.showError(
           context: context,
