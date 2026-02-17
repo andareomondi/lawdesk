@@ -61,7 +61,7 @@ Navigator.pushReplacement(context,MaterialPageRoute(builder: (context) => const 
       // Handle Supabase authentication errors
       if (mounted) {
         String errorMessage;
-        // Check for specific signup errors
+        // TODO: Replace this whole logic with a switch case and use e.code as per the documentation https://supabase.com/docs/guides/auth/debugging/error-codes
         if (e.message.toLowerCase().contains('already in use') ||
             e.message.toLowerCase().contains('exists')) {
           errorMessage =
