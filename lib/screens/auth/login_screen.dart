@@ -45,8 +45,7 @@ class _LoginPageState extends State<LoginPage> {
       // Handle Supabase authentication errors
       if (mounted) {
         String errorMessage;
-
-        // Check for invalid credentials
+          // TODO: Replace this whole logic with a switch case and use e.code as per the documentation https://supabase.com/docs/guides/auth/debugging/error-codes
         if (e.statusCode == '400' ||
             e.message.toLowerCase().contains('invalid') ||
             e.message.toLowerCase().contains('credentials')) {
