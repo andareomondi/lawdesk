@@ -1096,7 +1096,7 @@ class _DashboardState extends State<Dashboard>
 
   Widget _buildShimmerCasesList() {
     return Column(
-      children: List.generate(2, (index) {
+      children: List.generate(3, (index) {
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: AnimatedBuilder(

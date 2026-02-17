@@ -5,6 +5,8 @@ import 'package:lawdesk/providers/auth_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:lawdesk/widgets/delightful_toast.dart';
+import 'package:lawdesk/screens/auth/forgot_password_screen.dart';
+import 'package:lawdesk/dashboard.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -39,6 +41,21 @@ class _LoginPageState extends State<LoginPage> {
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
+      if (mounted) {
+        // Show success message
+        AppToast.showSuccess(
+          context: context,
+          title: 'Welcome Back!',
+          message:
+              'You have successfully logged in. Redirecting to your dashboard...',
+        );
+
+        // Navigate back to login
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const Dashboard()),
+        );
+      }
     } on AuthException catch (e) {
       // Handle Supabase authentication errors
       if (mounted) {
