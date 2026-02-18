@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:lawdesk/widgets/delightful_toast.dart'; // Ensuring we use your toast widget
+import 'package:lawdesk/widgets/delightful_toast.dart';
+import 'package:lawdesk/widgets/offline_indicator.dart';
+import 'package:lawdesk/services/connectivity_service.dart';
 
 class HelpSupportScreen extends StatefulWidget {
   const HelpSupportScreen({super.key});
@@ -22,12 +24,22 @@ class _HelpSupportScreenState extends State<HelpSupportScreen>
 
   // State
   bool _isLoading = false;
+  bool _isOfflineMode = false;
   String _feedbackType = 'bug'; // Options: 'bug' or 'improvement'
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+
+    _isOfflineMode = !connectivityService.isConnected;
+    connectivityService.connectionStream.listen((isConnected) {
+      if (mounted) {
+        setState(() {
+          _isOfflineMode = !isConnected;
+        });
+      }
+    });
   }
 
   @override
@@ -70,7 +82,6 @@ class _HelpSupportScreenState extends State<HelpSupportScreen>
               ? 'Bug report submitted. Thank you!'
               : 'Suggestion received. We appreciate it!',
         );
-        // Show message then clear form
         _titleController.clear();
         _descriptionController.clear();
       }
@@ -124,6 +135,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen>
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        if (_isOfflineMode) const OfflineDataIndicator(),
         _buildGuideCard(
           icon: Icons.person_outline,
           title: 'User Profile',
@@ -232,6 +244,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (_isOfflineMode) const OfflineDataIndicator(),
             const Text(
               'Report a Bug or Suggest Improvement',
               style: TextStyle(
@@ -305,38 +318,39 @@ class _HelpSupportScreenState extends State<HelpSupportScreen>
             ),
             const SizedBox(height: 32),
 
-            // Submit Button
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _submitFeedback,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1E3A8A),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+            // Submit Button if online
+            if (!_isOfflineMode)
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _submitFeedback,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1E3A8A),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
                   ),
-                  elevation: 0,
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text(
+                          'Submit Feedback',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
                 ),
-                child: _isLoading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : const Text(
-                        'Submit Feedback',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
-                      ),
               ),
-            ),
           ],
         ),
       ),
