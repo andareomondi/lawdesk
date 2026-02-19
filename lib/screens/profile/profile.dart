@@ -365,56 +365,58 @@ class _ProfileScreenState extends State<ProfileScreen>
                   ),
                 ]),
                 if (!_isOfflineMode) const SizedBox(height: 32),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: _navigateToEditProfile,
-                    icon: const Icon(Icons.edit_outlined, size: 20),
-                    label: const Text(
-                      'Edit Profile',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
+                if (!_isOfflineMode)
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _navigateToEditProfile,
+                      icon: const Icon(Icons.edit_outlined, size: 20),
+                      label: const Text(
+                        'Edit Profile',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1E3A8A),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      elevation: 2,
-                      shadowColor: const Color(0xFF1E3A8A).withOpacity(0.3),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1E3A8A),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        elevation: 2,
+                        shadowColor: const Color(0xFF1E3A8A).withOpacity(0.3),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                     ),
                   ),
-                ),
                 if (!_isOfflineMode) const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: _handleLogout,
-                    icon: const Icon(Icons.logout, size: 20),
-                    label: const Text(
-                      'Logout',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
+                if (!_isOfflineMode)
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _handleLogout,
+                      icon: const Icon(Icons.logout, size: 20),
+                      label: const Text(
+                        'Logout',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFFEF4444),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      side: const BorderSide(
-                        color: Color(0xFFEF4444),
-                        width: 2,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFFEF4444),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        side: const BorderSide(
+                          color: Color(0xFFEF4444),
+                          width: 2,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                     ),
                   ),
-                ),
                 const SizedBox(height: 32),
               ],
             ),
