@@ -45,8 +45,7 @@ class _LoginPageState extends State<LoginPage> {
         AppToast.showSuccess(
           context: context,
           title: 'Welcome Back!',
-          message:
-              'You have successfully logged in. Redirecting to your dashboard...',
+          message: 'You have successfully logged in',
         );
 
         // Navigate back to login

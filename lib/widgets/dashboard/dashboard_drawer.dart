@@ -1,4 +1,5 @@
 import 'package:flutter/services.dart';
+import 'package:lawdesk/screens/auth/login_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:lawdesk/screens/profile/profile.dart';
 import 'package:lawdesk/screens/cases/casepage.dart';
@@ -9,7 +10,7 @@ import 'package:lawdesk/providers/auth_provider.dart';
 import 'package:lawdesk/screens/help/help_support.dart';
 import 'package:lawdesk/screens/clients/clients_page.dart';
 
-class DashboardDrawer extends StatelessWidget {
+class DashboardDrawer extends StatefulWidget {
   final String userName;
   final String userEmail;
   final VoidCallback onProfileUpdate;
@@ -21,6 +22,11 @@ class DashboardDrawer extends StatelessWidget {
     required this.onProfileUpdate,
   });
 
+  @override
+  State<DashboardDrawer> createState() => _DashboardDrawerState();
+}
+
+class _DashboardDrawerState extends State<DashboardDrawer> {
   @override
   Widget build(BuildContext context) {
     return Drawer(
@@ -63,8 +69,8 @@ class DashboardDrawer extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    userName.isNotEmpty
-                        ? userName.toUpperCase()
+                    widget.userName.isNotEmpty
+                        ? widget.userName.toUpperCase()
                         : 'LAWDESK USER',
                     style: const TextStyle(
                       color: Colors.white,
@@ -74,7 +80,7 @@ class DashboardDrawer extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    userEmail,
+                    widget.userEmail,
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.9),
                       fontSize: 14,
@@ -103,7 +109,7 @@ class DashboardDrawer extends StatelessWidget {
                         ),
                       );
                       if (result == true) {
-                        onProfileUpdate();
+                        widget.onProfileUpdate();
                       }
                     },
                   ),
@@ -201,6 +207,26 @@ class DashboardDrawer extends StatelessWidget {
                       );
                     },
                   ),
+                  // Container(
+                  //   padding: const EdgeInsets.all(16),
+                  //   decoration: BoxDecoration(
+                  //     border: Border(
+                  //       top: BorderSide(color: Colors.grey.shade200, width: 1),
+                  //     ),
+                  //   ),
+                  //   child: _buildDrawerItem(
+                  //     context: context,
+                  //     icon: Icons.logout_outlined,
+                  //     title: 'Logout',
+                  //     textColor: const Color(0xFFEF4444),
+                  //     iconColor: const Color(0xFFEF4444),
+                  //     onTap: () {
+                  //       HapticFeedback.lightImpact();
+                  //       Navigator.pop(context);
+                  //       _handleLogout();
+                  //     },
+                  //   ),
+                  // ),
                 ],
               ),
             ),
@@ -208,6 +234,78 @@ class DashboardDrawer extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _handleLogout() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      final authProvider = AuthProvider();
+
+      try {
+        await authProvider.signOut();
+
+        if (mounted) {
+          AppToast.showSuccess(
+            context: context,
+            title: "Operation sucessful",
+            message: "Logged out successfully",
+          );
+          // Navigator.pop(context);
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => const LoginPage()),
+            (route) => false,
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Error'),
+              content: const Text('Error occurred during logging out'),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              actions: [
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFEF4444),
+                  ),
+                  child: const Text('Close'),
+                ),
+              ],
+            ),
+          );
+        }
+      }
+    }
   }
 
   Widget _buildDrawerItem({

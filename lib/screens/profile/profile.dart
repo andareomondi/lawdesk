@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../../config/supabase_config.dart';
-import '../../providers/auth_provider.dart';
+import 'package:lawdesk/config/supabase_config.dart';
+import 'package:lawdesk/providers/auth_provider.dart';
 import 'update_profile.dart';
 import 'package:lawdesk/widgets/delightful_toast.dart';
 import 'package:lawdesk/services/connectivity_service.dart';
 import 'package:lawdesk/services/offline_storage_service.dart';
 import 'package:lawdesk/widgets/offline_indicator.dart';
+import 'package:lawdesk/screens/auth/login_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -210,7 +210,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
 
     if (confirm == true) {
-      final authProvider = context.read<AuthProvider>();
+      final authProvider = AuthProvider();
 
       try {
         await authProvider.signOut();
@@ -221,7 +221,12 @@ class _ProfileScreenState extends State<ProfileScreen>
             title: "Operation sucessful",
             message: "Logged out successfully",
           );
-          Navigator.pop(context);
+          // Navigator.pop(context);
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => const LoginPage()),
+            (route) => false,
+          );
         }
       } catch (e) {
         if (mounted) {
