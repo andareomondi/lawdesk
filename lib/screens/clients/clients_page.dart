@@ -162,9 +162,10 @@ class _ClientsPageState extends State<ClientsPage>
           style: TextStyle(fontWeight: FontWeight.w600, fontSize: 20),
         ),
         actions: [
+        if (!_isOfflineMode)
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _isOfflineMode ? null : _loadClients,
+            onPressed: _loadClients,
           ),
         ],
       ),

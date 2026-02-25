@@ -1,22 +1,17 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:lawdesk/config/supabase_config.dart';
+import 'package:lawdesk/services/offline_storage_service.dart';
 
 class AuthService {
-  // Use a getter to ensure we always get the latest instance if config changes,
-  // though typically this is static.
   SupabaseClient get _client => SupabaseConfig.client;
+  OfflineStorageService get _offlineStorage => OfflineStorageService();
 
-  // Check if user is currently logged in
   bool get isLoggedIn => _client.auth.currentSession != null;
 
-  // Get current user
   User? get currentUser => _client.auth.currentUser;
 
-  // Get current session
   Session? get currentSession => _client.auth.currentSession;
 
-  /// Sign up with email and password
-  /// Returns the AuthResponse so the Provider can access user data if needed.
   Future<AuthResponse> signUp({
     required String email,
     required String password,
@@ -45,18 +40,14 @@ class AuthService {
 
       return response;
     } on AuthException {
-      // CRITICAL FIX: Do not wrap this in a new Exception.
-      // Rethrow it so the UI receives the specific 'statusCode' and 'message'.
       rethrow;
     } catch (e) {
-      // Handle strictly unknown errors
       throw AuthException(
         'An unexpected error occurred during sign up: ${e.toString()}',
       );
     }
   }
 
-  /// Sign in with email and password
   Future<AuthResponse> signIn({
     required String email,
     required String password,
@@ -69,7 +60,6 @@ class AuthService {
 
       return response;
     } on AuthException {
-      // CRITICAL FIX: Rethrow to preserve statusCode (400 for invalid creds)
       rethrow;
     } catch (e) {
       throw AuthException(
@@ -82,6 +72,7 @@ class AuthService {
   Future<void> signOut() async {
     try {
       await _client.auth.signOut();
+      await _offlineStorage.clearCache();
     } on AuthException {
       rethrow;
     } catch (e) {

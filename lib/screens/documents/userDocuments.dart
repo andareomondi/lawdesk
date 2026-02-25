@@ -371,10 +371,11 @@ class _AllDocumentsPageState extends State<AllDocumentsPage>
           style: TextStyle(fontWeight: FontWeight.w600, fontSize: 20),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _isOfflineMode ? null : _loadAllDocuments,
-          ),
+          if (!_isOfflineMode)
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: _loadAllDocuments,
+            ),
         ],
       ),
       body: Container(
@@ -798,7 +799,7 @@ class _AllDocumentsPageState extends State<AllDocumentsPage>
       height: 60,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         itemCount: _documentTypes.length,
         itemBuilder: (context, index) {
           final type = _documentTypes[index];

@@ -2354,7 +2354,7 @@ class CaseDetailsPageState extends State<CaseDetailsPage> {
                                   ),
                                 ),
                                 const SizedBox(height: 8),
-                                if (!_isOfflineMode)
+                                if (!_isOfflineMode && !_isCompleted)
                                   Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
@@ -2805,7 +2805,7 @@ class CaseDetailsPageState extends State<CaseDetailsPage> {
                   ),
                 ),
                 // Only show buttons when online
-                if (!_isOfflineMode) ...[
+                if (!_isOfflineMode && !_isCompleted) ...[
                   IconButton(
                     onPressed: () => _showAddEventModal(event: event),
                     icon: const Icon(Icons.edit_outlined),
@@ -3013,7 +3013,7 @@ class CaseDetailsPageState extends State<CaseDetailsPage> {
                   ),
                 ),
                 // Only show delete button when online
-                if (!_isOfflineMode)
+                if (!_isOfflineMode && !_isCompleted)
                   IconButton(
                     onPressed: () =>
                         _deleteNote(note['id'], note['note'] ?? 'this note'),
@@ -3132,6 +3132,7 @@ class CaseDetailsPageState extends State<CaseDetailsPage> {
                   if (i < _documents.length - 1) const SizedBox(height: 8),
                 ],
                 const SizedBox(height: 12),
+                if (!_isOfflineMode)
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(

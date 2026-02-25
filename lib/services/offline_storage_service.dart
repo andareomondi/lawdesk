@@ -1,5 +1,3 @@
-// File: lib/services/offline_storage_service.dart
-
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -323,6 +321,7 @@ class OfflineStorageService {
     await prefs.remove(_documentsCacheKey);
     await prefs.remove(_eventsCacheKey);
     await prefs.remove(_lastSyncKey);
+    print('All cached data cleared successfully');
   }
 }
 

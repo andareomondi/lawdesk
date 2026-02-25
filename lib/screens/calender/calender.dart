@@ -381,6 +381,7 @@ class _CalendarPageState extends State<CalendarPage> {
             },
             tooltip: _viewMode == 'month' ? 'List View' : 'Calendar View',
           ),
+          if (!_isOfflineMode)
           IconButton(icon: const Icon(Icons.refresh), onPressed: _loadData),
         ],
       ),

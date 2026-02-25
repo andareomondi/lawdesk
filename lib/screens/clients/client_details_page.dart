@@ -233,13 +233,6 @@ class _ClientDetailsPageState extends State<ClientDetailsPage> {
   }
 
   Future<void> _deleteClient() async {
-    if (!OfflineActionHelper.canPerformAction(
-      context,
-      actionName: 'delete client',
-    )) {
-      return;
-    }
-
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -323,11 +316,12 @@ class _ClientDetailsPageState extends State<ClientDetailsPage> {
           //         },
           //   tooltip: _isEditing ? 'Save Changes' : 'Edit Client',
           // ),
-          IconButton(
-            icon: const Icon(Icons.delete, color: Color(0xFFEF4444)),
-            onPressed: _isLoading || _isOfflineMode ? null : _deleteClient,
-            tooltip: 'Delete Client',
-          ),
+          if (!_isOfflineMode)
+            IconButton(
+              icon: const Icon(Icons.delete, color: Color(0xFFEF4444)),
+              onPressed: _isLoading || _isOfflineMode ? null : _deleteClient,
+              tooltip: 'Delete Client',
+            ),
         ],
       ),
       body: RefreshIndicator(
