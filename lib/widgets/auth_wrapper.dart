@@ -4,7 +4,7 @@ import 'package:lawdesk/screens/auth/login_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:lawdesk/screens/splash.dart';
 import 'package:lawdesk/dashboard.dart';
-import 'package:flutter_native_splash/flutter_native_splash.dart';
+// import 'package:flutter_native_splash/flutter_native_splash.dart';
 
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({Key? key}) : super(key: key);
@@ -13,10 +13,9 @@ class AuthWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<AuthProvider>(
       builder: (context, authProvider, _) {
-        // close the native splash screen
-        FlutterNativeSplash.remove();
         // Still loading? Show splash screen
         if (authProvider.isInitializing) {
+          // FlutterNativeSplash.remove();
           return const Splash();
         }
 

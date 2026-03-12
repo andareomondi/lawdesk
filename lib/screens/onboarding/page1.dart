@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
 
 class OnboardingPage1 extends StatelessWidget {
   const OnboardingPage1({Key? key}) : super(key: key);
@@ -14,19 +15,11 @@ class OnboardingPage1 extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Spacer(),
-              // Icon
-              Container(
-                width: 200,
-                height: 200,
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.folder_open,
-                  size: 100,
-                  color: Colors.blue.shade700,
-                ),
+              Lottie.asset(
+                'assets/complete.json',
+                width: 400,
+                height: 250,
+                fit: BoxFit.contain,
               ),
               const SizedBox(height: 40),
               // Title
