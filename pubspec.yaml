@@ -40,6 +40,16 @@ dependencies:
   timezone: ^0.10.1
   flutter_local_notifications: ^19.5.0
   url_launcher: ^6.3.2
+  flutter_native_splash: ^2.4.7
+
+flutter_native_splash:
+  # Set this to the exact hex code of your Lottie animation's background
+  color: "#FFFFFF"
+  # Set this to true to remove the default Flutter logo/app icon
+
+  # This tells Android 12+ to not show the app icon in the center
+  android_12:
+    color: "#FFFFFF"
 
 dev_dependencies:
   flutter_test:
