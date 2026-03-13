@@ -221,7 +221,6 @@ class _ProfileScreenState extends State<ProfileScreen>
             title: "Operation sucessful",
             message: "Logged out successfully",
           );
-          // Navigator.pop(context);
           Navigator.pushAndRemoveUntil(
             context,
             MaterialPageRoute(builder: (context) => const LoginPage()),

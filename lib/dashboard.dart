@@ -642,31 +642,30 @@ class _DashboardState extends State<Dashboard>
             style: TextStyle(fontWeight: FontWeight.w600),
           ),
           actions: [
-            // Move the menu icon to actions (right side)
-            Builder(
-              builder: (context) {
-                return IconButton(
-                  icon: const Icon(Icons.menu),
-                  onPressed: () {
-                    HapticFeedback.lightImpact();
-                    Scaffold.of(
-                      context,
-                    ).openEndDrawer(); // Use openEndDrawer instead
-                  },
-                );
-              },
-            ),
+            if (_isUpdated)
+              Builder(
+                builder: (context) {
+                  return IconButton(
+                    icon: const Icon(Icons.menu),
+                    onPressed: () {
+                      HapticFeedback.lightImpact();
+                      Scaffold.of(context).openEndDrawer();
+                    },
+                  );
+                },
+              ),
           ],
-          // Add connection status indicator in AppBar
         ),
-        endDrawer: DashboardDrawer(
-          userName: _userName,
-          userEmail: _userEmail,
-          onProfileUpdate: () {
-            _hasCheckedProfile = false;
-            _loadUserData();
-          },
-        ),
+        endDrawer: _isUpdated
+            ? DashboardDrawer(
+                userName: _userName,
+                userEmail: _userEmail,
+                onProfileUpdate: () {
+                  _hasCheckedProfile = false;
+                  _loadUserData();
+                },
+              )
+            : null,
         backgroundColor: const Color(0xFFF8FAFC),
         body: Stack(
           fit: StackFit.expand,
@@ -797,40 +796,41 @@ class _DashboardState extends State<Dashboard>
                     },
                   ),
                   const SizedBox(height: 24),
-                  FloatingActionButton.extended(
-                    heroTag: 'main_fab',
-                    onPressed: _toggleFab,
-                    backgroundColor: const Color(0xFF1E3A8A),
-                    elevation: 6,
-                    label: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 200),
-                      transitionBuilder:
-                          (Widget child, Animation<double> animation) {
-                            return FadeTransition(
-                              opacity: animation,
-                              child: child,
-                            );
-                          },
-                      child: Text(
-                        _isFabExpanded ? 'Close' : 'Quick Actions',
-                        key: ValueKey<bool>(_isFabExpanded),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16,
+                  if (_isUpdated)
+                    FloatingActionButton.extended(
+                      heroTag: 'main_fab',
+                      onPressed: _toggleFab,
+                      backgroundColor: const Color(0xFF1E3A8A),
+                      elevation: 6,
+                      label: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 200),
+                        transitionBuilder:
+                            (Widget child, Animation<double> animation) {
+                              return FadeTransition(
+                                opacity: animation,
+                                child: child,
+                              );
+                            },
+                        child: Text(
+                          _isFabExpanded ? 'Close' : 'Quick Actions',
+                          key: ValueKey<bool>(_isFabExpanded),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      icon: AnimatedRotation(
+                        turns: _isFabExpanded ? 0.5 : 0,
+                        duration: const Duration(milliseconds: 200),
+                        child: Icon(
                           color: Colors.white,
+                          _isFabExpanded ? Icons.close : Icons.apps,
+                          key: ValueKey<bool>(_isFabExpanded),
                         ),
                       ),
                     ),
-                    icon: AnimatedRotation(
-                      turns: _isFabExpanded ? 0.5 : 0,
-                      duration: const Duration(milliseconds: 200),
-                      child: Icon(
-                        color: Colors.white,
-                        _isFabExpanded ? Icons.close : Icons.apps,
-                        key: ValueKey<bool>(_isFabExpanded),
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ),
