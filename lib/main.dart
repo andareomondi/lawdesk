@@ -16,9 +16,6 @@ final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // FlutterNativeSplash.preserve(
-  //   widgetsBinding: WidgetsFlutterBinding.ensureInitialized(),
-  // );
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await SupabaseConfig.initialize();
   final SharedPreferences prefs = await SharedPreferences.getInstance();
