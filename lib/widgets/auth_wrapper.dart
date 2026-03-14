@@ -8,31 +8,39 @@ import 'package:lawdesk/screens/auth/subscription_ended.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class AuthWrapper extends StatefulWidget {
-  const AuthWrapper({Key? key}) : super(key: key);
-
-  @override
-  State<AuthWrapper> createState() => _AuthWrapperState();
+// ─────────────────────────────────────────────
+// AuthStatus enum
+// ─────────────────────────────────────────────
+enum AuthStatus {
+  initial,
+  authenticated,
+  unauthenticated,
+  subscriptionEnded,
+  blocked,
 }
 
-class _AuthWrapperState extends State<AuthWrapper> {
+// ─────────────────────────────────────────────
+// SubscriptionProvider
+// Holds profile data and subscription state
+// so SubscriptionEndedScreen can access it
+// ─────────────────────────────────────────────
+class SubscriptionProvider extends ChangeNotifier {
   final _supabase = Supabase.instance.client;
 
-  bool _isChecking = true;
-  bool _isActivated = true;
-  bool _subscriptionEnded = false;
+  Map<String, dynamic>? _profile;
+  AuthStatus _status = AuthStatus.initial;
+  bool _isLoading = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _checkSubscription();
-  }
+  Map<String, dynamic>? get profile => _profile;
+  AuthStatus get status => _status;
+  bool get isLoading => _isLoading;
 
-  Future<void> _checkSubscription() async {
+  Future<void> checkSubscription() async {
     final user = _supabase.auth.currentUser;
 
     if (user == null) {
-      setState(() => _isChecking = false);
+      _status = AuthStatus.unauthenticated;
+      notifyListeners();
       return;
     }
 
@@ -46,7 +54,8 @@ class _AuthWrapperState extends State<AuthWrapper> {
             .eq('id', user.id)
             .single();
 
-        // Cache for offline
+        _profile = response;
+
         await prefs.setString(
           'cached_sub_date',
           response['subscription_end_date'] ?? '',
@@ -55,80 +64,95 @@ class _AuthWrapperState extends State<AuthWrapper> {
           'cached_is_activated',
           response['is_activated'] ?? true,
         );
-
-        final isActivated = response['is_activated'] ?? true;
-        final subDateStr = response['subscription_end_date'];
-
-        if (!isActivated) {
-          setState(() {
-            _isActivated = false;
-            _isChecking = false;
-          });
-          return;
-        }
-
-        if (subDateStr != null && subDateStr.toString().isNotEmpty) {
-          final subDate = DateTime.parse(subDateStr).toLocal();
-          final now = DateTime.now();
-          setState(() {
-            _subscriptionEnded = now.isAfter(subDate);
-            _isChecking = false;
-          });
-        } else {
-          setState(() => _isChecking = false);
-        }
       } catch (networkError) {
-        // Fallback to cache
         debugPrint('Network error, using cache: $networkError');
-        final isActivated = prefs.getBool('cached_is_activated') ?? true;
-        final subDateStr = prefs.getString('cached_sub_date') ?? '';
+        _profile = {
+          'subscription_end_date': prefs.getString('cached_sub_date') ?? '',
+          'is_activated': prefs.getBool('cached_is_activated') ?? true,
+        };
+      }
 
-        if (!isActivated) {
-          setState(() {
-            _isActivated = false;
-            _isChecking = false;
-          });
-          return;
-        }
+      final isActivated = _profile?['is_activated'] ?? true;
+      final subDateStr = _profile?['subscription_end_date'] ?? '';
 
-        if (subDateStr.isNotEmpty) {
-          final subDate = DateTime.parse(subDateStr).toLocal();
-          setState(() {
-            _subscriptionEnded = DateTime.now().isAfter(subDate);
-            _isChecking = false;
-          });
-        } else {
-          setState(() => _isChecking = false);
-        }
+      if (!isActivated) {
+        _status = AuthStatus.blocked;
+        notifyListeners();
+        return;
+      }
+
+      if (subDateStr.toString().isNotEmpty) {
+        final subDate = DateTime.parse(subDateStr).toLocal();
+        _status = DateTime.now().isAfter(subDate)
+            ? AuthStatus.subscriptionEnded
+            : AuthStatus.authenticated;
+      } else {
+        _status = AuthStatus.authenticated;
       }
     } catch (e) {
       debugPrint('Subscription check error: $e');
-      setState(() => _isChecking = false);
+      _status = AuthStatus.authenticated;
     }
+
+    notifyListeners();
+  }
+
+  Future<void> refreshProfile() async {
+    _isLoading = true;
+    notifyListeners();
+    await checkSubscription();
+    _isLoading = false;
+    notifyListeners();
+  }
+}
+
+// ─────────────────────────────────────────────
+// AuthWrapper
+// ─────────────────────────────────────────────
+class AuthWrapper extends StatefulWidget {
+  const AuthWrapper({Key? key}) : super(key: key);
+
+  @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
+  late SubscriptionProvider _subscriptionProvider;
+
+  @override
+  void initState() {
+    super.initState();
+    _subscriptionProvider = SubscriptionProvider();
+    _subscriptionProvider.checkSubscription();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<AuthProvider>(
-      builder: (context, authProvider, _) {
-        // Show splash while initializing auth OR checking subscription
-        if (authProvider.isInitializing || _isChecking) {
-          return const Splash();
-        }
+    return ChangeNotifierProvider.value(
+      value: _subscriptionProvider,
+      child: Consumer2<AuthProvider, SubscriptionProvider>(
+        builder: (context, authProvider, subProvider, _) {
+          // Show splash while auth initializing OR subscription checking
+          if (authProvider.isInitializing ||
+              subProvider.status == AuthStatus.initial) {
+            return const Splash();
+          }
 
-        // Not logged in
-        if (!authProvider.isLoggedIn) {
-          return const LoginPage();
-        }
+          // Not logged in
+          if (!authProvider.isLoggedIn) {
+            return const LoginPage();
+          }
 
-        // Logged in but blocked or subscription ended
-        if (!_isActivated || _subscriptionEnded) {
-          return const SubscriptionEndedScreen();
-        }
+          // Blocked or subscription ended
+          if (subProvider.status == AuthStatus.blocked ||
+              subProvider.status == AuthStatus.subscriptionEnded) {
+            return const SubscriptionEndedScreen();
+          }
 
-        // All good
-        return const Dashboard();
-      },
+          // All good
+          return const Dashboard();
+        },
+      ),
     );
   }
 }

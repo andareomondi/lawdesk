@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:lawdesk/providers/auth_provider.dart';
+import 'package:lawdesk/widgets/auth_wrapper.dart'; // AuthStatus + SubscriptionProvider
 import 'package:lawdesk/widgets/delightful_toast.dart';
 import 'package:intl/intl.dart';
 
@@ -27,11 +28,18 @@ class SubscriptionEndedScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // AuthProvider → for signOut and isLoading
     final authProvider = Provider.of<AuthProvider>(context);
-    final profile = authProvider.profile;
+    // SubscriptionProvider → for profile, status, refreshProfile
+    final subProvider = Provider.of<SubscriptionProvider>(context);
 
-    // Determine if blocked (is_activated = false) or just expired
-    final bool isBlocked = profile != null && profile['is_activated'] == false;
+    final profile = subProvider.profile;
+
+    // Determine if blocked or just expired
+    final bool isBlocked =
+        subProvider.status == AuthStatus.blocked ||
+        (profile != null && profile['is_activated'] == false);
+
     final String dateStr = profile?['subscription_end_date'] ?? '';
     String formattedDate = 'Unknown';
 
@@ -90,13 +98,9 @@ class SubscriptionEndedScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
 
-              // -----------------------------------------------------
-              // Payment Instructions & "I've Paid" Button
-              // ONLY visible if NOT blocked
-              // -----------------------------------------------------
+              // Payment Instructions — ONLY for expired, not blocked
               if (!isBlocked) ...[
                 const SizedBox(height: 32),
-                // Payment Card
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
@@ -161,16 +165,16 @@ class SubscriptionEndedScreen extends StatelessWidget {
 
                 const SizedBox(height: 12),
 
-                // Refresh Button (Primary Action for Expired Users)
+                // Refresh Button
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: authProvider.isLoading
+                    onPressed: subProvider.isLoading
                         ? null
                         : () async {
-                            await authProvider.refreshProfile();
+                            await subProvider.refreshProfile();
                             if (context.mounted) {
-                              if (authProvider.status ==
+                              if (subProvider.status ==
                                   AuthStatus.authenticated) {
                                 AppToast.showSuccess(
                                   context: context,
@@ -194,7 +198,7 @@ class SubscriptionEndedScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    child: authProvider.isLoading
+                    child: subProvider.isLoading
                         ? const SizedBox(
                             height: 20,
                             width: 20,
@@ -208,10 +212,9 @@ class SubscriptionEndedScreen extends StatelessWidget {
                 ),
               ],
 
-              // -----------------------------------------------------
               const SizedBox(height: 24),
 
-              // Call Button (Available to both blocked and expired users)
+              // Call Button
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
@@ -227,16 +230,6 @@ class SubscriptionEndedScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-              ),
-
-              const Spacer(),
-
-              // Logout Button (Bottom)
-              TextButton.icon(
-                onPressed: () => authProvider.signOut(),
-                icon: const Icon(Icons.logout, size: 18),
-                label: const Text('Logout'),
-                style: TextButton.styleFrom(foregroundColor: Colors.grey[600]),
               ),
             ],
           ),
