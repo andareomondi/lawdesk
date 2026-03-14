@@ -135,7 +135,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
           // Show splash while auth initializing OR subscription checking
           if (authProvider.isInitializing ||
               subProvider.status == AuthStatus.initial) {
-            return const Splash();
+            return const AnimatedSplashScreenWidget();
           }
 
           // Not logged in
