@@ -5,7 +5,7 @@ import 'package:lawdesk/providers/auth_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:lawdesk/widgets/delightful_toast.dart';
-import 'package:lawdesk/dashboard.dart';
+import 'package:lawdesk/widgets/auth_wrapper.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -51,7 +51,7 @@ class _LoginPageState extends State<LoginPage> {
         // Navigate back to login
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const Dashboard()),
+          MaterialPageRoute(builder: (context) => const AuthWrapper()),
         );
       }
     } on AuthException catch (e) {
