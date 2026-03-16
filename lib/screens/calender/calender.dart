@@ -382,7 +382,7 @@ class _CalendarPageState extends State<CalendarPage> {
             tooltip: _viewMode == 'month' ? 'List View' : 'Calendar View',
           ),
           if (!_isOfflineMode)
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadData),
+            IconButton(icon: const Icon(Icons.refresh), onPressed: _loadData),
         ],
       ),
       body: _isLoading
@@ -884,13 +884,17 @@ class _CalendarPageState extends State<CalendarPage> {
     for (var case_ in _allCases) {
       if (case_['courtDate'] != null) {
         try {
+          final today = DateTime.now();
           final courtDate = DateTime.parse(case_['courtDate']);
           final monthKey = DateFormat('MMMM yyyy').format(courtDate);
+          if (courtDate.isBefore(today.subtract(const Duration(days: 1)))) {
+            continue;
+          }
 
           groupedData.putIfAbsent(monthKey, () => {'cases': [], 'events': []});
           groupedData[monthKey]!['cases']!.add(case_);
         } catch (e) {
-          print('Error parsing case date: $e');
+          debugPrint('Error parsing case date: $e');
         }
       }
     }
@@ -899,13 +903,17 @@ class _CalendarPageState extends State<CalendarPage> {
     for (var event in _allEvents) {
       if (event['date'] != null) {
         try {
+          final today = DateTime.now();
           final eventDate = DateTime.parse(event['date']);
           final monthKey = DateFormat('MMMM yyyy').format(eventDate);
+          if (eventDate.isBefore(today.subtract(const Duration(days: 1)))) {
+            continue;
+          }
 
           groupedData.putIfAbsent(monthKey, () => {'cases': [], 'events': []});
           groupedData[monthKey]!['events']!.add(event);
         } catch (e) {
-          print('Error parsing event date: $e');
+          debugPrint('Error parsing event date: $e');
         }
       }
     }
@@ -937,7 +945,7 @@ class _CalendarPageState extends State<CalendarPage> {
               const Padding(
                 padding: EdgeInsets.only(bottom: 8, left: 8),
                 child: Text(
-                  'Court Cases',
+                  'Upcoming Court Cases',
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -952,7 +960,7 @@ class _CalendarPageState extends State<CalendarPage> {
               const Padding(
                 padding: EdgeInsets.only(bottom: 8, left: 8),
                 child: Text(
-                  'Events',
+                  'Upcoming Events',
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,

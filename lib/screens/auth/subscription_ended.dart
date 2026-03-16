@@ -231,6 +231,7 @@ class SubscriptionEndedScreen extends StatelessWidget {
                   ),
                 ),
               ),
+              const Spacer(),
             ],
           ),
         ),

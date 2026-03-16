@@ -177,14 +177,7 @@ class _ClientDetailsPageState extends State<ClientDetailsPage> {
       return;
     }
 
-    if (_nameController.text.trim().isEmpty) {
-      AppToast.showError(
-        context: context,
-        title: 'Error',
-        message: 'Name cannot be empty',
-      );
-      return;
-    }
+    FocusScope.of(context).unfocus();
 
     setState(() => _isLoading = true);
 
@@ -197,7 +190,7 @@ class _ClientDetailsPageState extends State<ClientDetailsPage> {
       await _supabase
           .from('clients')
           .update({
-            'name': _nameController.text.trim(),
+            // 'name': _nameController.text.trim(),
             'email': _emailController.text.trim(),
             'phone': phoneInt, // Storing as int
             'notes': _notesController.text.trim(),
@@ -272,6 +265,7 @@ class _ClientDetailsPageState extends State<ClientDetailsPage> {
         Navigator.pop(context, true); // Return true to indicate deletion
       }
     } catch (e) {
+      debugPrint('Error deleting client: $e');
       if (mounted) {
         setState(() => _isLoading = false);
         AppToast.showError(
@@ -300,28 +294,29 @@ class _ClientDetailsPageState extends State<ClientDetailsPage> {
         ),
         actions: [
           // TODO: Enable editing in future release and fix the save flow logic first and offline handling
-          // IconButton(
-          //   icon: Icon(
-          //     _isEditing ? Icons.check : Icons.edit,
-          //     color: _isEditing ? Colors.green : const Color(0xFF3B82F6),
-          //   ),
-          //   onPressed: _isLoading || _isOfflineMode
-          //       ? null
-          //       : () {
-          //           if (_isEditing) {
-          //             _saveChanges();
-          //           } else {
-          //             setState(() => _isEditing = true);
-          //           }
-          //         },
-          //   tooltip: _isEditing ? 'Save Changes' : 'Edit Client',
-          // ),
           if (!_isOfflineMode)
             IconButton(
-              icon: const Icon(Icons.delete, color: Color(0xFFEF4444)),
-              onPressed: _isLoading || _isOfflineMode ? null : _deleteClient,
-              tooltip: 'Delete Client',
+              icon: Icon(
+                _isEditing ? Icons.check : Icons.edit,
+                color: _isEditing ? Colors.green : const Color(0xFF3B82F6),
+              ),
+              onPressed: _isLoading || _isOfflineMode
+                  ? null
+                  : () {
+                      if (_isEditing) {
+                        _saveChanges();
+                      } else {
+                        setState(() => _isEditing = true);
+                      }
+                    },
+              tooltip: _isEditing ? 'Save Changes' : 'Edit Client',
             ),
+          // if (!_isOfflineMode)
+          //   IconButton(
+          //     icon: const Icon(Icons.delete, color: Color(0xFFEF4444)),
+          //     onPressed: _isLoading || _isOfflineMode ? null : _deleteClient,
+          //     tooltip: 'Delete Client',
+          //   ),
         ],
       ),
       body: RefreshIndicator(
@@ -575,7 +570,7 @@ class _ClientDetailsPageState extends State<ClientDetailsPage> {
             label: 'Full Name',
             controller: _nameController,
             icon: Icons.person_outline,
-            enabled: _isEditing,
+            enabled: false,
           ),
           const SizedBox(height: 16),
           _buildTextField(

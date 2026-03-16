@@ -16,7 +16,6 @@ class _AnimatedSplashScreenWidgetState
   void initState() {
     super.initState();
     _initializeApp().then((_) {
-      // After initialization, navigate to the dashboard
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const Dashboard()),
@@ -25,7 +24,7 @@ class _AnimatedSplashScreenWidgetState
   }
 
   Future<void> _initializeApp() async {
-    await Future.delayed(const Duration(seconds: 3));
+    await Future.delayed(const Duration(seconds: 4));
   }
 
   @override
